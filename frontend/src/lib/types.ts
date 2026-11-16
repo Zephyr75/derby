@@ -33,6 +33,8 @@ export interface Agent {
   allow: string[] // tool rules it runs without asking, e.g. Bash(make test-path:*)
   next: string[] // agents Next step offers after it succeeds, first highlighted
   onFail: string[] // agents Next step offers after it fails (empty: itself again)
+  effort: string // low | medium | high | xhigh | max
+  projects: string[] // ids of the projects that offer it (empty: every project)
   instructions: string
 }
 
@@ -44,7 +46,7 @@ export interface Context {
 }
 
 export interface Appearance {
-  theme: 'dark' | 'light' | 'system'
+  theme: 'dark' | 'light' | 'system' | 'pony'
   uiFont: string
   uiFontSize: number
   termFont: string

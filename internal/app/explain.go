@@ -79,6 +79,9 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 	if ag.Model != "" {
 		args = append(args, "--model", ag.Model)
 	}
+	if ag.Effort != "" {
+		args = append(args, "--effort", ag.Effort)
+	}
 	args = append(args, "-p", "--permission-mode", "auto", "--settings", a.hooksPath(), "--add-dir", runDir)
 	for _, dir := range a.knowledgeDirs(p) {
 		args = append(args, "--add-dir", dir)
@@ -99,6 +102,11 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 	}
 	if b, _ := os.ReadFile(file); strings.TrimSpace(string(b)) == "" || string(b) == explaining { // what it wrote counts, whatever its exit
 		why := strings.TrimSpace(string(out))
+		if err == nil && why != "" { // it answered with the explanation instead of writing the file
+			_ = os.WriteFile(file, []byte(why+"\n"), 0o644)
+			a.emit(EvArtifact, map[string]string{"taskId": t.ID, "file": filepath.Base(file)})
+			return
+		}
 		if err != nil {
 			why = strings.TrimSpace(err.Error() + ": " + lastLines(why, 3))
 		}

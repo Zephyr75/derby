@@ -1,17 +1,18 @@
 <script setup lang="ts">
-// Settings > Appearance: Dark (Fleet Dark), Light (Flatwhite) or System,
-// then fonts and the Zed command.
+// Settings > Appearance: Dark (Fleet Dark), Light (Flatwhite), System or
+// Pony, then fonts and the Zed command.
 import { computed } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import { herd } from '../../lib/state'
 
-type Mode = 'dark' | 'light' | 'system'
+type Mode = 'dark' | 'light' | 'system' | 'pony'
 const ap = computed(() => herd.settings?.config.appearance)
 const cards = computed<{ id: Mode; name: string; note: string; panes: string[] }[]>(() => [
   { id: 'dark', name: 'Dark', note: 'Fleet Dark', panes: ['fleet-dark'] },
   { id: 'light', name: 'Light', note: 'Flatwhite', panes: ['flatwhite'] },
   { id: 'system', name: 'System', note: `now ${herd.systemLight ? 'Light' : 'Dark'}, follows the OS`, panes: ['fleet-dark', 'flatwhite'] },
+  { id: 'pony', name: 'Pony', note: "Pony's purple, cyan and coral", panes: ['pony'] },
 ])
 
 async function pick(id: Mode) {
@@ -71,7 +72,7 @@ function setZed(e: Event) {
 <template>
   <div class="intro">
     <h1>Appearance</h1>
-    <p>Dark uses Fleet Dark and Light uses Flatwhite, the themes you use in Zed. System follows your OS setting.</p>
+    <p>Dark uses Fleet Dark and Light uses Flatwhite, the themes you use in Zed. System follows your OS setting. Pony wears the colours of Pony's apps and websites.</p>
   </div>
 
   <div class="cards">
@@ -130,7 +131,7 @@ function setZed(e: Event) {
 <style scoped>
   .cards {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
     max-width: 900px;
   }

@@ -12,7 +12,7 @@ import type { Artifact } from '../lib/types'
 const props = withDefaults(defineProps<{ art: Artifact; task: string; zoom?: number }>(), { zoom: 1.3 })
 const body = ref<HTMLDivElement>()
 
-const html = computed(() => render(props.art.body, { task: props.task, dark: herd.theme === 'fleet-dark', rev: herd.diagramRev }))
+const html = computed(() => render(props.art.body, { task: props.task, dark: herd.dark, rev: herd.diagramRev }))
 // An embedded diagram page reports its size (see embedFit in diagrams.go):
 // its iframe takes the diagram's shape, with no empty band under it.
 function fit(e: MessageEvent) {
@@ -38,7 +38,7 @@ watch(
     // v-html leaves rendered diagrams in place; reset them so a theme change redraws.
     body.value.innerHTML = html.value
     const el = body.value
-    await renderMermaid(el, herd.theme === 'fleet-dark')
+    await renderMermaid(el, herd.dark)
     el.querySelectorAll<SVGSVGElement>('pre.mermaid svg').forEach((svg) => {
       const w = svg.viewBox?.baseVal?.width
       if (!w) return

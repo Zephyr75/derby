@@ -9,7 +9,7 @@ const open = () => herd.attempt('Could not open the link', () => api.OpenURL(rep
 
 <template>
   <div class="hero card">
-    <Logo :size="44" :class="herd.theme === 'fleet-dark' ? 'on-dark' : 'on-light'" />
+    <Logo :size="44" :class="herd.dark ? 'on-dark' : 'on-light'" />
     <div class="id">
       <h1>herd</h1>
       <p class="muted">Runs Claude Code through a pipeline of agents you define, each task in its own git worktree.</p>

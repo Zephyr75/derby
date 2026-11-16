@@ -48,7 +48,7 @@ const anyActions = computed(() => props.task.checks.some((c) => actions(c.link))
 
 // Fixes go to the agent Copilot offers first when there is something to fix
 // (Implement by default), as a new step with guidance.
-const fixer = computed(() => herd.fixers()[0])
+const fixer = computed(() => herd.fixers(props.task)[0])
 const failing = computed(() => props.task.checks.filter((c) => c.bucket === 'fail' || c.bucket === 'cancel'))
 const canFix = computed(() => live.value && herd.canFix(props.task))
 const fix = (guidance: string) => herd.fixWith(props.task, guidance)

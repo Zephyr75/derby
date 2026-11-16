@@ -443,7 +443,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 	// succeeds (or still may: it has not finished).
 	var autoNext *settings.Agent
 	for i := range agents {
-		if agents[i].AfterAgent() == last.Agent && !last.Unsuccessful() {
+		if agents[i].AfterAgent() == last.Agent && agents[i].For(t.Project) && !last.Unsuccessful() {
 			autoNext = &agents[i]
 			break
 		}
@@ -465,7 +465,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 		var out []Option
 		for _, id := range ids {
 			for _, x := range agents {
-				if x.ID == id {
+				if x.ID == id && x.For(t.Project) {
 					out = append(out, option(x, countAgent(steps, x.ID)+1, ""))
 				}
 			}

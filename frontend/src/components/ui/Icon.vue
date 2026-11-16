@@ -10,6 +10,7 @@ const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: n
 
 const icons: Record<string, Component> = {
   play: Play,
+  'play-outline': Play, // the play icon unfilled, beside outline icons
   stop: Square,
   chevron: ChevronDown,
   'chevron-right': ChevronRight,

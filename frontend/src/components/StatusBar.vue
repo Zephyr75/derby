@@ -10,8 +10,9 @@ const counts = computed(() => {
   for (const t of herd.tasks) {
     if (t.archived) continue
     const k = t.status.kind === 'failed' ? 'waiting' : t.status.kind // a failure waits for you
-    if (k === 'running' || k === 'waiting' || k === 'approval') c[k]++
-    if (k === 'running') projects.add(t.project)
+    if (k !== 'running' && k !== 'waiting' && k !== 'approval') continue
+    c[k]++
+    projects.add(t.project) // the projects of every task the line counts
   }
   return { ...c, projects: projects.size }
 })

@@ -118,7 +118,7 @@ const dropCls = (t: Todo) => (over.value?.id === t.id && dragging.value !== t.id
         ></textarea>
         <span v-else class="text" title="Click to edit" @click="edit(t)">{{ t.text }}</span>
         <button v-if="run" class="go" :disabled="t.done || !!blocked" :aria-label="'Start ' + run + ' on it'" :title="goTitle(t)" @click="emit('run', t)">
-          <Icon name="play" :size="11" />
+          <Icon name="play-outline" :size="13" />
         </button>
         <button class="urg" :aria-pressed="!!t.urgent" :aria-label="t.urgent ? 'Urgent: unmark it' : 'Mark as urgent'" :title="t.urgent ? 'Urgent: click to unmark' : 'Mark as urgent'" @click="patch(t.id, { urgent: !t.urgent })">
           <Icon name="warn" :size="13" />
@@ -268,7 +268,7 @@ const dropCls = (t: Todo) => (over.value?.id === t.id && dragging.value !== t.id
   color: var(--urgent);
 }
 .x:hover {
-  color: var(--approval);
+  color: var(--text);
 }
 .add {
   align-items: center;

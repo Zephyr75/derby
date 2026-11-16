@@ -166,6 +166,9 @@ func (a *App) spec(l launch) runner.Spec {
 	if l.agent.Model != "" {
 		args = append(args, "--model", l.agent.Model)
 	}
+	if l.agent.Effort != "" {
+		args = append(args, "--effort", l.agent.Effort)
+	}
 	// The agent's own rules run without asking (Settings > Agents).
 	if len(l.agent.Allow) > 0 {
 		args = append(args, "--allowedTools", strings.Join(l.agent.Allow, ","))
@@ -285,6 +288,9 @@ func (a *App) newStep(taskID, agentID, guidance string, n int, state string) (la
 		return launch{}, fmt.Errorf("%s is run by herd: it starts by itself after the agent it follows", ag.Name)
 	}
 	p := a.projectOf(t)
+	if !ag.For(t.Project) {
+		return launch{}, fmt.Errorf("%s is not offered in %s (Settings > Agents)", ag.Name, p.Name)
+	}
 	if _, err := os.Stat(worktreePath(p, t)); err != nil {
 		return launch{}, fmt.Errorf("worktree missing: %s", worktreePath(p, t))
 	}
@@ -739,7 +745,7 @@ func (a *App) afterDone(s store.Step, git bool) {
 	}
 
 	for _, next := range a.settings.Agents() {
-		if next.AfterAgent() != s.Agent {
+		if next.AfterAgent() != s.Agent || !next.For(t.Project) {
 			continue
 		}
 		if next.Builtin {

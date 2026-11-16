@@ -29,7 +29,7 @@ type Project struct {
 
 // Appearance holds the theme and fonts.
 type Appearance struct {
-	Theme        string  `toml:"theme" json:"theme"` // dark | light | system
+	Theme        string  `toml:"theme" json:"theme"` // dark | light | system | pony
 	UIFont       string  `toml:"ui_font" json:"uiFont"`
 	UIFontSize   float64 `toml:"ui_font_size" json:"uiFontSize"`
 	TermFont     string  `toml:"terminal_font" json:"termFont"`
@@ -75,7 +75,8 @@ type Agent struct {
 	Name         string   `toml:"name" json:"name"`
 	Command      string   `toml:"command" json:"command"`
 	Model        string   `toml:"model" json:"model"`
-	Trigger      string   `toml:"trigger" json:"trigger"` // manual | after:<agent id> (when that step succeeds)
+	Effort       string   `toml:"effort,omitempty" json:"effort"` // low | medium | high | xhigh | max (default xhigh)
+	Trigger      string   `toml:"trigger" json:"trigger"`         // manual | after:<agent id> (when that step succeeds)
 	Writes       string   `toml:"writes" json:"writes"`
 	Commit       bool     `toml:"commit,omitempty" json:"commit"`            // herd commits when it succeeds: its artifact's title line and body are the message
 	Push         bool     `toml:"push,omitempty" json:"push"`                // then pushes the branch (needs Commit)
@@ -90,6 +91,7 @@ type Agent struct {
 	Allow        []string `toml:"allow,omitempty" json:"allow"`              // tool rules it runs without asking, e.g. Bash(make test-path:*)
 	Next         []string `toml:"next,omitempty" json:"next"`                // agents Next step offers after it succeeds, first one highlighted (default: the next manual agent)
 	OnFail       []string `toml:"on_fail,omitempty" json:"onFail"`           // agents Next step offers after it fails (default: itself again)
+	Projects     []string `toml:"projects,omitempty" json:"projects"`        // ids of the projects that offer it; empty: every project
 	Instructions string   `toml:"instructions" json:"instructions"`
 }
 
@@ -519,6 +521,12 @@ func normalize(agents []Agent) []Agent {
 		if out[i].OnFail == nil {
 			out[i].OnFail = []string{}
 		}
+		if out[i].Effort == "" {
+			out[i].Effort = DefaultEffort
+		}
+		if out[i].Projects == nil {
+			out[i].Projects = []string{}
+		}
 		allow := []string{}
 		for _, r := range out[i].Allow {
 			if r = strings.TrimSpace(r); r != "" {
@@ -692,6 +700,14 @@ func (a Agent) Numbered() bool { return strings.Contains(a.Writes, "{n}") }
 // ArtifactName is the file this agent writes for run n.
 func (a Agent) ArtifactName(n int) string {
 	return strings.ReplaceAll(a.Writes, "{n}", fmt.Sprint(n))
+}
+
+// DefaultEffort is the effort of an agent that does not set one.
+const DefaultEffort = "xhigh"
+
+// For reports whether the tasks of a project offer the agent.
+func (a Agent) For(project string) bool {
+	return len(a.Projects) == 0 || slices.Contains(a.Projects, project)
 }
 
 // AfterAgent returns the agent id this one starts after, or "": it starts

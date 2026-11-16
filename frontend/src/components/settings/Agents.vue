@@ -19,6 +19,7 @@ const A = computed(() => agents.value.find((a) => a.id === selId.value) ?? claud
 const confirmDelete = ref(false)
 
 const models: [string, string][] = [['fable', 'Fable'], ['opus', 'Opus'], ['sonnet', 'Sonnet'], ['haiku', 'Haiku']]
+const efforts = ['low', 'medium', 'high', 'xhigh', 'max']
 const modelLabel = (m: string) => models.find((x) => x[0] === m)?.[1] ?? m
 const isAuto = (a: Agent) => a.trigger.startsWith('after:')
 const vFocus = { mounted: (el: HTMLElement) => el.focus() }
@@ -30,6 +31,12 @@ const save = debounce(() => {
 function changed() {
   herd.edited()
   save()
+}
+
+/** toggleProject adds or removes a project from those that offer the agent (none: all). */
+function toggleProject(id: string) {
+  const ps = A.value?.projects ?? []
+  set('projects', ps.includes(id) ? ps.filter((x) => x !== id) : [...ps, id])
 }
 
 function set<K extends keyof Agent>(k: K, v: Agent[K]) {
@@ -89,7 +96,7 @@ function addAgent() {
   s.agents.push({
     id, name, command: `/herd:${id} {task} -- {guidance}`, model: 'sonnet', trigger: 'manual', writes: id.toUpperCase() + '-{n}.md',
     commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: false,
-    ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], onFail: [],
+    ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], onFail: [], projects: [], effort: 'xhigh',
     instructions: 'Describe what this agent reads, what it does and what it writes.',
   })
   selId.value = id
@@ -194,6 +201,12 @@ function pick(id: string) {
             <button v-for="[v, l] in models" :key="v" class="seg" :class="{ on: A.model === v }" @click="set('model', v)">{{ l }}</button>
           </div>
         </div>
+        <div class="field">
+          <span>Effort</span>
+          <div class="segs">
+            <button v-for="v in efforts" :key="v" class="seg" :class="{ on: (A.effort || 'xhigh') === v }" @click="set('effort', v)">{{ v }}</button>
+          </div>
+        </div>
         <label class="field"
           >Instructions of the explanation
           <textarea class="area mono" rows="7" :value="A.instructions" @input="set('instructions', val($event))"></textarea>
@@ -215,10 +228,24 @@ function pick(id: string) {
             <button v-for="[v, l] in models" :key="v" class="seg" :class="{ on: A.model === v }" @click="set('model', v)">{{ l }}</button>
           </div>
         </div>
+        <div class="field">
+          <span>Effort</span>
+          <div class="segs">
+            <button v-for="v in efforts" :key="v" class="seg" :class="{ on: (A.effort || 'xhigh') === v }" @click="set('effort', v)">{{ v }}</button>
+          </div>
+        </div>
       </template>
       <div class="field">
         <span>Starts</span>
         <Dropdown class="starts" :items="triggers" :value="A.trigger" @pick="set('trigger', $event)" />
+      </div>
+      <div class="field">
+        <span>Offered in</span>
+        <div class="segs">
+          <button class="seg" :class="{ on: !A.projects?.length }" @click="set('projects', [])">All projects</button>
+          <button v-for="p in herd.projects" :key="p.id" class="seg" :class="{ on: A.projects?.includes(p.id) }" @click="toggleProject(p.id)">{{ p.name }}</button>
+        </div>
+        <span class="hint flat">Tasks of the other projects never offer it or start it by itself.</span>
       </div>
       <template v-if="!A.builtin">
         <div class="field">

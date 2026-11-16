@@ -22,7 +22,7 @@ watch(
   { immediate: true },
 )
 // The page reloads when its agent rewrites it.
-const src = computed(() => (herd.diagramOf ? diagramURL(herd.diagramOf.task, herd.diagramOf.file, herd.theme === 'fleet-dark') + '&v=' + (cur.value?.mod ?? '') : ''))
+const src = computed(() => (herd.diagramOf ? diagramURL(herd.diagramOf.task, herd.diagramOf.file, herd.dark) + '&v=' + (cur.value?.mod ?? '') : ''))
 
 const pick = (file: string) => herd.diagramOf && (herd.diagramOf = { ...herd.diagramOf, file })
 const sb = useSidebar('diagram', 220)

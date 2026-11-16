@@ -111,7 +111,12 @@ class Herd {
     return this.settings?.config.appearance.theme ?? 'dark'
   }
   get theme() {
+    if (this.themeMode === 'pony') return 'pony'
     return this.themeMode === 'light' || (this.themeMode === 'system' && this.systemLight) ? 'flatwhite' : 'fleet-dark'
+  }
+  /** dark: the theme in use is a dark one (diagrams, mermaid and the logo follow it). */
+  get dark() {
+    return this.theme !== 'flatwhite'
   }
 
   task(id: string) {
@@ -186,7 +191,7 @@ class Herd {
     const left = q.get('left')
     if (left === 'archive' || left === 'tasks') this.left = left
     const theme = q.get('theme')
-    if (theme && this.settings && (theme === 'dark' || theme === 'light' || theme === 'system')) this.settings.config.appearance.theme = theme
+    if (theme && this.settings && (theme === 'dark' || theme === 'light' || theme === 'system' || theme === 'pony')) this.settings.config.appearance.theme = theme
     if (q.get('view') === 'settings') {
       this.view = 'settings'
       this.settingsTab = (q.get('tab') as SettingsTab) || 'context'
@@ -540,9 +545,9 @@ class Herd {
     return !!last?.external && last.state === 'done' && !unsuccessful(last) && last.verdict !== 'skipped'
   }
 
-  /** fixers: the agents Copilot offers when there is something to fix (Implement, Discuss by default); the first does the fixes. */
-  fixers(): Agent[] {
-    const ags = this.settings?.agents ?? []
+  /** fixers: the agents Copilot offers when there is something to fix (Implement, Discuss by default) that the task's project offers; the first does the fixes. */
+  fixers(t: Task): Agent[] {
+    const ags = (this.settings?.agents ?? []).filter((a) => !a.projects?.length || a.projects.includes(t.project))
     const ids = ags.find((a) => a.builtin)?.onFail ?? []
     const out = ids.map((id) => ags.find((a) => a.id === id)).filter((a): a is Agent => !!a && !a.builtin)
     if (!out.length) {
@@ -559,11 +564,11 @@ class Herd {
 
   /** canFix: herd can start a fix step on the task now. */
   canFix(t: Task): boolean {
-    return !t.archived && !t.worktreeRemoved && !!this.fixers().length && !this.busy(t)
+    return !t.archived && !t.worktreeRemoved && !!this.fixers(t).length && !this.busy(t)
   }
 
   /** fixWith starts agent (the first fixer by default) on the task with the given guidance. */
-  async fixWith(t: Task, guidance: string, agent = this.fixers()[0]): Promise<boolean> {
+  async fixWith(t: Task, guidance: string, agent = this.fixers(t)[0]): Promise<boolean> {
     if (!agent) return false
     const step = await this.attempt('Could not start ' + agent.name, () => api.StartStep(t.id, agent.id, guidance, 0))
     if (!step) return false
@@ -572,22 +577,22 @@ class Herd {
   }
 
   /** todoAgent: the agent a todo's play button starts, Implement or else the first fixer. */
-  todoAgent(): Agent | undefined {
-    return this.settings?.agents.find((a) => a.id === 'impl') ?? this.fixers()[0]
+  todoAgent(t: Task): Agent | undefined {
+    return this.fixers(t).find((a) => a.id === 'impl') ?? this.fixers(t)[0]
   }
 
   /** todoBlocked: why a todo's play button can't start a step on the task now, or ''. */
   todoBlocked(t: Task): string {
     if (t.archived) return 'The task is archived'
     if (t.worktreeRemoved) return 'The worktree was removed'
-    if (!this.todoAgent()) return 'No Implement agent'
+    if (!this.todoAgent(t)) return 'No Implement agent in this project'
     if (this.busy(t)) return 'A step of this task is still working or waiting for you'
     return ''
   }
 
   /** runTodo starts the todo agent on the task, with the todo as guidance. */
   runTodo(t: Task, todo: Todo) {
-    return this.fixWith(t, this.prompt('todo', { todo: todo.text }) || todo.text, this.todoAgent())
+    return this.fixWith(t, this.prompt('todo', { todo: todo.text }) || todo.text, this.todoAgent(t))
   }
 
   /** setNotes saves the task's comments on the diff. */

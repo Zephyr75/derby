@@ -1731,3 +1731,39 @@ func TestCopilotStepShowsWholeBranch(t *testing.T) {
 		t.Fatalf("%v %+v", err, d)
 	}
 }
+
+// An agent set to some projects is offered only in their tasks: Next step
+// leaves it out elsewhere, and it cannot be started there.
+func TestAgentProjects(t *testing.T) {
+	a, _ := newTestApp(t)
+	tv, _ := a.CreateTask("core", "", "only some projects", "", false, nil)
+	os.MkdirAll(tv.RunDir, 0o755)
+	os.WriteFile(filepath.Join(tv.RunDir, "PLAN-1.md"), []byte("---\nstatus: done\n---\n# Plan\n"), 0o644)
+	_ = a.db.SaveStep(store.Step{ID: store.StepID(tv.ID, "plan-1"), TaskID: tv.ID, Key: "plan-1", Agent: "plan", N: 1, Seq: 1, State: store.Done, Completed: true})
+	labels := func() string {
+		v, _ := a.GetTask(tv.ID)
+		var ls []string
+		for _, o := range v.Next.Options {
+			ls = append(ls, o.Label)
+		}
+		return strings.Join(ls, ", ")
+	}
+	if got := labels(); got != "Implement 1, Discuss 1" {
+		t.Fatalf("every project: %s", got)
+	}
+	ags := a.settings.Agents()
+	for i := range ags {
+		if ags[i].ID == "discuss" {
+			ags[i].Projects = []string{"elsewhere"}
+		}
+	}
+	if err := a.SaveAgents(ags); err != nil {
+		t.Fatal(err)
+	}
+	if got := labels(); got != "Implement 1" {
+		t.Fatalf("discuss set to another project: %s", got)
+	}
+	if _, err := a.StartStep(tv.ID, "discuss", "", 0); err == nil || !strings.Contains(err.Error(), "not offered") {
+		t.Fatalf("discuss started in core: %v", err)
+	}
+}
