@@ -1,0 +1,18 @@
+{
+  "projectId": "664cfca0-6d56-4fda-8249-91316a663663",
+  "pkg": "herd-theme",
+  "globalName": "HerdTheme",
+  "shape": "package",
+  "entry": ".design-sync/theme/index.js",
+  "buildCmd": "node .design-sync/theme/build.mjs",
+  "cssEntry": "herd.css",
+  "extraFonts": [
+    "../../frontend/node_modules/@fontsource/geist/latin-400.css",
+    "../../frontend/node_modules/@fontsource/geist/latin-500.css",
+    "../../frontend/node_modules/@fontsource/geist/latin-600.css",
+    "../../frontend/node_modules/@fontsource/geist-mono/latin-400.css",
+    "../../frontend/node_modules/@fontsource/geist-mono/latin-500.css",
+    "../../frontend/node_modules/@fontsource/geist-mono/latin-600.css"
+  ],
+  "readmeHeader": ".design-sync/conventions.md"
+}
