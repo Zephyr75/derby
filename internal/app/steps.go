@@ -99,20 +99,30 @@ func (a *App) stepBlock(l launch, runDir, wt string) string {
 			b.WriteString("- the user's guidance to earlier steps, oldest first:\n" + strings.Join(said, "\n") + "\n")
 		}
 	}
-	fmt.Fprintf(&b, "- run directory: %s (TASK.md, CONTEXT.md and every artifact)\n", runDir)
-	fmt.Fprintf(&b, "- your artifact: %s\n", filepath.Join(runDir, l.agent.ArtifactName(l.step.N)))
-	b.WriteString("- finished when its front matter has status: done (succeeded) or status: failed (did not; say why). The next automatic agent only starts after a success\n")
+	fmt.Fprintf(&b, "- run directory: %s (TASK.md and every artifact)\n", runDir)
+	art := l.agent.ArtifactName(l.step.N)
+	fmt.Fprintf(&b, "- your artifact: %s\n", filepath.Join(runDir, art))
 	if l.task.PRNumber > 0 {
 		fmt.Fprintf(&b, "- pull request: #%d %s (gh pr checks %d shows its CI checks)\n", l.task.PRNumber, l.task.PRURL, l.task.PRNumber)
 	}
-	for _, dir := range a.knowledgeDirs(l.proj) {
-		fmt.Fprintf(&b, "- knowledge base: %s (read-only reference, search it when you need background)\n", dir)
+	// The shared prompts (Settings > Context > Prompts), then the context
+	// and the rules: everything every agent follows, so each agent's own
+	// instructions only say what is special to it.
+	vars := map[string]string{"artifact": art, "stem": strings.TrimSuffix(art, filepath.Ext(art))}
+	ids := []string{settings.PromptStep, settings.PromptWriting, settings.PromptCode, settings.PromptDiagrams}
+	if l.agent.Sisters {
+		ids = append(ids, settings.PromptSisters)
 	}
-	if clean := strings.TrimSpace(a.settings.Prompt(settings.PromptCleanCode)); clean != "" {
-		b.WriteString("\n# Clean code\n" + clean + "\n")
+	if l.task.PRNumber > 0 {
+		ids = append(ids, settings.PromptComments)
 	}
-	if claims := strings.TrimSpace(a.settings.Prompt(settings.PromptClaims)); claims != "" {
-		b.WriteString("\n# Claims\n" + claims + "\n")
+	for _, id := range ids {
+		if t := strings.TrimSpace(settings.Fill(a.settings.Prompt(id), vars)); t != "" {
+			b.WriteString("\n" + t + "\n")
+		}
+	}
+	if c := a.contextText(l.proj); c != "" {
+		b.WriteString("\n# Context\n" + c)
 	}
 	if rules := strings.TrimSpace(a.settings.Config().Rules); rules != "" && !l.agent.IgnoreRules {
 		fmt.Fprintf(&b, "\n# Rules\nAlways follow these rules:\n%s\n", rules)
@@ -340,9 +350,6 @@ func (a *App) newStep(taskID, agentID, guidance string, n int, state string) (la
 	if err := a.writeTaskFile(p, t); err != nil {
 		return launch{}, err
 	}
-	if err := a.writeContextFile(p, t); err != nil {
-		return launch{}, err
-	}
 	return l, nil
 }
 
@@ -374,7 +381,6 @@ func (a *App) resume(stepID string) error {
 	ag := agentFor(a.settings.Agents(), s.Agent)
 	steps, _ := a.db.Steps(t.ID)
 	l := launch{task: t, proj: p, agent: ag, step: s, prevSHA: latestSHA(steps, s.Seq), mode: mode}
-	_ = a.writeContextFile(p, t)
 	a.reap()
 	if _, err := a.run.Start(a.spec(l)); err != nil && !errors.Is(err, runner.ErrRunning) {
 		return err
@@ -652,7 +658,6 @@ func (a *App) RerunStep(stepID string) error {
 		return true
 	})
 	a.setPaused(s.ID, false)
-	_ = a.writeContextFile(p, t)
 	l := launch{task: t, proj: p, agent: ag, step: s, prevSHA: latestSHA(steps, s.Seq), mode: modeRerun}
 	a.reap()
 	if _, err := a.run.Start(a.spec(l)); err != nil {

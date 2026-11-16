@@ -102,31 +102,23 @@ func (a *App) writeTaskFile(p settings.Project, t store.Task) error {
 	return os.WriteFile(filepath.Join(dir, "TASK.md"), []byte(b.String()), 0o644)
 }
 
-// writeContextFile writes CONTEXT.md: the general context, then the
-// project's, then the knowledge base folders.
-func (a *App) writeContextFile(p settings.Project, t store.Task) error {
-	return os.WriteFile(filepath.Join(a.runDir(p, t), "CONTEXT.md"), []byte(a.contextText(p)), 0o644)
-}
-
-// contextText is CONTEXT.md for a task of project p.
+// contextText is the Context part of a step's system prompt: the general
+// context, then the project's, then the knowledge base folders.
 func (a *App) contextText(p settings.Project) string {
 	var b strings.Builder
-	b.WriteString("<!-- Written by herd before each step. Edit it in Settings > Context. -->\n\n")
 	if c, ok := a.settings.Context("general"); ok && strings.TrimSpace(c.Text) != "" {
-		b.WriteString(strings.TrimSpace(c.Text))
-		b.WriteString("\n\n")
+		b.WriteString(strings.TrimSpace(c.Text) + "\n\n")
 	}
 	if c, ok := a.settings.Context(p.ID); ok {
 		if strings.TrimSpace(c.Text) != "" {
-			b.WriteString(strings.TrimSpace(c.Text))
-			b.WriteString("\n\n")
+			b.WriteString(strings.TrimSpace(c.Text) + "\n\n")
 		}
 		if c.ClaudeMd {
-			b.WriteString("The repository's CLAUDE.md applies to this task; follow it.\n")
+			b.WriteString("The repository's CLAUDE.md applies to this task; follow it.\n\n")
 		}
 	}
 	if dirs := a.knowledgeDirs(p); len(dirs) > 0 {
-		b.WriteString("\n## Knowledge base\n\nReference folders you can read (never edit them). Search them for background on the domain, conventions and past decisions:\n\n")
+		b.WriteString("Knowledge base: reference folders to search for background on the domain, conventions and past decisions (read them, never edit them):\n")
 		for _, d := range dirs {
 			fmt.Fprintf(&b, "- %s\n", d)
 		}
@@ -174,22 +166,12 @@ func (a *App) writePlugin() error {
 	return nil
 }
 
-// CommandText is the command herd writes for an agent (/herd:<name>): its
-// instructions between the prompts of Settings > Context > Prompts.
+// CommandText is the command herd writes for an agent (/herd:<name>): just
+// its own instructions; what every agent shares is in the system prompt.
 func (a *App) CommandText(ag settings.Agent) string {
-	stem := strings.TrimSuffix(ag.Writes, filepath.Ext(ag.Writes))
-	vars := map[string]string{"artifact": ag.Writes, "stem": stem}
 	var b strings.Builder
 	fmt.Fprintf(&b, "---\ndescription: herd %s agent\nargument-hint: \"<task> [-- guidance]\"\n---\n\n", ag.Name)
 	fmt.Fprintf(&b, "You are the herd **%s** agent. Arguments: $ARGUMENTS\n\n", ag.Name)
-	b.WriteString(strings.TrimSpace(settings.Fill(a.settings.Prompt(settings.PromptProtocol), vars)) + "\n\n")
-	b.WriteString("## Instructions\n\n")
 	b.WriteString(strings.TrimSpace(ag.Instructions) + "\n")
-	if d := strings.TrimSpace(settings.Fill(a.settings.Prompt(settings.PromptDiagrams), vars)); d != "" {
-		b.WriteString("\n" + d + "\n")
-	}
-	if ag.Sisters {
-		b.WriteString("\n" + strings.TrimSpace(settings.Fill(a.settings.Prompt(settings.PromptSisters), vars)) + "\n")
-	}
 	return b.String()
 }

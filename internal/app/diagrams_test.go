@@ -68,13 +68,11 @@ func TestSisterOffersFromAllowedAgents(t *testing.T) {
 	if len(v.Next.Sisters) != 1 || v.Next.Sisters[0].Repo != "okai-tcp-server" || !strings.HasSuffix(v.Next.Sisters[0].From, "IMPLEMENT-1.md") {
 		t.Fatalf("offers: %+v", v.Next.Sisters)
 	}
-	if err := a.writePlugin(); err != nil {
-		t.Fatal(err)
-	}
-	for cmd, want := range map[string]bool{"implement": true, "review": false} {
-		b, _ := os.ReadFile(filepath.Join(a.Home, "plugin", "commands", cmd+".md"))
-		if strings.Contains(string(b), "## Sister tasks") != want {
-			t.Errorf("%s: sister rules %v", cmd, !want)
+	task, _ := a.db.Task(tv.ID)
+	for id, want := range map[string]bool{"impl": true, "review": false} {
+		ag, _ := a.settings.Agent(id)
+		if strings.Contains(a.stepBlock(launch{task: task, proj: a.projectOf(task), agent: ag, step: store.Step{N: 1}}, "/run", "/wt"), "# Sister tasks") != want {
+			t.Errorf("%s: sister rules %v", id, !want)
 		}
 	}
 }

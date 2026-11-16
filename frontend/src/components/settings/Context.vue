@@ -17,7 +17,7 @@ const C = computed(
   () => herd.settings?.context[selId.value] ?? { id: selId.value, text: '', claudeMd: selId.value !== 'general', knowledge: '' },
 )
 
-// Rules go in each session's system prompt, unlike context (CONTEXT.md).
+// Rules and context both go in each session's system prompt.
 const ignoring = computed(() => (herd.settings?.agents ?? []).filter((a) => a.ignoreRules).map((a) => a.name))
 const saveRules = debounce((r: string) => void herd.attempt('Could not save the rules', () => api.SetRules(r)), 500)
 function setRules(e: Event) {

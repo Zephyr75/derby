@@ -218,11 +218,6 @@ func TestPlanImplementReview(t *testing.T) {
 			t.Fatalf("%s changes: %+v", id, ch)
 		}
 	}
-	ctxFile, _ := os.ReadFile(filepath.Join(tv.RunDir, "CONTEXT.md"))
-	if !strings.Contains(string(ctxFile), "General context") {
-		t.Fatalf("CONTEXT.md: %s", ctxFile)
-	}
-
 	sess, ok := a.run.Get(rev)
 	if !ok {
 		t.Fatal("review session not live")
@@ -585,11 +580,8 @@ func TestRulesAndKnowledge(t *testing.T) {
 	if args := strings.Join(a.spec(launch{task: task, proj: p, agent: allowed, step: store.Step{N: 1, SessionID: "s"}}).Args, "\x00"); !strings.Contains(args, "--allowedTools\x00Bash(make test-path:*),Bash(make ruff)\x00") {
 		t.Fatalf("allowed tools: %q", args)
 	}
-	if err := a.writeContextFile(p, task); err != nil {
-		t.Fatal(err)
-	}
-	if b, _ := os.ReadFile(filepath.Join(tv.RunDir, "CONTEXT.md")); !strings.Contains(string(b), kb) {
-		t.Fatalf("CONTEXT.md: %s", b)
+	if block := a.stepBlock(launch{task: task, proj: p, agent: allowed, step: store.Step{N: 1}}, "/run", "/wt"); !strings.Contains(block, "# Context\n") || !strings.Contains(block, kb) {
+		t.Fatalf("no knowledge base in the context: %s", block)
 	}
 }
 
@@ -1133,8 +1125,8 @@ func TestMigrateCopilotFiles(t *testing.T) {
 	}
 }
 
-// Settings shows each agent's full context: the system prompt (Clean code,
-// Claims and Rules included), the command, then CONTEXT.md; Copilot's run its own.
+// Settings shows each agent's full context: the system prompt (the shared
+// prompts and the Rules included), then the command; Copilot's run its own.
 func TestAgentContext(t *testing.T) {
 	a, _ := newTestApp(t)
 	var titles []string
@@ -1144,10 +1136,10 @@ func TestAgentContext(t *testing.T) {
 		titles = append(titles, p.Title)
 		all += p.Text
 	}
-	if titles[0] != "System prompt" || titles[len(titles)-1] != "CONTEXT.md" || !slices.Contains(titles, "Command /herd:impl") {
+	if titles[0] != "System prompt" || titles[len(titles)-1] != "Command /herd:impl" {
 		t.Fatalf("parts: %v", titles)
 	}
-	for _, want := range []string{"# herd step", "# Clean code", "# Claims", "## Instructions", "You are the herd **Implement** agent"} {
+	for _, want := range []string{"# herd step", "# How a step works", "# Writing", "# Code changes", "# Diagrams", "IMPLEMENT-1.html", "# Sister tasks", "You are the herd **Implement** agent"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("no %q in the context", want)
 		}
@@ -1461,23 +1453,32 @@ func TestCompleteAfterAFailure(t *testing.T) {
 	}
 }
 
-func TestCommandUsesPrompts(t *testing.T) {
+func TestSystemPromptUsesPrompts(t *testing.T) {
 	a, _ := newTestApp(t)
+	tv, _ := a.CreateTask("core", "", "prompts", "", false, nil)
+	task, _ := a.db.Task(tv.ID)
+	p, _ := a.settings.Project("core")
 	ag, _ := a.settings.Agent("plan")
-	ag.Sisters = false
-	if strings.Contains(a.CommandText(ag), "## Sister tasks") {
-		t.Fatal("sister rules without the box")
+	block := func() string {
+		return a.stepBlock(launch{task: task, proj: p, agent: ag, step: store.Step{N: 1}}, "/run", "/wt")
 	}
-	if err := a.SetPrompt(settings.PromptSisters, "## Sister tasks\n\nEnd {artifact} with them."); err != nil {
+	ag.Sisters = false
+	if strings.Contains(block(), "# Sister tasks") || strings.Contains(block(), "# Review comments") {
+		t.Fatal("sister or review comment rules without the box or a PR")
+	}
+	if err := a.SetPrompt(settings.PromptSisters, "# Sister tasks\n\nEnd {artifact} with them."); err != nil {
 		t.Fatal(err)
 	}
 	ag.Sisters = true
-	if !strings.Contains(a.CommandText(ag), "End "+ag.Writes+" with them.") {
+	if !strings.Contains(block(), "End PLAN-1.md with them.") {
 		t.Fatal("edited sister prompt not used")
 	}
-	b, _ := os.ReadFile(filepath.Join(a.pluginDir(), "commands", "plan.md"))
-	if !strings.Contains(string(b), "End "+ag.Writes+" with them.") {
-		t.Fatal("plan.md not rewritten")
+	task.PRNumber = 7
+	if !strings.Contains(block(), "# Review comments") {
+		t.Fatal("no review comment rules on a task with a PR")
+	}
+	if strings.Contains(a.CommandText(ag), "# Writing") {
+		t.Fatal("shared prompts copied into the command")
 	}
 }
 
@@ -1561,7 +1562,7 @@ func TestCommonIssuesRepo(t *testing.T) {
 	}
 	p, _ := a.settings.Project("core")
 	block := a.stepBlock(launch{task: task, proj: p, agent: settings.Agent{ID: "push", Name: "Commit and push", Writes: "PUSH.md"}, step: store.Step{N: 1}}, "/run", "/wt")
-	if !strings.Contains(block, "refer to it as org/issues#42") || strings.Contains(block, "sister task") || !strings.Contains(block, "every reply of this conversation") {
+	if !strings.Contains(block, "refer to it as org/issues#42") || strings.Contains(block, "sister task") || !strings.Contains(block, "in every reply") {
 		t.Fatalf("step block:\n%s", block)
 	}
 	task.Sister = true

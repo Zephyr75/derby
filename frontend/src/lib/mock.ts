@@ -466,8 +466,8 @@ export const api: Api = {
   SetTodos: (id, todos) => { if (!id) { others = todos; emit('todos:changed', others); return ok(undefined) } const t = find(id); t.todos = todos; changed(t); return ok(undefined) },
   SetPrompt: (id, text) => { const p = settings.prompts.find((x) => x.id === id); if (p) p.text = text || p.default; emit('settings:changed', settings); return ok(undefined) },
   AgentContext: (a) => ok([
-    { title: 'System prompt', where: "Appended to Claude Code's own system prompt", text: '# herd step\n- task: core:1234 (Example task), project core\n\n# Claims\nHighlight each claim you have not verified.' },
-    { title: 'Command /herd:' + a.id, where: "The step's first message", text: `You are the herd **${a.name}** agent.\n\n## Instructions\n\n${a.instructions}` },
+    { title: 'System prompt', where: "Appended to Claude Code's own system prompt", text: '# herd step\n- task: core:1234 (Example task), project core\n\n# Writing\n- Mark each claim you have not verified.' },
+    { title: 'Command /herd:' + a.id, where: "The step's first message", text: `You are the herd **${a.name}** agent.\n\n${a.instructions}` },
   ]),
   SaveContext: (c) => { settings.context[c.id] = c; emit('settings:changed', settings); return ok(undefined) },
   SaveProject: (p) => { const i = projects.findIndex((x) => x.id === p.id); if (i >= 0) projects[i] = p; else projects.push(p); emit('settings:changed', settings); return ok(undefined) },

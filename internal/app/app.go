@@ -547,7 +547,7 @@ type ContextPart struct {
 // AgentContext is everything a step of the agent (as being edited) gets, for
 // an example task of the project (the first one when projectID is ""), in
 // the order Claude reads it: the system prompt, the repository's CLAUDE.md,
-// the command, then CONTEXT.md, which the command has it read.
+// then the command.
 func (a *App) AgentContext(ag settings.Agent, projectID string) []ContextPart {
 	ps := a.settings.Config().Projects
 	p, ok := a.settings.Project(projectID)
@@ -574,8 +574,7 @@ func (a *App) AgentContext(ag settings.Agent, projectID string) []ContextPart {
 			"\n\n" + settings.Fill(a.settings.Prompt(settings.PromptDiagrams), map[string]string{"stem": stem, "artifact": filepath.Base(file)})
 		return append(out, ContextPart{"Prompt", "The prompt of the run (claude -p), for an example PR #42", prompt})
 	}
-	out = append(out, ContextPart{"Command /herd:" + ag.ID, "The step's first message: " + strings.TrimSpace(ag.Command), a.CommandText(ag)})
-	return append(out, ContextPart{"CONTEXT.md", "Written in the run directory before each step; the Protocol has the agent read it", a.contextText(p)})
+	return append(out, ContextPart{"Command /herd:" + ag.ID, "The step's first message: " + strings.TrimSpace(ag.Command), a.CommandText(ag)})
 }
 
 // ChooseFolder opens the native folder picker; "" when cancelled.

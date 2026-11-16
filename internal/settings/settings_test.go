@@ -135,7 +135,7 @@ func TestPromptOverride(t *testing.T) {
 	if err := s.SetPrompt(PromptSisters, ""); err != nil {
 		t.Fatal(err)
 	}
-	if len(s.Config().Prompts) != 0 || !strings.HasPrefix(s.Prompt(PromptSisters), "## Sister tasks") {
+	if len(s.Config().Prompts) != 0 || !strings.HasPrefix(s.Prompt(PromptSisters), "# Sister tasks") {
 		t.Fatal("empty text did not restore the default")
 	}
 	if s.SetPrompt("nope", "x") == nil {
