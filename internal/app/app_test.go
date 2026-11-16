@@ -1133,8 +1133,8 @@ func TestMigrateCopilotFiles(t *testing.T) {
 	}
 }
 
-// Settings shows each agent's full context: the system prompt (Claims and
-// Rules included), the command, then CONTEXT.md; Copilot's run its own.
+// Settings shows each agent's full context: the system prompt (Clean code,
+// Claims and Rules included), the command, then CONTEXT.md; Copilot's run its own.
 func TestAgentContext(t *testing.T) {
 	a, _ := newTestApp(t)
 	var titles []string
@@ -1147,7 +1147,7 @@ func TestAgentContext(t *testing.T) {
 	if titles[0] != "System prompt" || titles[len(titles)-1] != "CONTEXT.md" || !slices.Contains(titles, "Command /herd:impl") {
 		t.Fatalf("parts: %v", titles)
 	}
-	for _, want := range []string{"# herd step", "# Claims", "## Instructions", "You are the herd **Implement** agent"} {
+	for _, want := range []string{"# herd step", "# Clean code", "# Claims", "## Instructions", "You are the herd **Implement** agent"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("no %q in the context", want)
 		}

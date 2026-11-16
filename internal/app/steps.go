@@ -108,6 +108,9 @@ func (a *App) stepBlock(l launch, runDir, wt string) string {
 	for _, dir := range a.knowledgeDirs(l.proj) {
 		fmt.Fprintf(&b, "- knowledge base: %s (read-only reference, search it when you need background)\n", dir)
 	}
+	if clean := strings.TrimSpace(a.settings.Prompt(settings.PromptCleanCode)); clean != "" {
+		b.WriteString("\n# Clean code\n" + clean + "\n")
+	}
 	if claims := strings.TrimSpace(a.settings.Prompt(settings.PromptClaims)); claims != "" {
 		b.WriteString("\n# Claims\n" + claims + "\n")
 	}

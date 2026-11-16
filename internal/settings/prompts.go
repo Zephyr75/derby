@@ -19,6 +19,7 @@ const (
 	PromptProtocol  = "protocol"
 	PromptDiagrams  = "diagrams"
 	PromptClaims    = "claims"
+	PromptCleanCode = "cleanCode"
 	PromptSisters   = "sisters"
 	PromptRebase    = "rebase"
 	PromptFixChecks = "fixChecks"
@@ -42,6 +43,12 @@ The *herd step* block in your system prompt gives the task, the step number ` + 
 4. Write your artifact (` + "`{artifact}`" + `) in the run directory. It starts with YAML front matter; when the step is finished it contains ` + "`status: done`" + ` (it succeeded) or ` + "`status: failed`" + ` (it did not, and the artifact says why).
    Only add that line when the step is truly finished. If you need the user, ask in the terminal and stop.
 5. When something is complex (a flow, a mechanism, a tricky bug), you can add an ELI5 explanation of it, in your artifact or your replies: a few plain sentences with an everyday metaphor.`},
+		{ID: PromptCleanCode, Name: "Clean code", Where: "Every agent's system prompt, before Claims", Default: `Keep the diff small and the code clean:
+- Never add a copy of existing code: reuse it, and merge the repeated code in what you touch.
+- Give new code a clean place in the structure (the right file, function and name) instead of bolting it on.
+- Problems you find outside what the task needs (bugs, debt, confusing code): don't fix them; list them in a "Problems found" section of your artifact.
+- If some are bugs worth fixing, ask before you finish: write your artifact without its status line, sum the bugs up in a few lines in this conversation, ask the user to check the artifact and say which to fix, and stop. Fix the ones the user picks (maybe none), update the artifact, then finish the step. If your instructions say never to edit code, only list them.
+- When there are several reasonable options, lay them out with your recommendation and let the user choose.`},
 		{ID: PromptClaims, Name: "Claims", Where: "Every agent's system prompt, for the whole conversation: its artifact and every reply", Default: `In your artifact and in every reply of this conversation, highlight each claim you have not verified (in the code, by running it, or in logs or docs) with your confidence, e.g. **Unverified (medium confidence):** the retry also covers timeouts.`},
 		{ID: PromptDiagrams, Name: "Diagrams", Where: "Every agent's command, after its instructions", Vars: "{stem}: the artifact's name without .md, e.g. PLAN-{n}", Default: `## Diagrams
 
