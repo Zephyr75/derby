@@ -88,12 +88,9 @@ const tab = computed(() =>
         <Icon name="diff" />{{ step.external ? 'Full changes' : 'Changes' }}<span class="count">{{ changes.files.length }}</span>
       </button>
       <button v-if="task?.pr" class="tab" :class="{ on: tab === 'pr' }" @click="herd.rightTab = 'pr'"><Icon name="pr" />PR #{{ task.pr }}</button>
-      <div v-if="task" class="tab" role="tab" tabindex="0" :class="{ on: tab === 'todos' }" @click="herd.rightTab = 'todos'" @keydown.enter="herd.rightTab = 'todos'">
+      <button v-if="task" class="tab" :class="{ on: tab === 'todos' }" @click="herd.rightTab = 'todos'">
         <Icon name="todo" />Todos<span v-if="openTodos" class="count">{{ openTodos }}</span>
-        <button class="big" aria-label="Open every todo list in a pop-up" title="Open every todo list in a pop-up" @click.stop="herd.openOverlay('todos')">
-          <Icon name="maximize" :size="16" />
-        </button>
-      </div>
+      </button>
       <span class="grow"></span>
     </div>
     <div class="content">
