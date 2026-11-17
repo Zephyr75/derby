@@ -375,6 +375,12 @@ func (a *App) resume(stepID string) error {
 	if t.WorktreeRemoved {
 		return errors.New("the worktree was removed, so the session cannot be resumed")
 	}
+	p := a.projectOf(t)
+	// Removed outside herd, or a task from another machine. Without this,
+	// starting the holder there fails as "fork/exec <herd>: no such file".
+	if wt := worktreePath(p, t); !isDir(wt) {
+		return fmt.Errorf("the worktree %s does not exist, so the session cannot be resumed", wt)
+	}
 	if t.Archived {
 		return errors.New("this task is archived: restore it to reopen its Claude Code sessions")
 	}
@@ -383,7 +389,6 @@ func (a *App) resume(stepID string) error {
 		ag := agentFor(a.settings.Agents(), s.Agent)
 		return fmt.Errorf("Claude Code never saved this %s session: its process ended before the first prompt was recorded, so there is nothing to resume. Use Retry %s to run the step again", ag.DisplayName(s.N), ag.DisplayName(s.N))
 	}
-	p := a.projectOf(t)
 	ag := agentFor(a.settings.Agents(), s.Agent)
 	steps, _ := a.db.Steps(t.ID)
 	l := launch{task: t, proj: p, agent: ag, step: s, prevSHA: latestSHA(steps, s.Seq), mode: mode}
