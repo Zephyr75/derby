@@ -169,6 +169,7 @@ export interface Option {
 export interface SisterOffer {
   repo: string
   scope: string
+  part: string // its line in the plan's overview
   project: string
 }
 

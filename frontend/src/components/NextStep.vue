@@ -25,14 +25,6 @@ async function deleteTask() {
   const lines = await herd.attempt('Could not delete the task', () => api.DeleteTask(task.id))
   if (lines) herd.toast('Deleted ' + (task.issue ? '#' + task.issue : task.title), lines.join('\n'))
 }
-// One click per repository the plan also needs: its sister task, or first its project.
-async function createSister(repo: string) {
-  const task = t.value
-  if (!task) return
-  const s = await herd.attempt('Could not create the sister task', () => api.CreateSister(task.id, repo))
-  if (s) herd.toast('Sister task created', `${repo}: ${s.title}`)
-}
-const addProject = () => herd.attempt('Could not add the project', () => api.AddProject())
 const allow = (id: string) => herd.attempt('Allow once failed', () => api.AllowOnce(id))
 const markDone = (id: string) => herd.attempt('Mark done failed', () => api.MarkDone(id))
 </script>
@@ -44,12 +36,6 @@ const markDone = (id: string) => herd.attempt('Mark done failed', () => api.Mark
       <span class="grow"></span>
       <TaskRef :issue="t.issue" :task="t.id" class="tref" />
       <span class="ref">· {{ t.projectName }}</span>
-    </div>
-
-    <div v-for="o in nx.sisters" :key="o.repo" class="sister">
-      <p class="scope" :title="o.scope"><b>The plan also needs {{ o.repo }}</b>: {{ o.scope }}</p>
-      <button v-if="o.project" class="btn primary" title="Create a task in that repository for the same issue, with its own worktree, plan and PR, linked to this one" @click="createSister(o.repo)"><Icon name="plus" :size="13" />Create sister task in {{ o.repo }}</button>
-      <button v-else class="btn" :title="`${o.repo} is not a herd project yet: pick its folder, then create the sister task`" @click="addProject"><Icon name="plus" :size="13" />Add {{ o.repo }} as a project</button>
     </div>
 
     <template v-if="nx.options.length && !t.archived">
@@ -87,12 +73,6 @@ const markDone = (id: string) => herd.attempt('Mark done failed', () => api.Mark
 </template>
 
 <style scoped>
-  .scope {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3; /* the full description goes into the sister task */
-    overflow: hidden;
-  }
 .box {
   flex: none;
   border-top: 1px solid var(--border);
@@ -179,20 +159,5 @@ p {
 }
 .transparent {
   background: transparent;
-}
-.sister {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-}
-.sister p {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.5;
 }
 </style>

@@ -45,7 +45,7 @@ const chip = computed(() => {
       <span class="grow"></span>
     </div>
 
-    <SisterOverview v-if="t?.sisters.length" :task="t" />
+    <SisterOverview v-if="t && (t.sisters.length || t.next.sisters.length)" :task="t" />
     <PRTracker v-if="step && t && step.external" :task="t" :step="step" />
     <template v-else-if="step && t">
       <div class="toolbar">

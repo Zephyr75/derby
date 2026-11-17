@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"herd/internal/github"
@@ -226,11 +227,27 @@ func (a *App) view(t store.Task) (TaskView, error) {
 		v.Next.Sisters = a.sisterOffers(t, v.Steps, agents)
 	}
 	v.Sisters = []SisterRef{}
-	if sis := a.sisters(t.ID); len(sis) > 0 {
-		parts := a.parts(t, sis)
-		v.Part = parts[t.Project]
+	if sis := a.sisters(t.ID); len(sis) > 0 || len(v.Next.Sisters) > 0 {
+		parts, plans, sig := a.parts(t, sis)
+		group := append([]store.Task{t}, sis...)
+		missing := slices.ContainsFunc(v.Next.Sisters, func(o SisterOffer) bool { return parts[strings.ToLower(o.Repo)] == "" }) ||
+			slices.ContainsFunc(group, func(x store.Task) bool { return partOf(parts, a.projectOf(x), "") == "" })
+		if missing { // plans written before "Parts overview"
+			for repo, line := range a.summarised(group, v.Next.Sisters, plans, sig) {
+				if parts[repo] == "" {
+					parts[repo] = line
+				}
+			}
+		}
+		v.Part = partOf(parts, a.projectOf(t), t.Title)
 		for _, x := range sis {
-			v.Sisters = append(v.Sisters, SisterRef{ID: x.ID, Project: a.projectOf(x).Name, Part: parts[x.Project]})
+			p := a.projectOf(x)
+			v.Sisters = append(v.Sisters, SisterRef{ID: x.ID, Project: p.Name, Part: partOf(parts, p, x.Title)})
+		}
+		for i, o := range v.Next.Sisters {
+			if v.Next.Sisters[i].Part = parts[strings.ToLower(o.Repo)]; v.Next.Sisters[i].Part == "" {
+				v.Next.Sisters[i].Part = firstLine(o.Scope)
+			}
 		}
 	}
 	v.Next.Elsewhere = []string{}

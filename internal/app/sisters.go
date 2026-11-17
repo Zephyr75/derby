@@ -7,12 +7,16 @@ package app
 // they share consistent.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"herd/internal/settings"
 	"herd/internal/store"
@@ -23,6 +27,7 @@ type SisterOffer struct {
 	Repo    string `json:"repo"`    // as the artifact names it, e.g. okai-tcp-server
 	Scope   string `json:"scope"`   // what that part covers
 	Project string `json:"project"` // the herd project for it; "" when not added yet
+	Part    string `json:"part"`    // its line in the plan's Parts overview, else the start of Scope
 	From    string `json:"-"`       // the artifact that asks for it
 }
 
@@ -98,11 +103,12 @@ func partsOverview(body string) map[string]string {
 	return out
 }
 
-// parts says what each task of a sister group does, by project id: the
-// "Parts overview" of the plans of the task and its sisters (the task's own
-// wins), else the task's title.
-func (a *App) parts(t store.Task, sis []store.Task) map[string]string {
-	out := map[string]string{}
+// parts says what each part of a sister group does, by lowercased repository
+// name: the "Parts overview" of the plans of the task and its sisters (the
+// task's own wins). plans is each task's newest plan, by task id; sig changes
+// whenever one of them does.
+func (a *App) parts(t store.Task, sis []store.Task) (out, plans map[string]string, sig string) {
+	out, plans = map[string]string{}, map[string]string{}
 	agents := a.settings.Agents()
 	for _, x := range append(slices.Clone(sis), t) {
 		steps, _ := a.db.Steps(x.ID)
@@ -115,18 +121,124 @@ func (a *App) parts(t store.Task, sis []store.Task) map[string]string {
 				continue
 			}
 			for repo, line := range partsOverview(art.Body) {
-				if id, ok := a.projectFor(repo); ok {
-					out[id] = line
-				}
+				out[strings.ToLower(repo)] = line
+			}
+			plans[x.ID] = art.Body
+			if fi, err := os.Stat(art.Path); err == nil {
+				sig += fmt.Sprintf("%s@%d;", art.Path, fi.ModTime().UnixNano())
 			}
 		}
 	}
-	for _, x := range append(slices.Clone(sis), t) {
-		if out[x.Project] == "" {
-			out[x.Project] = x.Title
+	return out, plans, sig
+}
+
+// partsCache is what summarised keeps for a sister group.
+type partsCache struct {
+	Sig   string            `json:"sig"`
+	Lines map[string]string `json:"lines"`
+}
+
+// summarised is Claude's overview lines for a sister group whose plans lack
+// some (plans written before "Parts overview"), by lowercased repository.
+// It returns the lines kept for the group, and writes them again in the
+// background when the plans changed since; the group's tasks are then sent
+// again. A failed run is kept too: it is retried once the plans change.
+func (a *App) summarised(group []store.Task, offers []SisterOffer, plans map[string]string, sig string) map[string]string {
+	ids := make([]string, len(group))
+	for i, x := range group {
+		ids[i] = x.ID
+	}
+	slices.Sort(ids)
+	key := "parts:" + strings.Join(ids, ",")
+	var c partsCache
+	v, _ := a.db.Get(key)
+	_ = json.Unmarshal([]byte(v), &c)
+	if c.Sig == sig || a.ctx == nil {
+		return c.Lines
+	}
+	if _, running := a.summarising.LoadOrStore(key, true); !running {
+		a.explaining.Add(1)
+		go func() {
+			defer a.explaining.Done()
+			defer a.summarising.Delete(key)
+			lines := a.summariseParts(group, offers, plans)
+			if a.ctx.Err() != nil {
+				return // herd is quitting: try again next time
+			}
+			b, _ := json.Marshal(partsCache{Sig: sig, Lines: lines})
+			_ = a.db.Set(key, string(b))
+			for _, x := range group {
+				a.emitTask(x.ID)
+			}
+		}()
+	}
+	return c.Lines
+}
+
+// summariseParts asks Claude (Haiku, no tools needed) for one short line per
+// part of the group, from each task and its newest plan, and what the plans
+// ask of the repositories without a task yet.
+func (a *App) summariseParts(group []store.Task, offers []SisterOffer, plans map[string]string) map[string]string {
+	var b strings.Builder
+	b.WriteString(`Each repository below is one part of the same piece of work. For each, write what its part does in under 10 words: start with what is specific to that part (never the same verb on every line, never the repository's name) and end with how it connects to the others when there is one (e.g. "needs X's new endpoint"). Reply with only a JSON object: {"<repository>": "<line>"}.` + "\n")
+	for _, x := range group {
+		fmt.Fprintf(&b, "\n## %s\nTask: %s\n%s\nPlan:\n%s\n", a.projectOf(x).Name, x.Title, clip(x.Description, 800), clip(plans[x.ID], 2000))
+	}
+	for _, o := range offers {
+		fmt.Fprintf(&b, "\n## %s\nNo task yet. What the plan asks of it:\n%s\n", o.Repo, clip(o.Scope, 800))
+	}
+	bin := strings.Fields(a.settings.Config().ClaudeCommand)
+	if len(bin) == 0 {
+		bin = []string{"claude"}
+	}
+	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin[0], append(bin[1:], "-p", "--model", "haiku", "--", b.String())...)
+	cmd.Dir = a.Home
+	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
+		name, _, _ := strings.Cut(kv, "=")
+		return slices.Contains(inheritedSessionVars, name) || strings.HasPrefix(name, "HERD_")
+	})
+	out, _ := cmd.Output()
+	i, j := strings.Index(string(out), "{"), strings.LastIndex(string(out), "}")
+	if i < 0 || j < i {
+		return nil
+	}
+	var got map[string]string
+	if json.Unmarshal(out[i:j+1], &got) != nil {
+		return nil
+	}
+	lines := map[string]string{}
+	for repo, line := range got {
+		if line = strings.TrimSpace(line); line != "" {
+			lines[strings.ToLower(repo)] = line
 		}
 	}
-	return out
+	return lines
+}
+
+// clip cuts text to about n bytes, for a prompt.
+func clip(text string, n int) string {
+	if text = strings.TrimSpace(text); len(text) > n {
+		return text[:n] + "…"
+	}
+	return text
+}
+
+// partOf is a project's line in parts, else title.
+func partOf(parts map[string]string, p settings.Project, title string) string {
+	for _, k := range []string{p.Name, filepath.Base(p.Path)} {
+		if line := parts[strings.ToLower(k)]; line != "" {
+			return line
+		}
+	}
+	return title
+}
+
+// firstLine is the first line of text, for a part the plan gave no overview line.
+func firstLine(text string) string {
+	line, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
+	return line
 }
 
 func sistersKey(taskID string) string { return "sisters:" + taskID }

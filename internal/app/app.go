@@ -80,9 +80,10 @@ type App struct {
 	pollMu sync.Mutex // one pollPRs at a time
 	// emitMu: tasks are read and sent one at a time, so the last view sent
 	// is never older than one sent before it (e.g. a step still busy).
-	copilotMu  sync.Mutex     // FEEDBACK-n.md is written by the review and the CI checks
-	explaining sync.WaitGroup // explanations being written (see explainChanges)
-	emitMu     sync.Mutex
+	copilotMu   sync.Mutex     // FEEDBACK-n.md is written by the review and the CI checks
+	explaining  sync.WaitGroup // background Claude runs: explanations (see explainChanges), sister overviews (see summarised)
+	summarising sync.Map       // sister groups whose overview lines are being written
+	emitMu      sync.Mutex
 
 	checksMu sync.Mutex
 	checks   map[string][]github.Check    // CI checks of each open PR, by task id
