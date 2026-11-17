@@ -104,6 +104,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     flex-direction: column;
   }
   .item {
+    flex: none; /* a long list scrolls instead of squeezing the rows */
     padding: 5px 8px;
     border: 0;
     border-radius: 4px;
