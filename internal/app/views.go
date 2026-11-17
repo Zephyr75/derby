@@ -83,6 +83,7 @@ type TaskView struct {
 	Checks      []github.Check       `json:"checks"`      // CI checks of the open PR, refreshed every minute
 	Labels      []string             `json:"labels"`      // labels of the open PR
 	Sisters     []SisterRef          `json:"sisters"`     // tasks for the other repositories of the same work
+	Part        string               `json:"part"`        // what this task's part of the work does, in a line (see Sisters)
 	Draft       bool                 `json:"draft"`       // the open PR is a draft (herd opens them so)
 	Conflicting bool                 `json:"conflicting"` // the open PR conflicts with its base: GitHub runs no checks
 	Feedback    []github.Feedback    `json:"feedback"`    // review threads (resolved ones too) and reviews of the open PR
@@ -225,8 +226,12 @@ func (a *App) view(t store.Task) (TaskView, error) {
 		v.Next.Sisters = a.sisterOffers(t, v.Steps, agents)
 	}
 	v.Sisters = []SisterRef{}
-	for _, x := range a.sisters(t.ID) {
-		v.Sisters = append(v.Sisters, SisterRef{ID: x.ID, Project: a.projectOf(x).Name})
+	if sis := a.sisters(t.ID); len(sis) > 0 {
+		parts := a.parts(t, sis)
+		v.Part = parts[t.Project]
+		for _, x := range sis {
+			v.Sisters = append(v.Sisters, SisterRef{ID: x.ID, Project: a.projectOf(x).Name, Part: parts[x.Project]})
+		}
 	}
 	v.Next.Elsewhere = []string{}
 	for _, o := range v.Next.Options {

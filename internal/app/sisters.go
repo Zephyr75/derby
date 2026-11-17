@@ -26,10 +26,11 @@ type SisterOffer struct {
 	From    string `json:"-"`       // the artifact that asks for it
 }
 
-// SisterRef is a sister task, for the header link.
+// SisterRef is a sister task, for the header link and the overview.
 type SisterRef struct {
 	ID      string `json:"id"`
 	Project string `json:"project"` // its project's name
+	Part    string `json:"part"`    // what its part of the work does, in a line
 }
 
 var sisterHeading = regexp.MustCompile(`(?mi)^(#{1,6})\s*(?:sister tasks|other repositories)\s*$`)
@@ -73,6 +74,58 @@ func planRepos(body string) []SisterOffer {
 		}
 	}
 	flush()
+	return out
+}
+
+var partsHeading = regexp.MustCompile(`(?mi)^#{1,6}\s*parts overview\s*$`)
+
+// partsOverview reads the "## Parts overview" of an artifact body: one
+// "- <repository>: what that part does" line per repository, by repository.
+func partsOverview(body string) map[string]string {
+	m := partsHeading.FindStringIndex(body)
+	if m == nil {
+		return nil
+	}
+	out := map[string]string{}
+	for _, l := range strings.Split(body[m[1]:], "\n") {
+		if mdHeading.MatchString(l) || strings.TrimSpace(l) == "---" {
+			break
+		}
+		if r := otherRepoLine.FindStringSubmatch(l); r != nil {
+			out[filepath.Base(r[1])] = strings.TrimSpace(r[2])
+		}
+	}
+	return out
+}
+
+// parts says what each task of a sister group does, by project id: the
+// "Parts overview" of the plans of the task and its sisters (the task's own
+// wins), else the task's title.
+func (a *App) parts(t store.Task, sis []store.Task) map[string]string {
+	out := map[string]string{}
+	agents := a.settings.Agents()
+	for _, x := range append(slices.Clone(sis), t) {
+		steps, _ := a.db.Steps(x.ID)
+		for _, s := range steps {
+			if !agentFor(agents, s.Agent).Sisters || !s.Succeeded() {
+				continue
+			}
+			art, _ := a.artifactFor(s)
+			if !art.Exists {
+				continue
+			}
+			for repo, line := range partsOverview(art.Body) {
+				if id, ok := a.projectFor(repo); ok {
+					out[id] = line
+				}
+			}
+		}
+	}
+	for _, x := range append(slices.Clone(sis), t) {
+		if out[x.Project] == "" {
+			out[x.Project] = x.Title
+		}
+	}
 	return out
 }
 
