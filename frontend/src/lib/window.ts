@@ -15,6 +15,15 @@ export async function isMaximised(): Promise<boolean> {
   }
 }
 
+// macOS hides the traffic lights in full screen.
+export async function isFullscreen(): Promise<boolean> {
+  try {
+    return !!(await rt()?.WindowIsFullscreen())
+  } catch {
+    return false
+  }
+}
+
 // Copies text with the Wails clipboard, or the browser's in the preview.
 export async function copyText(text: string): Promise<boolean> {
   try {

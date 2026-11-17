@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -16,7 +17,7 @@ func Open(command string, paths ...string) error {
 	if len(fields) == 0 {
 		return errors.New("no Zed command configured (Settings > Appearance)")
 	}
-	bin, err := exec.LookPath(fields[0])
+	bin, err := lookPath(fields[0])
 	if err != nil {
 		return fmt.Errorf("%s is not on PATH (set the Zed command in Settings > Appearance)", fields[0])
 	}
@@ -34,6 +35,20 @@ func Available(command string) bool {
 	if len(fields) == 0 {
 		return false
 	}
-	_, err := exec.LookPath(fields[0])
+	_, err := lookPath(fields[0])
 	return err == nil
+}
+
+// bundledCLI is the CLI inside Zed.app, which Zed's "Install CLI" links as
+// zed; it works without that link.
+const bundledCLI = "/Applications/Zed.app/Contents/MacOS/cli"
+
+func lookPath(name string) (string, error) {
+	bin, err := exec.LookPath(name)
+	if err != nil && name == "zed" && runtime.GOOS == "darwin" {
+		if b, e := exec.LookPath(bundledCLI); e == nil {
+			return b, nil
+		}
+	}
+	return bin, err
 }

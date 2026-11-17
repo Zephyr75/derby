@@ -5,7 +5,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { herd } from '../lib/state'
 import { label } from '../lib/keymap'
-import { isMaximised, minimise, quit, toggleMaximise } from '../lib/window'
+import { isFullscreen, isMaximised, minimise, quit, toggleMaximise } from '../lib/window'
 import Icon from './ui/Icon.vue'
 
 const t = computed(() => herd.selTask)
@@ -15,7 +15,11 @@ const openTodos = computed(() => herd.todos.filter((x) => !x.done).length + herd
 const todosKey = computed(() => label(herd.settings?.keymap.todos?.[0]))
 
 const maximised = ref(false)
-const sync = async () => (maximised.value = await isMaximised())
+const fullscreen = ref(false)
+const sync = async () => {
+  maximised.value = await isMaximised()
+  fullscreen.value = await isFullscreen()
+}
 onMounted(() => {
   void sync()
   window.addEventListener('resize', sync)
@@ -31,7 +35,7 @@ function dblclick(e: MouseEvent) {
 </script>
 
 <template>
-  <header :class="{ mac: herd.os === 'darwin' }" @dblclick="dblclick">
+  <header :class="{ mac: herd.os === 'darwin', full: fullscreen }" @dblclick="dblclick">
     <button class="menu" :class="{ on: herd.view === 'settings' }" aria-label="Settings" title="Settings" @click="herd.command('settings')">
       <Icon name="menu" :size="15" />
     </button>
@@ -87,8 +91,8 @@ header {
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
-header.mac {
-  padding-left: 78px;
+header.mac:not(.full) {
+  padding-left: 78px; /* the traffic lights */
 }
 header:not(.mac) {
   padding-right: 4px;
@@ -201,7 +205,7 @@ button {
 .menu {
   width: 28px;
   height: 24px;
-  margin-right: 6px;
+  margin-right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
