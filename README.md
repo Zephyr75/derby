@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="build/appicon.svg" width="112" alt="herd logo: a horse head" />
+  <img src="build/appicon.svg?v=2" width="112" alt="herd logo: a horse head" />
 </p>
 
 <h1 align="center">herd</h1>
