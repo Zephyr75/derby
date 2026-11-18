@@ -116,6 +116,7 @@ async function refresh() {
       <span class="grow"></span>
       <button v-if="herd.prReady(task) === 'draft'" class="act" title="Turn the draft PR into one ready for review and add the ready label" @click="herd.markReady(task)"><Icon name="check" :size="13" />Mark ready</button>
       <button v-if="task.prState === 'open' && !task.archived" class="act" :disabled="refreshing" title="Check Copilot's review and the CI checks now instead of waiting for the next minute" @click="refresh"><Icon name="rerun" :size="13" />{{ refreshing ? 'Refreshing…' : 'Refresh' }}</button>
+      <button v-if="task.prUrl" class="act" :title="`Copy the link to PR #${task.pr}, e.g. to send it to someone`" @click="herd.copy(task.prUrl)"><Icon name="copy" :size="13" />Copy link</button>
       <button v-if="task.prUrl" class="act" :title="`Open PR #${task.pr} on GitHub`" @click="open(task.prUrl)"><Icon name="external" :size="13" />Open PR</button>
     </div>
 
@@ -199,8 +200,12 @@ async function refresh() {
   }
   .head {
     display: flex;
+    flex-wrap: wrap; /* narrow panels: the buttons move to the next line */
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
+  }
+  .head > * {
+    white-space: nowrap;
   }
   .title {
     font-size: 15px;

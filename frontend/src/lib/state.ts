@@ -649,10 +649,13 @@ class Herd {
 
   // ---- a step's Claude Code session, e.g. to continue it in Zed ----
 
-  async copyResume(step: Step) {
-    const cmd = resumeCommand(step)
-    if (await copyText(cmd)) this.toast('Copied', cmd)
-    else this.toast('Could not copy', cmd, true)
+  async copy(text: string) {
+    if (await copyText(text)) this.toast('Copied', text)
+    else this.toast('Could not copy', text, true)
+  }
+
+  copyResume(step: Step) {
+    return this.copy(resumeCommand(step))
   }
 
   stopStep(step: Step) {
