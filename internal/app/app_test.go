@@ -1585,28 +1585,46 @@ func TestCommonIssuesRepo(t *testing.T) {
 	}
 }
 
-func TestStepBlockListsEarlierGuidance(t *testing.T) {
+func TestStepBlockListsEarlierSteps(t *testing.T) {
 	a, _ := newTestApp(t)
 	tv, err := a.CreateTask("core", "", "choices", "", false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	impl := store.Step{ID: store.StepID(tv.ID, "impl-1"), TaskID: tv.ID, Key: "impl-1", Agent: "impl", N: 1, Seq: 1, State: store.Done, Guidance: "take option B: no migration"}
-	push := store.Step{ID: store.StepID(tv.ID, "push-1"), TaskID: tv.ID, Key: "push-1", Agent: "push", N: 1, Seq: 2, State: store.Running}
-	for _, s := range []store.Step{impl, push} {
+	review := store.Step{ID: store.StepID(tv.ID, "review-1"), TaskID: tv.ID, Key: "review-1", Agent: "review", N: 1, Seq: 2, State: store.Done, Verdict: store.Failure}
+	impl2 := store.Step{ID: store.StepID(tv.ID, "impl-2"), TaskID: tv.ID, Key: "impl-2", Agent: "impl", N: 2, Seq: 3, State: store.Running}
+	for _, s := range []store.Step{impl, review, impl2} {
 		if err := a.db.SaveStep(s); err != nil {
 			t.Fatal(err)
 		}
 	}
 	task, _ := a.db.Task(tv.ID)
 	p, _ := a.settings.Project("core")
-	ag, _ := a.settings.Agent("push")
-	block := a.stepBlock(launch{task: task, proj: p, agent: ag, step: push}, "/run", "/wt")
-	if !strings.Contains(block, `Implement 1: "take option B: no migration"`) {
-		t.Fatalf("step block:\n%s", block)
+	ag, _ := a.settings.Agent("impl")
+	block := a.stepBlock(launch{task: task, proj: p, agent: ag, step: impl2}, "/run", "/wt")
+	for _, want := range []string{
+		`  - Implement 1: succeeded, IMPLEMENT-1.md; the user's guidance: "take option B: no migration"`,
+		"  - Review 1: failed, REVIEW-1.md\n",
+		"- this step follows Review 1 (failed): unless your guidance says otherwise, it is why this step runs, so start from REVIEW-1.md\n",
+	} {
+		if !strings.Contains(block, want) {
+			t.Fatalf("missing %q in the step block:\n%s", want, block)
+		}
 	}
-	if strings.Contains(a.stepBlock(launch{task: task, proj: p, agent: ag, step: impl}, "/run", "/wt"), "guidance to earlier steps") {
-		t.Fatal("a step's own guidance listed as earlier")
+	if strings.Contains(block, "Implement 2:") {
+		t.Fatal("the step itself listed as earlier")
+	}
+	if first := a.stepBlock(launch{task: task, proj: p, agent: ag, step: impl}, "/run", "/wt"); strings.Contains(first, "- the steps so far") || strings.Contains(first, "- this step follows") {
+		t.Fatalf("the first step lists earlier steps:\n%s", first)
+	}
+}
+
+func TestStepFilesOfCopilot(t *testing.T) {
+	a, _ := newTestApp(t)
+	files := a.stepFiles(store.Step{Agent: copilotAgent, N: 2})
+	if len(files) != 2 || !strings.HasPrefix(files[0], "FEEDBACK-2.md") || !strings.HasPrefix(files[1], "COPILOT-2.md") {
+		t.Fatalf("Copilot's files: %q", files)
 	}
 }
 

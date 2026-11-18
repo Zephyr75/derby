@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The task's artifacts, large: every step's markdown listed on the left, the
-// selected one rendered on the right for easier reading.
+// selected one rendered on the right for easier reading. Prompt shows what
+// herd sent the step's agent instead: its command, instructions and system prompt.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
 import { herd } from '../../lib/state'
@@ -14,14 +15,16 @@ const task = computed(() => herd.tasks.find((t) => t.steps.some((s) => s.id === 
 const steps = computed(() => task.value?.steps ?? [])
 const step = computed(() => steps.value.find((s) => s.id === herd.artifactOf))
 const art = ref<Artifact | null>(null)
+const prompt = ref(false)
 
 // Reload as Claude rewrites it.
 let seq = 0
 watch(
-  () => [herd.artifactOf, step.value?.state, herd.artifactRev] as const,
-  async ([id]) => {
+  () => [herd.artifactOf, step.value?.state, herd.artifactRev, prompt.value] as const,
+  async ([id, , , p]) => {
     const mine = ++seq
-    const a = await api.ReadArtifact(id).catch(() => null)
+    art.value = null
+    const a = await (p ? api.StepPrompt(id) : api.ReadArtifact(id)).catch(() => null)
     if (mine === seq) art.value = a
   },
   { immediate: true },
@@ -53,9 +56,12 @@ function key(e: KeyboardEvent) {
     <div class="head">
       <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
       <Icon name="file" />
-      <span class="title">{{ art?.file || step?.artifact || 'Artifact' }}</span>
+      <span class="title">{{ prompt ? 'Prompt' : art?.file || step?.artifact || 'Artifact' }}</span>
       <span class="muted small">{{ step?.name }}</span>
       <span class="grow"></span>
+      <button class="other" :title="prompt ? 'Back to the artifact' : 'What herd sent this step\'s agent: the command, its instructions and the system prompt'" @click="prompt = !prompt">
+        <Icon :name="prompt ? 'file' : 'terminal'" :size="13" />{{ prompt ? 'Artifact' : 'Prompt' }}
+      </button>
       <button v-if="!herd.diffOf" class="other" title="Open this step's changes beside the artifact" @click="herd.showDiffToo(herd.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
       <button class="x" aria-label="Close" title="Close (Esc closes both)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
@@ -72,6 +78,7 @@ function key(e: KeyboardEvent) {
       <div ref="scroll" class="scroll">
         <div class="page">
           <p v-if="!art" class="empty">Loading…</p>
+          <p v-else-if="!art.exists && prompt" class="empty">herd did not keep the prompt of this step: it keeps the ones it sends from now on.</p>
           <p v-else-if="!art.exists" class="empty">{{ art.file || 'The artifact' }} has not been written yet.</p>
           <ArtifactView v-else :art="art" :task="task?.id ?? ''" :zoom="1.6" />
         </div>

@@ -57,6 +57,34 @@ func (a *App) prompt(l launch) string {
 	return p
 }
 
+// outcome says how a step ended, for the next steps' agents.
+func outcome(s store.Step) string {
+	switch {
+	case s.Unsuccessful() && s.Skipped:
+		return "marked failed by the user"
+	case s.Unsuccessful():
+		return "failed"
+	case s.Succeeded() && s.Skipped:
+		return "marked done by the user"
+	case s.Succeeded():
+		return "succeeded"
+	case s.State == store.Failed:
+		return "stopped before finishing"
+	}
+	return "not finished"
+}
+
+// stepFiles are the files a step leaves for the next ones: its artifact,
+// and for Copilot the review and CI checks first (its artifact only
+// explains the PR).
+func (a *App) stepFiles(s store.Step) []string {
+	art := agentFor(a.settings.Agents(), s.Agent).ArtifactName(s.N)
+	if s.Agent == copilotAgent {
+		return []string{fmt.Sprintf("FEEDBACK-%d.md (the PR review and CI checks)", s.N), art + " (an explanation of the PR)"}
+	}
+	return []string{art}
+}
+
 // stepBlock is appended to the system prompt: per-step facts the agent's
 // command file refers to.
 func (a *App) stepBlock(l launch, runDir, wt string) string {
@@ -88,15 +116,28 @@ func (a *App) stepBlock(l launch, runDir, wt string) string {
 		xp := a.projectOf(x)
 		fmt.Fprintf(&b, "- sister task %s handles the %s part of this work, in %s; its run directory %s holds every artifact of that task: keep what both share consistent with it, and change only this repository\n", x.ID, xp.Name, worktreePath(xp, x), a.runDir(xp, x))
 	}
+	// The steps so far, so the agent knows which artifacts are new to it and
+	// why it runs: Next step starts it without guidance after a failure.
 	if steps, err := a.db.Steps(l.task.ID); err == nil {
-		var said []string
-		for _, s := range steps {
-			if s.Seq < l.step.Seq && s.Guidance != "" {
-				said = append(said, fmt.Sprintf("  - %s: %q", agentFor(a.settings.Agents(), s.Agent).DisplayName(s.N), s.Guidance))
+		var done []string
+		var prev *store.Step
+		for i, s := range steps {
+			if s.Seq >= l.step.Seq {
+				continue
 			}
+			line := fmt.Sprintf("  - %s: %s, %s", agentFor(a.settings.Agents(), s.Agent).DisplayName(s.N), outcome(s), strings.Join(a.stepFiles(s), " and "))
+			if s.Guidance != "" { // e.g. the plan's option the user picked
+				line += fmt.Sprintf("; the user's guidance: %q", s.Guidance)
+			}
+			done = append(done, line)
+			prev = &steps[i]
 		}
-		if len(said) > 0 { // e.g. the plan's option the user picked
-			b.WriteString("- the user's guidance to earlier steps, oldest first:\n" + strings.Join(said, "\n") + "\n")
+		if len(done) > 0 {
+			b.WriteString("- the steps so far, oldest first (outcome, files in the run directory):\n" + strings.Join(done, "\n") + "\n")
+		}
+		if prev != nil {
+			fmt.Fprintf(&b, "- this step follows %s (%s): unless your guidance says otherwise, it is why this step runs, so start from %s\n",
+				agentFor(a.settings.Agents(), prev.Agent).DisplayName(prev.N), outcome(*prev), a.stepFiles(*prev)[0])
 		}
 	}
 	fmt.Fprintf(&b, "- run directory: %s (TASK.md and every artifact)\n", runDir)
@@ -175,7 +216,9 @@ func (a *App) spec(l launch) runner.Spec {
 	}
 	// Every session runs in auto mode; what agents may do is set by the rules.
 	args = append(args, "--permission-mode", "auto")
-	args = append(args, "--append-system-prompt", a.stepBlock(l, runDir, wt))
+	block := a.stepBlock(l, runDir, wt)
+	a.savePrompt(l, runDir, block)
+	args = append(args, "--append-system-prompt", block)
 	switch l.mode {
 	case modeResume:
 		args = append(args, "--resume", l.step.SessionID)
@@ -191,6 +234,41 @@ func (a *App) spec(l launch) runner.Spec {
 		"HERD_ENDPOINT=" + a.endpointPath(),
 	}
 	return runner.Spec{StepID: l.step.ID, Dir: wt, Env: env, Unset: inheritedSessionVars, Bin: bin[0], Args: args}
+}
+
+// promptPath is where herd keeps what it sent a step's agent, to show it.
+func promptPath(runDir string, s store.Step) string {
+	return filepath.Join(runDir, ".prompts", s.Key+".md")
+}
+
+// savePrompt keeps the command, the agent's instructions and the system
+// prompt herd gives a step, as the agent gets them (Prompt in the artifact
+// pop-up). A resumed session gets the newest system prompt, not the command.
+func (a *App) savePrompt(l launch, runDir, block string) {
+	cmd := a.prompt(l)
+	_, text, _ := strings.Cut(a.CommandText(l.agent), "---\n\n") // without its front matter
+	if name := commandName(l.agent.Command); name != "" {
+		text = strings.ReplaceAll(text, "$ARGUMENTS", strings.TrimSpace(strings.TrimPrefix(cmd, "/herd:"+name)))
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Command\n\n`%s`\n\n# Instructions (/herd:%s)\n\n%s\n# System prompt (added to Claude Code's)\n\n%s", cmd, commandName(l.agent.Command), strings.TrimSpace(text)+"\n", block)
+	path := promptPath(runDir, l.step)
+	if os.MkdirAll(filepath.Dir(path), 0o755) == nil {
+		_ = os.WriteFile(path, []byte(b.String()), 0o644)
+	}
+}
+
+// StepPrompt reads what herd last sent a step's agent (see savePrompt).
+func (a *App) StepPrompt(stepID string) (artifacts.Artifact, error) {
+	s, err := a.db.Step(stepID)
+	if err != nil {
+		return artifacts.Artifact{}, err
+	}
+	t, err := a.db.Task(s.TaskID)
+	if err != nil {
+		return artifacts.Artifact{}, err
+	}
+	return artifacts.Read(promptPath(a.runDir(a.projectOf(t), t), s))
 }
 
 // inheritedSessionVars are set by Claude Code for processes it spawns. When

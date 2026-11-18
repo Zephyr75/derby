@@ -29,6 +29,7 @@ export interface Api {
   MarkPRReady(task: string): Promise<void>
   OpenProjectInZed(project: string): Promise<void>
   ReadArtifact(step: string): Promise<Artifact>
+  StepPrompt(step: string): Promise<Artifact>
   TerminalURL(step: string): Promise<string>
   ResumeStep(step: string): Promise<string>
   ResumeStepAnyway(step: string): Promise<string>

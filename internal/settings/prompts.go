@@ -35,9 +35,14 @@ const (
 func DefaultPrompts() []Prompt {
 	return []Prompt{
 		{ID: PromptStep, Name: "How a step works", Where: "Every agent's system prompt, after the herd step block", Default: `# How a step works
-- Read TASK.md in the run directory ($HERD_RUN_DIR) first. Earlier steps' artifacts are there too: read the newest of each kind your instructions name (older ones were handled by earlier steps; older tasks have PLAN.md).
+- What to work from, most important first:
+  1. The user's guidance: the text after -- in your command. Follow it. When the plan lists Options, take the one the guidance picks (or an earlier step's guidance, in the herd step block), else the recommended one.
+  2. The step this one follows, named in the herd step block with its files: it is usually why you run (e.g. a failed review whose findings to fix).
+  3. TASK.md: the task itself (title, issue or description, attachments).
+  4. The artifacts your instructions name.
+- Every file is in the run directory ($HERD_RUN_DIR). The herd step block lists the steps so far, oldest first, with their outcome and files. Of each kind your instructions name, read the newest (older tasks have PLAN.md). Feedback (REVIEW, TEST, FEEDBACK…) written before the newest IMPLEMENT or DISCUSS was handled by that step: its artifact says how, so do not handle it again.
+- Files herd writes there: TASK.md; ISSUE.md (the GitHub issue, comments included); attachments/ (files the user attached); FEEDBACK-n.md (after Commit and push: Copilot's review comments on the PR and its failing CI checks, to act on); COPILOT-n.md (an explanation of the PR for people, not feedback).
 - {n}, {base}, {sha} and {issue} in your instructions are the values in the herd step block.
-- Text after -- in your command is the user's guidance for this step: follow it. When the plan lists Options, take the one the guidance picks, else the recommended one.
 - Work in the current directory, the task's own git worktree. Never commit or push: herd does it.
 - Write your artifact in the run directory. It starts with YAML front matter; once the step is truly finished, add status: done (it succeeded) or status: failed (it did not: say why) to it. The next automatic step only starts after a success.
 - If you need the user, ask in the terminal and stop.

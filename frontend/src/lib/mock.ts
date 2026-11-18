@@ -420,6 +420,7 @@ export const api: Api = {
   },
   OpenProjectInZed: () => ok(undefined),
   ReadArtifact: (sid) => ok(mockArtifact(sid)),
+  StepPrompt: (sid) => ok({ path: '', file: sid + '.md', exists: true, front: null, body: '# Command\n\n`/herd:implement 9970`' }),
   TerminalURL: (sid) => ok('mock:' + sid),
   ResumeStep: (sid) => (new URLSearchParams(location.search).get('elsewhere') ? Promise.reject('Claude Code is still running this session in another process') : ok('mock:' + sid)),
   ResumeStepAnyway: (sid) => ok('mock:' + sid),
