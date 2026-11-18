@@ -84,7 +84,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
   <div class="top">
     <div class="intro grow">
       <h1>Projects</h1>
-      <p>Repositories herd can run tasks in. Tasks from every project run in parallel, each in its own worktree.</p>
+      <p>Repositories Herd can run tasks in. Tasks from every project run in parallel, each in its own worktree.</p>
     </div>
     <button class="btn primary" @click="add">+ Add project</button>
   </div>
@@ -119,7 +119,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
       <span class="grow"></span>
       <span class="muted small">{{ open(p.id) }} open task{{ open(p.id) === 1 ? '' : 's' }}</span>
       <button class="btn ghost" @click="openInZed(p.id)">Open in Zed</button>
-      <button class="btn" :class="confirmRemove === p.id ? 'danger' : 'ghost'" @click="remove(p)">{{ confirmRemove === p.id ? 'Remove from herd?' : 'Remove' }}</button>
+      <button class="btn" :class="confirmRemove === p.id ? 'danger' : 'ghost'" @click="remove(p)">{{ confirmRemove === p.id ? 'Remove from Herd?' : 'Remove' }}</button>
     </div>
     <div class="grid4">
       <label class="field">GitHub repo<input class="input mono" :value="p.repo" placeholder="owner/name" @input="set(p, 'repo', $event)" /></label>

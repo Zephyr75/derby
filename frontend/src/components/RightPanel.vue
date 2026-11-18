@@ -78,14 +78,14 @@ async function archive() {
           <TaskRef :issue="t.issue" :task="t.id" />
           <span class="title">{{ t.title }}</span>
           <button v-if="t.issue && (t.issueRepo || t.repo)" class="act" :title="`Open issue #${t.issue} on GitHub`" @click="openIssue"><Icon name="external" :size="12" />Open issue</button>
-          <button v-if="t.issue && !t.archived" class="act" :title="`Copy issue #${t.issue} and its comments to ISSUE.md again (herd also does it before each run of the first agent)`" @click="refreshIssue"><Icon name="rerun" :size="12" />Issue</button>
+          <button v-if="t.issue && !t.archived" class="act" :title="`Copy issue #${t.issue} and its comments to ISSUE.md again (Herd also does it before each run of the first agent)`" @click="refreshIssue"><Icon name="rerun" :size="12" />Issue</button>
           <button v-if="!t.archived && !t.worktreeRemoved" class="act" title="Open the task's worktree in Zed to edit it by hand" @click="herd.openWorktree()"><Icon name="pencil" :size="12" />Edit</button>
           <button v-if="!t.archived" class="icon-btn" aria-label="Archive task" title="Archive task" @click="archive"><Icon name="archive" :size="16" /></button>
         </div>
         <div class="src">
           <span class="muted small">{{ t.source }}{{ t.pr ? ` · PR #${t.pr}` : '' }}</span>
           <template v-if="t.behind && !t.archived">
-            <span class="behind small" :title="`origin/${t.baseBranch} has ${t.behind} commits this branch lacks (herd fetches it every 5 minutes)`">{{ t.behind }} behind {{ t.baseBranch }}</span>
+            <span class="behind small" :title="`origin/${t.baseBranch} has ${t.behind} commits this branch lacks (Herd fetches it every 5 minutes)`">{{ t.behind }} behind {{ t.baseBranch }}</span>
             <button v-if="herd.canFix(t)" class="act" :title="`Start a ${herd.fixers(t)[0]?.name} step that rebases the branch on origin/${t.baseBranch}`" @click="rebase"><Icon name="rebase" :size="12" />Rebase</button>
           </template>
         </div>
@@ -109,16 +109,16 @@ async function archive() {
             <span class="name-row">
               <span class="name">{{ s.name }}</span>
               <span v-if="meta(s).text" :class="['meta', meta(s).cls]">{{ meta(s).text }}</span>
-              <span v-if="s.skipped || (s.external && s.verdict === 'skipped')" class="meta skipped" :title="s.skipped ? 'Ended with the check or cross button' : 'herd stopped waiting for Copilot: you moved on'">skipped</span>
+              <span v-if="s.skipped || (s.external && s.verdict === 'skipped')" class="meta skipped" :title="s.skipped ? 'Ended with the check or cross button' : 'Herd stopped waiting for Copilot: you moved on'">skipped</span>
             </span>
-            <span class="sub">{{ s.external ? 'run by herd · PR #' + t.pr : s.sha ? 'commit ' + s.sha : 'session ' + s.session.slice(0, 8) }}{{ s.auto ? ' · auto' : '' }}</span>
+            <span class="sub">{{ s.external ? 'run by Herd · PR #' + t.pr : s.sha ? 'commit ' + s.sha : 'session ' + s.session.slice(0, 8) }}{{ s.auto ? ' · auto' : '' }}</span>
           </button>
           <span class="acts">
             <button v-if="s.revert" class="act" :class="{ danger: herd.confirmRevert === s.id }" :title="`Put the worktree back to how it was when ${s.name} started, and remove it and the steps after it`" @click="herd.revertStep(s)">
               <Icon name="revert" :size="12" />{{ herd.confirmRevert === s.id ? 'Discard its changes?' : 'Revert' }}
             </button>
             <template v-if="s.skip">
-              <button v-if="!(s.state === 'done' && !unsuccessful(s))" class="act icon" :aria-label="`Skip ${s.name} as succeeded`" :title="`Skip ${s.name} as succeeded: end it now and move on (herd does not commit or push for it)`" @click="herd.skipStep(s, true)"><Icon name="check" :size="13" /></button>
+              <button v-if="!(s.state === 'done' && !unsuccessful(s))" class="act icon" :aria-label="`Skip ${s.name} as succeeded`" :title="`Skip ${s.name} as succeeded: end it now and move on (Herd does not commit or push for it)`" @click="herd.skipStep(s, true)"><Icon name="check" :size="13" /></button>
               <button v-if="!unsuccessful(s)" class="act icon" :aria-label="`Skip ${s.name} as failed`" :title="`Skip ${s.name} as failed: end it now and get the options for a failure`" @click="herd.skipStep(s, false)"><Icon name="close" :size="13" /></button>
             </template>
             <button v-if="s.rerun" class="act" :title="`Run ${s.name} again in its own session, on the current worktree`" @click="herd.rerunStep(s)"><Icon name="rerun" :size="12" />Rerun</button>

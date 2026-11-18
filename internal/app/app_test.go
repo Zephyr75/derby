@@ -839,20 +839,18 @@ func TestStatus(t *testing.T) {
 		steps []StepView
 		kind  string
 		label string
-		ready bool
 	}{
-		"next":     {store.Task{}, []StepView{step("plan", 1, store.Done, "")}, "waiting", "Plan 1 · Waiting for next step", false},
-		"done":     {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}}, "done", "Copilot 1 · Success · PR #7", false},
-		"failure":  {store.Task{}, []StepView{step("impl", 1, store.Done, ""), step("review", 1, store.Done, store.Failure)}, "failed", "Review 1 · Failure", false},
-		"running":  {open, []StepView{step("impl", 2, store.Running, "")}, "running", "Implement 2 · Running · PR #7", false},
-		"waiting":  {open, []StepView{step("impl", 2, store.Idle, "")}, "waiting", "Implement 2 · Waiting · PR #7", false},
-		"approval": {store.Task{}, []StepView{step("impl", 1, store.Approval, "")}, "approval", "Implement 1 · Waiting", false},
-		"ended":    {store.Task{}, []StepView{step("impl", 1, store.Failed, "")}, "failed", "Implement 1 · Failure", false},
-		"talk":     {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, step("discuss", 1, store.Done, "")}, "done", "Discuss 1 · Success · PR #7", false},
-		"changed":  {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, {Step: store.Step{Agent: "discuss", N: 1, State: store.Done}, Name: "Discuss 1", Diff: true}}, "waiting", "Discuss 1 · Waiting for next step · PR #7", false},
-		"ready":    {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}}, "done", "Copilot 1 · Success · PR #7 Ready", true},
+		"next":     {store.Task{}, []StepView{step("plan", 1, store.Done, "")}, "waiting", "Plan 1 · Waiting for next step"},
+		"done":     {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}}, "done", "Copilot 1 · Success"},
+		"failure":  {store.Task{}, []StepView{step("impl", 1, store.Done, ""), step("review", 1, store.Done, store.Failure)}, "failed", "Review 1 · Failure"},
+		"running":  {open, []StepView{step("impl", 2, store.Running, "")}, "running", "Implement 2 · Running"},
+		"waiting":  {open, []StepView{step("impl", 2, store.Idle, "")}, "waiting", "Implement 2 · Waiting"},
+		"approval": {store.Task{}, []StepView{step("impl", 1, store.Approval, "")}, "approval", "Implement 1 · Waiting"},
+		"ended":    {store.Task{}, []StepView{step("impl", 1, store.Failed, "")}, "failed", "Implement 1 · Failure"},
+		"talk":     {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, step("discuss", 1, store.Done, "")}, "done", "Discuss 1 · Success"},
+		"changed":  {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, {Step: store.Step{Agent: "discuss", N: 1, State: store.Done}, Name: "Discuss 1", Diff: true}}, "waiting", "Discuss 1 · Waiting for next step"},
 	} {
-		if s := statusOf(c.task, c.steps, c.ready); s.Kind != c.kind || s.Label != c.label {
+		if s := statusOf(c.task, c.steps); s.Kind != c.kind || s.Label != c.label {
 			t.Errorf("%s: %+v, want %s %q", name, s, c.kind, c.label)
 		}
 	}
@@ -1139,7 +1137,7 @@ func TestAgentContext(t *testing.T) {
 	if titles[0] != "System prompt" || titles[len(titles)-1] != "Command /herd:impl" {
 		t.Fatalf("parts: %v", titles)
 	}
-	for _, want := range []string{"# herd step", "# How a step works", "# Writing", "# Code changes", "# Diagrams", "IMPLEMENT-1.html", "# Sister tasks", "You are the herd **Implement** agent"} {
+	for _, want := range []string{"# Herd step", "# How a step works", "# Writing", "# Code changes", "# Diagrams", "IMPLEMENT-1.html", "# Sister tasks", "You are the Herd **Implement** agent"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("no %q in the context", want)
 		}

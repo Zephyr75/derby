@@ -226,7 +226,7 @@ type SystemMemory struct {
 // then the knowledge base folders (General, and each project's for its repo).
 func (a *App) systemClaudeMd() string {
 	var b strings.Builder
-	b.WriteString("<!-- Written by herd from Settings > Context: General context, Rules and knowledge base folders. -->\n\n")
+	b.WriteString("<!-- Written by Herd from Settings > Context: General context, Rules and knowledge base folders. -->\n\n")
 	if c, ok := a.settings.Context("general"); ok && strings.TrimSpace(c.Text) != "" {
 		b.WriteString(strings.TrimSpace(c.Text))
 		b.WriteString("\n")

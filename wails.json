@@ -8,7 +8,7 @@
   "frontend:dev:serverUrl": "auto",
   "author": { "name": "Antoine" },
   "info": {
-    "productName": "herd",
+    "productName": "Herd",
     "productVersion": "0.1.0",
     "comments": "Claude Code agents, one worktree per task"
   }

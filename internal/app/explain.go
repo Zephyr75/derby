@@ -110,7 +110,7 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 		if err != nil {
 			why = strings.TrimSpace(err.Error() + ": " + lastLines(why, 3))
 		}
-		_ = os.WriteFile(file, []byte(fmt.Sprintf("_herd could not write an explanation of the changes (%s)._\n", strings.ReplaceAll(why, "\n", " "))), 0o644)
+		_ = os.WriteFile(file, []byte(fmt.Sprintf("_Herd could not write an explanation of the changes (%s)._\n", strings.ReplaceAll(why, "\n", " "))), 0o644)
 	}
 	a.emit(EvArtifact, map[string]string{"taskId": t.ID, "file": filepath.Base(file)})
 }
@@ -118,7 +118,7 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 // explainSystemPrompt is the system prompt of the Claude run that explains a
 // PR: what it works on, then the Writing prompt and the Rules.
 func (a *App) explainSystemPrompt(t store.Task, p settings.Project) string {
-	sys := fmt.Sprintf("# herd\nYou explain the changes of the task %s (project %s) in its worktree %s. The run directory %s holds TASK.md and every artifact.", t.ID, p.Name, worktreePath(p, t), a.runDir(p, t))
+	sys := fmt.Sprintf("# Herd\nYou explain the changes of the task %s (project %s) in its worktree %s. The run directory %s holds TASK.md and every artifact.", t.ID, p.Name, worktreePath(p, t), a.runDir(p, t))
 	if w := strings.TrimSpace(a.settings.Prompt(settings.PromptWriting)); w != "" {
 		sys += "\n\n" + w
 	}

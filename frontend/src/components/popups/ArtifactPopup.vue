@@ -59,7 +59,7 @@ function key(e: KeyboardEvent) {
       <span class="title">{{ prompt ? 'Prompt' : art?.file || step?.artifact || 'Artifact' }}</span>
       <span class="muted small">{{ step?.name }}</span>
       <span class="grow"></span>
-      <button class="other" :title="prompt ? 'Back to the artifact' : 'What herd sent this step\'s agent: the command, its instructions and the system prompt'" @click="prompt = !prompt">
+      <button class="other" :title="prompt ? 'Back to the artifact' : 'What Herd sent this step\'s agent: the command, its instructions and the system prompt'" @click="prompt = !prompt">
         <Icon :name="prompt ? 'file' : 'terminal'" :size="13" />{{ prompt ? 'Artifact' : 'Prompt' }}
       </button>
       <button v-if="!herd.diffOf" class="other" title="Open this step's changes beside the artifact" @click="herd.showDiffToo(herd.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
@@ -78,7 +78,7 @@ function key(e: KeyboardEvent) {
       <div ref="scroll" class="scroll">
         <div class="page">
           <p v-if="!art" class="empty">Loading…</p>
-          <p v-else-if="!art.exists && prompt" class="empty">herd did not keep the prompt of this step: it keeps the ones it sends from now on.</p>
+          <p v-else-if="!art.exists && prompt" class="empty">Herd did not keep the prompt of this step: it keeps the ones it sends from now on.</p>
           <p v-else-if="!art.exists" class="empty">{{ art.file || 'The artifact' }} has not been written yet.</p>
           <ArtifactView v-else :art="art" :task="task?.id ?? ''" :zoom="1.6" />
         </div>

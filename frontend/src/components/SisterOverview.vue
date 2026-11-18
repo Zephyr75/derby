@@ -66,7 +66,7 @@ const addProject = () => herd.attempt('Could not add the project', () => api.Add
         <span v-if="r.here" class="name here-name" title="This task">{{ r.name }}</span>
         <button v-else-if="r.id" class="name link" title="Open this sister task" @click="herd.pickTask(r.id)">{{ r.name }}<Icon name="chevron-right" :size="11" /></button>
         <button v-else-if="r.offer?.project" class="name link new" title="Create a task in that repository for the same issue, with its own worktree, plan and PR, linked to this one" @click="create(r.offer.repo)"><Icon name="plus" :size="11" />{{ r.name }}</button>
-        <button v-else class="name link new" :title="`${r.name} is not a herd project yet: pick its folder, then create the sister task`" @click="addProject"><Icon name="plus" :size="11" />{{ r.name }}</button>
+        <button v-else class="name link new" :title="`${r.name} is not a Herd project yet: pick its folder, then create the sister task`" @click="addProject"><Icon name="plus" :size="11" />{{ r.name }}</button>
         <span class="part" :title="r.part">{{ r.part }}</span>
         <StatusBadge v-if="r.status" :kind="r.status.kind" :label="r.status.short || r.status.label" />
         <span v-else-if="!r.here" class="muted small nostat">{{ r.offer?.project ? 'to create' : 'add project' }}</span>

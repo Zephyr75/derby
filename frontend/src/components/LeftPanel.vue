@@ -6,12 +6,22 @@ import TaskRef from './ui/TaskRef.vue'
 import StatusBadge from './ui/StatusBadge.vue'
 import NextStep from './NextStep.vue'
 import Splitter from './ui/Splitter.vue'
+import type { Task } from '../lib/types'
 
 const counts = computed(() => ({
   active: herd.tasks.filter((t) => !t.archived).length,
   archived: herd.tasks.filter((t) => t.archived).length,
 }))
 const groups = computed(() => herd.groups.map((p) => ({ p, tasks: herd.panelTasks(p.id) })).filter((g) => !g.p.gone || g.tasks.length))
+
+const prTitle = (t: Task) => {
+  const b = herd.prBadge(t)!
+  const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'no CI checks yet', Conflict: 'conflicts with its base' }[b.label] ?? b.label.toLowerCase()
+  return `PR #${t.pr}: ${what}` + (b.ready === 'draft' ? ', a draft' : b.ready === 'ready' ? ', ready for review' : '')
+}
+
+// GitHub's PR icons: draft, open (ready for review), merged, closed.
+const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.prState !== 'open' ? 'pr-closed' : t.draft ? 'pr-draft' : 'pr')
 
 function addProject() {
   herd.view = 'settings'
@@ -46,7 +56,12 @@ function addProject() {
                 <TaskRef :issue="t.issue" :task="t.id" />
                 <span class="title">{{ t.title }}</span>
               </span>
-              <StatusBadge :kind="t.status.kind" :label="t.status.label" />
+              <span class="row">
+                <StatusBadge :kind="t.status.kind" :label="t.status.label" />
+                <span v-if="herd.prBadge(t)" :class="['badge', 'pr', `s-${herd.prBadge(t)!.kind}`]" :title="prTitle(t)">
+                  <Icon :name="prIcon(t)" :size="12" />#{{ t.pr }} · {{ herd.prBadge(t)!.label }}
+                </span>
+              </span>
             </button>
           </div>
         </template>
@@ -151,6 +166,16 @@ aside {
   gap: 7px;
   min-width: 0;
   width: 100%;
+}
+.row > .badge {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pr {
+  flex: none;
+  gap: 5px;
+  margin-left: auto;
 }
 .title {
   font-weight: 500;

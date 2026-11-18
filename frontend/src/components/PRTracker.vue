@@ -196,7 +196,6 @@ async function refresh() {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    max-width: 760px;
   }
   .head {
     display: flex;

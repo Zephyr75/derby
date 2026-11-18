@@ -81,9 +81,9 @@ func (a *App) writeTaskFile(p settings.Project, t store.Task) error {
 	fmt.Fprintf(&b, "# %s\n\n", t.Title)
 	if t.Issue != "" {
 		if _, err := os.Stat(filepath.Join(dir, issueFile)); err == nil {
-			fmt.Fprintf(&b, "GitHub issue #%s in %s: herd copied it, comments included, to %s in this folder.\n\n", t.Issue, a.issueRepo(t), issueFile)
+			fmt.Fprintf(&b, "GitHub issue #%s in %s: Herd copied it, comments included, to %s in this folder.\n\n", t.Issue, a.issueRepo(t), issueFile)
 		} else {
-			fmt.Fprintf(&b, "GitHub issue #%s in %s: herd could not copy it, so read it with `gh issue view %s --repo %s --comments`.\n\n", t.Issue, a.issueRepo(t), t.Issue, a.issueRepo(t))
+			fmt.Fprintf(&b, "GitHub issue #%s in %s: Herd could not copy it, so read it with `gh issue view %s --repo %s --comments`.\n\n", t.Issue, a.issueRepo(t), t.Issue, a.issueRepo(t))
 		}
 	} else {
 		b.WriteString("LOCAL task: there is no GitHub issue. Work from the description only and make no GitHub calls.\n\n")
@@ -170,8 +170,8 @@ func (a *App) writePlugin() error {
 // its own instructions; what every agent shares is in the system prompt.
 func (a *App) CommandText(ag settings.Agent) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "---\ndescription: herd %s agent\nargument-hint: \"<task> [-- guidance]\"\n---\n\n", ag.Name)
-	fmt.Fprintf(&b, "You are the herd **%s** agent. Arguments: $ARGUMENTS\n\n", ag.Name)
+	fmt.Fprintf(&b, "---\ndescription: Herd %s agent\nargument-hint: \"<task> [-- guidance]\"\n---\n\n", ag.Name)
+	fmt.Fprintf(&b, "You are the Herd **%s** agent. Arguments: $ARGUMENTS\n\n", ag.Name)
 	b.WriteString(strings.TrimSpace(ag.Instructions) + "\n")
 	return b.String()
 }

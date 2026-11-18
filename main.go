@@ -37,7 +37,7 @@ func main() {
 	shell := &Shell{svc: svc}
 
 	opts := &options.App{
-		Title:            "herd",
+		Title:            "Herd",
 		Width:            1440,
 		Height:           900,
 		MinWidth:         960,
@@ -54,7 +54,7 @@ func main() {
 		Mac: &mac.Options{
 			TitleBar:             mac.TitleBarHidden(),
 			WebviewIsTransparent: false,
-			About:                &mac.AboutInfo{Title: "herd", Message: "Claude Code agents, one worktree per task."},
+			About:                &mac.AboutInfo{Title: "Herd", Message: "Claude Code agents, one worktree per task."},
 		},
 		Linux: &linux.Options{ProgramName: "herd"},
 	}

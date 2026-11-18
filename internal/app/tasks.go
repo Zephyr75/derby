@@ -320,7 +320,7 @@ func (a *App) removeWorktree(id string) ([]string, error) {
 	if _, ok := a.settings.Project(t.Project); !ok {
 		// Without the project, herd no longer knows the repository: git
 		// would run in whatever directory herd started in.
-		return nil, fmt.Errorf("the project %s is no longer in Settings > Projects, so herd cannot find its repository", t.Project)
+		return nil, fmt.Errorf("the project %s is no longer in Settings > Projects, so Herd cannot find its repository", t.Project)
 	}
 	a.stopTaskSessions(id)
 	p := a.projectOf(t)
@@ -676,14 +676,6 @@ func (a *App) draftOf(taskID string) bool {
 	a.checksMu.Lock()
 	defer a.checksMu.Unlock()
 	return a.drafts[taskID]
-}
-
-// prReady: the open PR is known to be ready for review, not a draft.
-func (a *App) prReady(taskID string) bool {
-	a.checksMu.Lock()
-	defer a.checksMu.Unlock()
-	draft, known := a.drafts[taskID]
-	return known && !draft
 }
 
 func (a *App) labelsOf(taskID string) []string {

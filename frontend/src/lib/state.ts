@@ -6,7 +6,7 @@ import { reactive } from 'vue'
 import { api, errorText, isDesktop, on } from './api'
 import { actionFor } from './keymap'
 import { copyText } from './window'
-import { unsuccessful, type Option, type Proc, type Settings, type Step, type TabRef, type Task, type Agent, type Note, type Todo, fill } from './types'
+import { unsuccessful, type Option, type Proc, type Settings, type Step, type TabRef, type Task, type Agent, type Note, type Todo, type StatusKind, fill } from './types'
 
 export type Overlay = 'none' | 'palette' | 'scope' | 'new' | 'activity' | 'views' | 'todos'
 export type ScopeMode = 'project' | 'worktree' | 'branch'
@@ -539,6 +539,20 @@ class Herd {
     return t.draft ? 'draft' : 'ready'
   }
 
+  /** prBadge: the task's PR at a glance, for the left panel: its CI (or
+   *  merged, closed) and, while open, whether it is a draft. */
+  prBadge(t: Task): { kind: StatusKind; label: string; ready: '' | 'draft' | 'ready' } | null {
+    if (!t.pr) return null
+    if (t.prState === 'merged') return { kind: 'done', label: 'Merged', ready: '' }
+    if (t.prState && t.prState !== 'open') return { kind: 'idle', label: 'Closed', ready: '' }
+    const ready = t.draft ? 'draft' : 'ready'
+    const b = new Set(t.checks.map((c) => c.bucket))
+    if (t.conflicting) return { kind: 'failed', label: 'Conflict', ready }
+    if (b.has('fail') || b.has('cancel')) return { kind: 'failed', label: 'Failed', ready }
+    if (b.has('pending')) return { kind: 'running', label: 'Running', ready }
+    return { kind: b.size ? 'done' : 'idle', label: b.size ? 'Passed' : 'No CI', ready }
+  }
+
   /** copilotClean: the latest step is a Copilot review that found nothing. */
   copilotClean(t: Task): boolean {
     const last = t.steps[t.steps.length - 1]
@@ -654,6 +668,7 @@ class Herd {
   /** Resume, unless another process (e.g. claude --resume in Zed) still
    *  runs the session: then the terminal shows who, and Resume anyway. */
   async resumeStep(step: Step) {
+    if (!(await this.restoreFor(step))) return
     try {
       await api.ResumeStep(step.id)
       delete this.elsewhere[step.id]
@@ -662,6 +677,22 @@ class Herd {
       if (procs.length) this.elsewhere[step.id] = procs
       else this.toast('Could not resume', errorText(e), true)
     }
+  }
+
+  /** restoreTask moves an archived task back to Tasks. */
+  async restoreTask(t: Task): Promise<boolean> {
+    return !!(await this.attempt('Could not restore', () => api.RestoreTask(t.id).then(() => true)))
+  }
+
+  /** restoreFor restores the step's task first when it is archived, so the
+   *  step can resume; the task list follows it to Tasks. */
+  async restoreFor(step: Step): Promise<boolean> {
+    const t = this.task(step.taskId)
+    if (!t?.archived) return true
+    if (!(await this.restoreTask(t))) return false
+    t.archived = false
+    this.left = 'tasks'
+    return true
   }
 
   async resumeAnyway(step: Step) {

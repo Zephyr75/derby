@@ -10,7 +10,7 @@ const nx = computed(() => t.value?.next)
 
 async function restore() {
   const task = t.value
-  if (task) await herd.attempt('Could not restore', () => api.RestoreTask(task.id))
+  if (task) await herd.restoreTask(task)
 }
 // Deleting is for good: herd forgets the task and removes its worktree, local
 // branch and run files. Two clicks.
@@ -42,7 +42,7 @@ const markDone = (id: string) => herd.attempt('Mark done failed', () => api.Mark
       <label for="guide" class="sr-only">Guidance for Claude</label>
       <p v-if="nx.warning" class="warn"><Icon name="warn" :size="14" />{{ nx.warning }}</p>
       <p v-if="nx.elsewhere.length" class="warn">
-        <Icon name="warn" :size="14" />Steps also edited files outside the worktree, in {{ nx.elsewhere.join(', ') }}. herd only commits {{ t.branch }}: check those edits yourself.
+        <Icon name="warn" :size="14" />Steps also edited files outside the worktree, in {{ nx.elsewhere.join(', ') }}. Herd only commits {{ t.branch }}: check those edits yourself.
       </p>
       <textarea id="guide" v-model="herd.guidance" rows="3" :class="{ need: nx.warning && !herd.guidance.trim() }" :placeholder="nx.warning ? 'Which option? e.g. take option B, because…' : 'Guidance for Claude (optional)'"></textarea>
       <div class="opts">
@@ -57,13 +57,13 @@ const markDone = (id: string) => herd.attempt('Mark done failed', () => api.Mark
     <button v-if="nx.approval" class="btn allow" @click="allow(nx.approval)">Allow once</button>
     <button v-if="nx.markDone" class="btn ghost-border" @click="markDone(nx.markDone)">Mark done</button>
 
-    <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so herd cannot restore this task or touch its repository. Delete task only removes it from herd.</p>
+    <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so Herd cannot restore this task or touch its repository. Delete task only removes it from herd.</p>
     <div v-if="t.archived" class="row">
       <button v-if="!t.worktreeRemoved && !t.projectGone" class="btn" @click="restore">Restore to Tasks</button>
       <button
         class="btn"
         :class="herd.confirmDelete === t.id ? 'danger' : 'transparent'"
-        title="Forget the task in herd, and remove its worktree, local branch and run files (the pushed branch and the PR stay on GitHub)"
+        title="Forget the task in Herd, and remove its worktree, local branch and run files (the pushed branch and the PR stay on GitHub)"
         @click="deleteTask"
       >
         {{ herd.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}

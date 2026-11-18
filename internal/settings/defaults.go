@@ -32,7 +32,7 @@ func DefaultAgents() []Agent {
 		{
 			ID: "plan", Name: "Plan", Command: "/herd:plan {task} -- {guidance}", Model: "sonnet", Trigger: "manual",
 			Writes: "PLAN-{n}.md", Sisters: true, Choose: true, Next: []string{"impl", "discuss"}, OnFail: []string{"plan"},
-			Instructions: `Read ISSUE.md too when the task has a GitHub issue (herd copied it there, comments included). Explore the repo and decide an approach. Do not edit code.
+			Instructions: `Read ISSUE.md too when the task has a GitHub issue (Herd copied it there, comments included). Explore the repo and decide an approach. Do not edit code.
 When an earlier PLAN exists (planning again after a failed plan, a discussion or a failed step), start from it and from what showed it wrong (the step this one follows, your guidance): keep what still holds, and say right after the TLDR what changed from it and why.
 PLAN-{n}.md sections, after the TLDR:
 1. Goal: what is wrong or missing today and what will be true once it is done.
@@ -46,7 +46,7 @@ Fail when the task cannot be done as described.`,
 		{
 			ID: "impl", Name: "Implement", Command: "/herd:implement {task} -- {guidance}", Model: "opus", Trigger: "manual",
 			Writes: "IMPLEMENT-{n}.md", ShowDiff: true, Sisters: true, Revert: true, OnFail: []string{"impl", "discuss", "plan"},
-			Instructions: `The newest PLAN is the target: its New flow, Files and the option picked. What to do now depends on the step this one follows (herd step block):
+			Instructions: `The newest PLAN is the target: its New flow, Files and the option picked. What to do now depends on the step this one follows (Herd step block):
 - after Plan: build the plan's New flow and Files.
 - after a failed Review: fix each finding of that REVIEW-n.md that holds.
 - after a failed Test: its failing tests show bugs; fix the code, never the tests (TEST-n.md explains each).
@@ -73,7 +73,7 @@ Fail when the user stops the work.`,
 		{
 			ID: "review", Name: "Review", Command: "/herd:review {task}", Model: "opus", Trigger: "after:impl",
 			Writes: "REVIEW-{n}.md", Rerun: true, Next: []string{"test", "impl", "discuss"}, OnFail: []string{"impl", "discuss"},
-			Instructions: `Review the uncommitted changes (git status, git diff HEAD): what changed since herd's last commit. Check them against the newest PLAN (its New flow and Files) and the newest IMPLEMENT or DISCUSS file (what it says it changed, and the feedback it says it fixed or rejected). When an earlier REVIEW failed, check that each of its findings is fixed or rightly rejected. Never edit code, and do not ask for tests: Test adds them.
+			Instructions: `Review the uncommitted changes (git status, git diff HEAD): what changed since Herd's last commit. Check them against the newest PLAN (its New flow and Files) and the newest IMPLEMENT or DISCUSS file (what it says it changed, and the feedback it says it fixed or rejected). When an earlier REVIEW failed, check that each of its findings is fixed or rightly rejected. Never edit code, and do not ask for tests: Test adds them.
 REVIEW-{n}.md: the findings, most important first, each with its file and line and what to change.
 Done when the changes are ready, failed when they need changes.`,
 		},
@@ -124,7 +124,7 @@ PUSH.md is the commit message and the PR, so no TLDR or ELI5 in it:
 - a short body: what changed and why, from the newest PLAN's Goal and the What changed of the IMPLEMENT and DISCUSS files, ending with "Closes #{issue}" ("Part of" for a sister task; no issue references for a LOCAL task);
 - "## Choices", when the newest PLAN lists Options: for each choice, the option taken, the ones set aside in a few words, and why;
 - "## Flow": the flow before and after as two mermaid flowcharts (GitHub renders mermaid, not archify), from the newest PLAN's flow diagrams, updated with what was built. About 10 nodes each; mark what changed in the node text, e.g. "(new)" or "(changed)", with no colors, fills, classDef or style lines (unreadable in GitHub's themes). Leave it out when there is no flow to show (docs, config, a one-line fix).
-herd then commits with PUSH.md's title line and body, pushes, and opens or updates the draft PR; Copilot reviews it.`
+Herd then commits with PUSH.md's title line and body, pushes, and opens or updates the draft PR; Copilot reviews it.`
 
 // DefaultKeymap binds only what is needed every day: searching tasks, a new
 // task, hiding the side panels, the todo lists, and Escape for popups. config.toml's [keymap]

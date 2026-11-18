@@ -29,7 +29,7 @@ watchEffect(() => {
 
 <template>
   <div v-if="herd.failed" class="fatal">
-    <strong>herd could not load</strong>
+    <strong>Herd could not load</strong>
     <span class="mono">{{ herd.failed }}</span>
   </div>
   <div v-else-if="herd.ready" class="app">

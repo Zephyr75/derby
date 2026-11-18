@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // A unified diff: hunks with old and new line numbers. With commentable, a
 // + button shows on the hovered line: a click comments on that line, a drag
-// (or a shift-click on another line's +) on a range. The comments show
-// under their last line.
+// (or a shift-click on another line's +) on a range, marked by a bar down
+// the gutter. The comments show under their last line.
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import type { Note } from '../lib/types'
 
@@ -131,7 +131,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
     <table>
       <tbody>
         <template v-for="(r, i) in rows" :key="i">
-          <tr :class="[r.kind, { sel: selected(i) }]" @mouseenter="over(i)">
+          <tr :class="[r.kind, { sel: selected(i), 'sel-top': selected(i) && i === lo, 'sel-end': selected(i) && i === hi }]" @mouseenter="over(i)">
             <template v-if="r.kind === 'hunk'">
               <td class="ln" colspan="3">â‹¯</td>
               <td class="code">{{ r.text }}</td>
@@ -260,12 +260,39 @@ td {
   line-height: 1;
   cursor: pointer;
 }
-tr:hover .add-note,
-.sel .add-note {
+tr:hover .add-note {
   visibility: visible;
 }
 .sel td {
-  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+/* the selected lines: one continuous bar down the gutter */
+.gut {
+  position: relative;
+}
+.add-note {
+  position: relative;
+  z-index: 1;
+}
+.sel .gut::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: 6px;
+  background: var(--accent);
+}
+.sel-top .gut::before {
+  top: 3px;
+  border-radius: 3px 3px 0 0;
+}
+.sel-end .gut::before {
+  bottom: 3px;
+  border-radius: 0 0 3px 3px;
+}
+.sel-top.sel-end .gut::before {
+  border-radius: 3px;
 }
 .note-row td {
   padding: 4px 12px 6px 60px;

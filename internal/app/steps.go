@@ -89,7 +89,7 @@ func (a *App) stepFiles(s store.Step) []string {
 // command file refers to.
 func (a *App) stepBlock(l launch, runDir, wt string) string {
 	var b strings.Builder
-	b.WriteString("# herd step\n")
+	b.WriteString("# Herd step\n")
 	fmt.Fprintf(&b, "- task: %s (%s), project %s\n", l.task.ID, l.task.Title, l.proj.Name)
 	fmt.Fprintf(&b, "- step: %s ({n} = %d)\n", l.agent.DisplayName(l.step.N), l.step.N)
 	if l.task.Issue != "" {
@@ -106,7 +106,7 @@ func (a *App) stepBlock(l launch, runDir, wt string) string {
 		b.WriteString("- LOCAL task: no GitHub issue\n")
 	}
 	if l.prevSHA != "" {
-		fmt.Fprintf(&b, "- {sha} = %s (the latest commit herd made)\n", l.prevSHA)
+		fmt.Fprintf(&b, "- {sha} = %s (the latest commit Herd made)\n", l.prevSHA)
 	}
 	if l.mode == modeRerun {
 		b.WriteString("- rerun: you already ran this step in this conversation. The user changed the worktree since; do the step again on the current state and rewrite your artifact\n")
@@ -637,7 +637,7 @@ func (a *App) MarkDone(stepID string) error {
 // on from that verdict (automatic next steps, or the Next step options).
 func (a *App) SkipStep(stepID string, ok bool) error {
 	if _, busy := a.busy.Load(stepID); busy {
-		return errors.New("herd is still finishing this step")
+		return errors.New("Herd is still finishing this step")
 	}
 	a.run.Stop(stepID) // its Stop hook must not change the verdict afterwards
 	a.setPaused(stepID, false)
@@ -881,7 +881,7 @@ func (a *App) gitActions(t store.Task, s store.Step, ag settings.Agent, say func
 	switch {
 	case err != nil:
 		say("commit failed: " + err.Error())
-		return fmt.Errorf("herd could not commit: %w", err)
+		return fmt.Errorf("Herd could not commit: %w", err)
 	case sha == "":
 		say("nothing new to commit")
 	default:
@@ -894,7 +894,7 @@ func (a *App) gitActions(t store.Task, s store.Step, ag settings.Agent, say func
 	}
 	if err := g.Push(a.ctx, wt, branchName(t)); err != nil {
 		say("push failed: " + err.Error())
-		return fmt.Errorf("herd could not push: %w", err)
+		return fmt.Errorf("Herd could not push: %w", err)
 	}
 	say("pushed " + branchName(t))
 	if !ag.OpenPR {
@@ -906,7 +906,7 @@ func (a *App) gitActions(t store.Task, s store.Step, ag settings.Agent, say func
 	n, url, err := github.GH{Log: say}.CreatePR(a.ctx, wt, p.Repo, p.BaseBranch, branchName(t), title, body)
 	if err != nil {
 		say("gh pr create failed: " + err.Error())
-		return fmt.Errorf("herd could not open the PR: %w", err)
+		return fmt.Errorf("Herd could not open the PR: %w", err)
 	}
 	if t.PRNumber == n {
 		say(fmt.Sprintf("updated PR #%d %s", n, url))

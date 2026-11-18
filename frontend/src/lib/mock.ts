@@ -27,7 +27,7 @@ const agents: Agent[] = [
   { id: 'plan', name: 'Plan', command: '/herd:plan {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'PLAN.md', commit: false, push: false, openPR: false, revert: false, rerun: false, choose: true, builtin: false, ignoreRules: false, showDiff: false, sisters: true, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['plan'],
     instructions: 'Read the task source: the GitHub issue, the description, or both.\nExplore the repo and decide an approach.\nWrite PLAN.md with Goal, Approach (a mermaid flowchart), Files and Out of scope.\nDo not edit code. End with front matter status: done.' },
   { id: 'impl', name: 'Implement', command: '/herd:implement {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'IMPLEMENT-{n}.md', commit: false, push: false, openPR: false, revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: [], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss', 'plan'],
-    instructions: 'Read PLAN.md, and the newest REVIEW-n.md, TEST-n.md and COPILOT-n.md when they exist.\nImplement the plan in this worktree and run the relevant tests.\nDo not commit: herd commits your changes when the Review step ends.\nWrite IMPLEMENT-{n}.md with Changes, Tests and Notes for the reviewer. End with status: done.' },
+    instructions: 'Read PLAN.md, and the newest REVIEW-n.md, TEST-n.md and COPILOT-n.md when they exist.\nImplement the plan in this worktree and run the relevant tests.\nDo not commit: Herd commits your changes when the Review step ends.\nWrite IMPLEMENT-{n}.md with Changes, Tests and Notes for the reviewer. End with status: done.' },
   { id: 'discuss', name: 'Discuss', command: '/herd:discuss {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'DISCUSS-{n}.md', commit: false, push: false, openPR: false, revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: ['review', 'impl'], effort: 'xhigh', projects: [], onFail: ['discuss', 'impl'],
     instructions: 'This step is a conversation: implement the plan together with the user.\nOnly when the user says the work is done, write DISCUSS-{n}.md: What changed, Files, Notes for the reviewer.\nEnd with status: done.' },
   { id: 'review', name: 'Review', command: '/herd:review {task}', model: 'opus', trigger: 'after:impl', writes: 'REVIEW-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: true, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['test', 'impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss'],
@@ -35,11 +35,11 @@ const agents: Agent[] = [
   { id: 'test', name: 'Test', command: '/herd:test {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'TEST-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: false, allow: [], next: ['push', 'impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss'],
     instructions: 'Read PLAN.md, the IMPLEMENT files and the REVIEW files.\nWrite tests for the reviewed changes, following the repo\'s test conventions.\nRun them. Change only tests, never the code under test.\nWrite TEST-{n}.md with Tests added, How to run and Results. End with status: done.' },
   { id: 'push', name: 'Commit and push', command: '/herd:push {task}', model: 'haiku', trigger: 'manual', writes: 'PUSH.md', commit: true, push: true, openPR: true, revert: false, rerun: false, choose: false, builtin: false, ignoreRules: true, showDiff: false, sisters: false, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', projects: [], onFail: [],
-    instructions: 'First rebase on origin/{base} when it has new commits (git rebase --autostash); on a conflict, abort and end with status: failed.\nWrite PUSH.md: a title line, then a body summarising PLAN.md and the IMPLEMENT files.\nAdd Closes #{issue} when the task has an issue.\nDo not push: herd pushes, opens the PR and collects the Copilot review.' },
+    instructions: 'First rebase on origin/{base} when it has new commits (git rebase --autostash); on a conflict, abort and end with status: failed.\nWrite PUSH.md: a title line, then a body summarising PLAN.md and the IMPLEMENT files.\nAdd Closes #{issue} when the task has an issue.\nDo not push: Herd pushes, opens the PR and collects the Copilot review.' },
 ]
 
 const context: Record<string, Context> = {
-  general: { id: 'general', text: '# General context\n- Match the style already in the repo; no new dependencies without asking.\n- Never commit or push: herd does it.\n- Artifacts go to $HERD_RUN_DIR and start with YAML front matter.\n- Prefer small diffs; explain trade-offs in the artifact, not in code comments.\n', claudeMd: false, knowledge: '' },
+  general: { id: 'general', text: '# General context\n- Match the style already in the repo; no new dependencies without asking.\n- Never commit or push: Herd does it.\n- Artifacts go to $HERD_RUN_DIR and start with YAML front matter.\n- Prefer small diffs; explain trade-offs in the artifact, not in code comments.\n', claudeMd: false, knowledge: '' },
   core: { id: 'core', text: '# pony-core\n- Go services live in internal/<domain>.\n- Run go test ./internal/<domain>/... before writing IMPLEMENT.\n- Rider-facing errors go through internal/errs.\n', claudeMd: true, knowledge: '' },
   rider: { id: 'rider', text: '# pony-rider-app\n- React Native, TypeScript strict.\n- UI copy lives in src/i18n; never hardcode strings.\n- Run pnpm test <area> before writing IMPLEMENT.\n', claudeMd: true, knowledge: '' },
   infra: { id: 'infra', text: '# pony-infra\n- Terraform 1.9, azurerm provider.\n- Never run terraform apply; validate and plan only.\n- Tag every resource with team = mobility.\n', claudeMd: false, knowledge: '' },
@@ -199,11 +199,10 @@ function derive(t: MockTask): Task {
   let status: Task['status']
   const day = t.archivedOn ? fmtDay(t.archivedOn) : ''
   const st = (kind: StatusKind, label: string, short: string) => ({ kind, label, short })
-  if (t.archived) status = t.pr ? st(t.prState === 'merged' ? 'done' : 'idle', `PR #${t.pr} ${t.prState} · ${day}`, t.prState!) : st('idle', `Archived · ${day}`, 'archived')
+  if (t.archived) status = t.prState === 'merged' ? st('done', `Archived · ${day}`, 'merged') : st('idle', `Archived · ${day}`, 'archived')
   else if (!steps.length) status = st('idle', 'Not started', 'not started')
   else {
-    const pr = t.pr && t.prState === 'open' ? ` · PR #${t.pr}${t.draft ? '' : ' Ready'}` : ''
-    const of = (kind: StatusKind, word: string, s: Step) => st(kind, `${s.name} · ${word}${pr}`, word.toLowerCase())
+    const of = (kind: StatusKind, word: string, s: Step) => st(kind, `${s.name} · ${word}`, word.toLowerCase())
     const live = steps.find((s) => s.state === 'approval' || s.state === 'running' || (s.paused && s.state !== 'done' && s.state !== 'failed'))
     if (live) status = live.state === 'running' && !live.paused ? of('running', 'Running', live) : of(live.state === 'approval' ? 'approval' : 'waiting', 'Waiting', live)
     else if (last.state === 'idle') status = of('waiting', 'Waiting', last)
@@ -468,8 +467,8 @@ export const api: Api = {
   SetTodos: (id, todos) => { if (!id) { others = todos; emit('todos:changed', others); return ok(undefined) } const t = find(id); t.todos = todos; changed(t); return ok(undefined) },
   SetPrompt: (id, text) => { const p = settings.prompts.find((x) => x.id === id); if (p) p.text = text || p.default; emit('settings:changed', settings); return ok(undefined) },
   AgentContext: (a) => ok([
-    { title: 'System prompt', where: "Appended to Claude Code's own system prompt", text: '# herd step\n- task: core:1234 (Example task), project core\n\n# Writing\n- Mark each claim you have not verified.' },
-    { title: 'Command /herd:' + a.id, where: "The step's first message", text: `You are the herd **${a.name}** agent.\n\n${a.instructions}` },
+    { title: 'System prompt', where: "Appended to Claude Code's own system prompt", text: '# Herd step\n- task: core:1234 (Example task), project core\n\n# Writing\n- Mark each claim you have not verified.' },
+    { title: 'Command /herd:' + a.id, where: "The step's first message", text: `You are the Herd **${a.name}** agent.\n\n${a.instructions}` },
   ]),
   SaveContext: (c) => { settings.context[c.id] = c; emit('settings:changed', settings); return ok(undefined) },
   SaveProject: (p) => { const i = projects.findIndex((x) => x.id === p.id); if (i >= 0) projects[i] = p; else projects.push(p); emit('settings:changed', settings); return ok(undefined) },

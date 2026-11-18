@@ -122,7 +122,7 @@ function setZed(e: Event) {
       <input class="val num" type="number" min="1" max="30" :value="herd.settings?.config.maxTabs" @change="setMaxTabs" />
     </label>
     <label class="r">
-      <span class="grow">Desktop notifications <span class="muted small">when a step needs you or ends, while herd is in the background</span></span>
+      <span class="grow">Desktop notifications <span class="muted small">when a step needs you or ends, while Herd is in the background</span></span>
       <input type="checkbox" :checked="herd.settings?.config.notifications" @change="setNotify" />
     </label>
   </div>

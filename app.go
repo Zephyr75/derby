@@ -41,7 +41,7 @@ func (s *Shell) startup(ctx context.Context) {
 	if err := app.Start(s.svc, ctx, s); err != nil {
 		log.Printf("herd: startup: %v", err)
 		wruntime.MessageDialog(ctx, wruntime.MessageDialogOptions{
-			Type: wruntime.ErrorDialog, Title: "herd could not start", Message: err.Error(),
+			Type: wruntime.ErrorDialog, Title: "Herd could not start", Message: err.Error(),
 		})
 		wruntime.Quit(ctx)
 	}

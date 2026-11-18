@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // One step's Claude Code session: xterm.js on the local WebSocket. The
 // server replays the scrollback on connect, so switching tabs reconnects.
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { api, errorText } from '../lib/api'
@@ -27,6 +27,13 @@ async function checkAgain() {
     await herd.resumeStep(props.step)
     if (!paused()) connect(props.step.id)
   }
+}
+
+// An archived task resumes once restored, unless it can no longer run.
+const task = computed(() => herd.task(props.step.taskId))
+const canRestore = computed(() => !!task.value && !task.value.worktreeRemoved && !task.value.projectGone)
+async function resumeHere() {
+  if (await herd.restoreFor(props.step)) attempt.value++
 }
 
 const el = ref<HTMLDivElement>()
@@ -183,16 +190,23 @@ watch(
     </div>
     <div v-else-if="paused()" class="paused">
       <span class="ico"><Icon name="stop" :size="22" /></span>
-      <span class="title">Claude is stopped in herd</span>
+      <span class="title">Claude is stopped in Herd</span>
       <span class="text">Continue this session elsewhere, e.g. in a Zed terminal, with the resume command. Resume here when you are done, so only one Claude runs it at a time.</span>
       <span class="row">
         <button class="btn" @click="herd.copyResume(step)"><Icon name="copy" :size="14" />Copy claude --resume</button>
         <button class="btn primary" @click="herd.resumeStep(step)"><Icon name="play" :size="13" />Resume here</button>
       </span>
     </div>
-    <div v-else-if="ended" class="ended">
-      <span>Session ended{{ exitCode !== null && exitCode !== 0 ? ` (exit ${exitCode})` : '' }}.</span>
-      <button class="btn" @click="attempt++">Resume</button>
+    <div v-else-if="ended" class="paused">
+      <span class="ico"><Icon name="terminal" :size="22" /></span>
+      <span class="title">Session ended{{ exitCode !== null && exitCode !== 0 ? ` (exit ${exitCode})` : '' }}</span>
+      <span v-if="task?.archived && !canRestore" class="text">This task is archived and can no longer run{{ task.worktreeRemoved ? ': its worktree was removed' : '' }}. Copy the resume command to read the conversation elsewhere.</span>
+      <span v-else-if="task?.archived" class="text">This task is archived. Restore it to Tasks to resume this session here, or continue it elsewhere, e.g. in a Zed terminal, with the resume command.</span>
+      <span v-else class="text">Resume this session here, or continue it elsewhere, e.g. in a Zed terminal, with the resume command.</span>
+      <span class="row">
+        <button class="btn" @click="herd.copyResume(step)"><Icon name="copy" :size="14" />Copy claude --resume</button>
+        <button v-if="!task?.archived || canRestore" class="btn primary" @click="resumeHere"><Icon name="play" :size="13" />{{ task?.archived ? 'Restore and resume' : 'Resume here' }}</button>
+      </span>
     </div>
   </div>
 </template>
@@ -222,7 +236,7 @@ watch(
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 48px;
+  padding: 24px 16px;
   text-align: center;
   background: var(--bg);
 }
@@ -255,23 +269,13 @@ watch(
 }
 .paused .row {
   display: flex;
+  flex-wrap: wrap; /* stacked when they do not fit side by side */
+  justify-content: center;
   gap: 8px;
+  max-width: 100%;
   margin-top: 8px;
 }
-.ended {
-  position: absolute;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px 6px 12px;
-  border-radius: 8px;
-  background: var(--elev);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  color: var(--muted);
-  font-size: 12.5px;
+.paused .row .btn {
+  white-space: nowrap;
 }
 </style>

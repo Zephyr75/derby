@@ -219,7 +219,7 @@ func (a *App) view(t store.Task) (TaskView, error) {
 	if v.Checks == nil {
 		v.Checks = []github.Check{}
 	}
-	v.Status = statusOf(t, v.Steps, a.prReady(t.ID))
+	v.Status = statusOf(t, v.Steps)
 	v.Next = nextOf(t, v.Steps, agents)
 	v.Next.Warning = a.optionsWarning(t, v.Steps, v.Next)
 	v.Next.Sisters = []SisterOffer{}
@@ -333,34 +333,23 @@ func sourceText(t store.Task, p settings.Project) string {
 
 // statusOf is the task's badge: its current (or last) step with Running,
 // Waiting, Failure or, only for a Copilot step that passed (the task is
-// done), Success; and the open PR, with Ready once it is ready for review.
+// done), Success. The PR has its own badge (the left panel's prBadge).
 // Steps that succeed after that Copilot step without changing code (a
 // Discuss to understand something) keep the Success. Any other success
 // waits for the next step.
-func statusOf(t store.Task, steps []StepView, ready bool) Status {
+func statusOf(t store.Task, steps []StepView) Status {
 	if t.Archived {
 		day := t.ArchivedAt.Format("Jan 2")
-		if t.PRNumber > 0 && t.PRState != "" && t.PRState != "open" {
-			kind := "idle"
-			if t.PRState == "merged" {
-				kind = "done"
-			}
-			return Status{kind, fmt.Sprintf("PR #%d %s · %s", t.PRNumber, t.PRState, day), t.PRState}
+		if t.PRState == "merged" {
+			return Status{"done", "Archived · " + day, "merged"}
 		}
 		return Status{"idle", "Archived · " + day, "archived"}
 	}
 	if len(steps) == 0 {
 		return Status{"idle", "Not started", "not started"}
 	}
-	pr := ""
-	if t.PRNumber > 0 && t.PRState == "open" {
-		pr = fmt.Sprintf(" · PR #%d", t.PRNumber)
-		if ready {
-			pr += " Ready"
-		}
-	}
 	st := func(kind, word string, s StepView) Status {
-		return Status{kind, s.Name + " · " + word + pr, strings.ToLower(word)}
+		return Status{kind, s.Name + " · " + word, strings.ToLower(word)}
 	}
 	for _, s := range steps {
 		switch {
@@ -531,7 +520,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 			nx.Text = fmt.Sprintf("PR #%d needs fixes: the PR tab lists Copilot's comments and the failing CI checks.", t.PRNumber)
 			ids = failureIDs(cop)
 		case last.Verdict == skipped:
-			nx.Text = fmt.Sprintf("herd stopped waiting for Copilot on PR #%d.", t.PRNumber)
+			nx.Text = fmt.Sprintf("Herd stopped waiting for Copilot on PR #%d.", t.PRNumber)
 		default:
 			nx.Text = fmt.Sprintf("Copilot found nothing to fix and CI passed on PR #%d. The task moves to Archive when the PR is merged or closed.", t.PRNumber)
 		}
@@ -546,7 +535,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 	}
 	if last.Busy {
 		if ag.Commit {
-			nx.Text = "herd is " + gitWords(ag) + "."
+			nx.Text = "Herd is " + gitWords(ag) + "."
 		} else if autoNext != nil {
 			nx.Text = autoNext.DisplayName(countAgent(steps, autoNext.ID)+1) + " is starting."
 		}

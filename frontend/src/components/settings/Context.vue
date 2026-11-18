@@ -90,7 +90,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
       </button>
       <button class="list-btn" :class="{ on: selId === 'prompts' }" @click="selId = 'prompts'">
         <span class="name">Prompts</span>
-        <span class="sub">what herd adds to agents</span>
+        <span class="sub">what Herd adds to agents</span>
       </button>
       <button v-for="k in keys" :key="k" class="list-btn" :class="{ on: selId === k }" @click="selId = k">
         <span class="name">{{ herd.project(k)?.name ?? 'General' }}</span>
@@ -135,7 +135,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
         <span class="grow">
           <span class="mono">{{ sys.path }}</span>
           <span :class="['state', sys.synced ? 'c-done' : 'c-waiting']">{{ sys.synced ? 'in sync' : sys.exists ? 'differs' : 'missing' }}</span>
-          <span class="muted small">herd's sessions skip it; Override writes General context, Rules and the knowledge base folders into it for your other Claude sessions</span>
+          <span class="muted small">Herd's sessions skip it; Override writes General context, Rules and the knowledge base folders into it for your other Claude sessions</span>
         </span>
         <button class="btn" :class="confirmOverride ? 'danger' : ''" :disabled="sys.synced" @click="override" @blur="confirmOverride = false">
           {{ confirmOverride ? 'Replace it? (a backup is kept)' : 'Override' }}
