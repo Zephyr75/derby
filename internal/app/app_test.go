@@ -571,7 +571,7 @@ func TestRulesAndKnowledge(t *testing.T) {
 	p, _ := a.settings.Project("core")
 	for _, ag := range a.settings.Agents() {
 		args := strings.Join(a.spec(launch{task: task, proj: p, agent: ag, step: store.Step{N: 1, SessionID: "s"}}).Args, "\x00")
-		if strings.Contains(args, "Never touch migrations/") == ag.IgnoreRules || !strings.Contains(args, "--add-dir\x00"+kb) || strings.Contains(args, "allowedTools") {
+		if strings.Contains(args, "Never touch migrations/") == ag.IgnoreRules || !strings.Contains(args, "--add-dir\x00"+kb) || strings.Contains(args, "allowedTools") != (len(ag.Allow) > 0) {
 			t.Fatalf("%s (ignore rules %v) args: %q", ag.ID, ag.IgnoreRules, args)
 		}
 	}

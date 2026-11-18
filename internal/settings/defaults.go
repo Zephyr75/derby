@@ -25,8 +25,8 @@ func DefaultConfig() Config {
 const DefaultGeneralContext = ""
 
 // DefaultAgents is the default pipeline: Plan, Implement or Discuss, Review,
-// Test, Commit and push, then Copilot (built in). Every step ends with
-// status: done (succeeded) or status: failed.
+// Test, Regression (pony-core only), Commit and push, then Copilot (built
+// in). Every step ends with status: done (succeeded) or status: failed.
 func DefaultAgents() []Agent {
 	return []Agent{
 		{
@@ -79,7 +79,8 @@ Done when the changes are ready, failed when they need changes.`,
 		},
 		{
 			ID: "test", Name: "Test", Command: "/herd:test {task} -- {guidance}", Model: "sonnet", Trigger: "manual",
-			Writes: "TEST-{n}.md", ShowDiff: true, Next: []string{"push", "impl", "discuss"}, OnFail: []string{"impl", "discuss"},
+			Writes: "TEST-{n}.md", ShowDiff: true, Allow: []string{"Bash(make test-path:*)", "Bash(make ruff:*)"},
+			Next: []string{"regress", "push", "impl", "discuss"}, OnFail: []string{"impl", "discuss"},
 			Instructions: `Read the newest PLAN (its Tests section lists what to verify), the newest IMPLEMENT or DISCUSS file (what changed) and the newest REVIEW (what it flagged). When the step this one follows is a failed TEST, run its failing tests first: they must pass now.
 Write tests for the uncommitted changes (git status, git diff HEAD), following the repo's conventions: the plan's Tests, the edge cases and anything the reviews flagged. When the repo has no tests, say so and write none.
 First check the tests this branch already added or changed (git diff origin/{base} on the test files): update or remove the ones that no longer match the code. Never change tests that exist on {base}.
@@ -89,13 +90,27 @@ TEST-{n}.md sections, after the TLDR: Tests added, How to run, Results.
 Done when the tests pass, failed when one shows a bug.`,
 		},
 		{
+			ID: "regress", Name: "Regression", Command: "/herd:regress {task} -- {guidance}", Model: "haiku", Trigger: "manual",
+			Writes: "REGRESSION-{n}.md", Next: []string{"push", "impl", "discuss"}, OnFail: []string{"impl", "discuss"}, Projects: []string{"pony-core"},
+			Instructions: `Run pony-core's regression tests (lib/regtests_v2) on the local stack: an offline copy of QA in Docker, with no internet access. Never against QA.
+First read the README.md of the local_stack checkout next to pony-core (or $LOCAL_STACK_DIR): it explains the stack and its reports.
+Use only these commands, from this worktree: make regtest-local (optionally SUITES="<scenario ids from lib/regtests_v2/runner/reg_test_registry.py>", TEST_FILTER=<substring>, JOBS=<n>), make local-stack-status, make local-stack-logs SERVICE=<service>, make local-stack-down. Never make regtest, a suite directly (python -m lib.regtests_v2…), make local-stack-export-seed (it reads QA), or anything with ENV=qa or ENV=prod.
+If this worktree's Makefile has no regtest-local target (the branch predates the local stack) or Docker is not running, say so and fail.
+Run every suite with make regtest-local (about 2 minutes once the images are built; the first run builds them), then read the run's report: summary.md, each failing suite's log in logs/, and the containers' logs in stack/.
+Change no code and no tests.
+REGRESSION-{n}.md sections, after the TLDR:
+1. Results: a table, one row per suite: passed, failed or skipped (with the reason the suite gives).
+2. Failures, when there are any: each failing test's error, and whether it comes from this branch (git diff origin/{base}), a skip the suite should declare, or the stack itself.
+Done when every suite passed, failed when one failed (say which and why).`,
+		},
+		{
 			ID: "push", Name: "Commit and push", Command: "/herd:push {task}", Model: "haiku", Trigger: "manual",
 			Writes: "PUSH.md", Commit: true, Push: true, OpenPR: true, IgnoreRules: true, Next: []string{"impl", "discuss"},
 			Instructions: PushInstructions,
 		},
 		{
 			ID: CopilotID, Name: "Copilot", Trigger: "after:push", Writes: "COPILOT-{n}.md", Builtin: true, Model: "opus", Instructions: CopilotInstructions,
-			Next: []string{"impl", "discuss"}, OnFail: []string{"impl", "discuss"},
+			Next: []string{"discuss", "impl"}, OnFail: []string{"impl", "discuss"},
 		},
 	}
 }
