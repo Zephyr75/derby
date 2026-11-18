@@ -479,13 +479,24 @@ func (a *App) SetTheme(theme string) error {
 	return a.updateConfig(func(c *settings.Config) { c.Appearance.Theme = theme })
 }
 
+// SetSessionView shows steps' sessions as a terminal or as a chat.
+func (a *App) SetSessionView(view string) error {
+	if view != "terminal" && view != "chat" {
+		return fmt.Errorf("unknown session view %q", view)
+	}
+	return a.updateConfig(func(c *settings.Config) { c.Appearance.SessionView = view })
+}
+
 // SaveAppearance saves fonts and the Zed command.
 func (a *App) SaveAppearance(ap settings.Appearance, zedCommand string) error {
 	return a.updateConfig(func(c *settings.Config) {
-		theme := c.Appearance.Theme
+		theme, view := c.Appearance.Theme, c.Appearance.SessionView
 		c.Appearance = ap
 		if ap.Theme == "" {
 			c.Appearance.Theme = theme
+		}
+		if ap.SessionView == "" {
+			c.Appearance.SessionView = view
 		}
 		c.ZedCommand = zedCommand
 	})

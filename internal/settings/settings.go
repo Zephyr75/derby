@@ -34,6 +34,7 @@ type Appearance struct {
 	UIFontSize   float64 `toml:"ui_font_size" json:"uiFontSize"`
 	TermFont     string  `toml:"terminal_font" json:"termFont"`
 	TermFontSize float64 `toml:"terminal_font_size" json:"termFontSize"`
+	SessionView  string  `toml:"session_view" json:"sessionView"` // terminal | chat: how the center shows a step's Claude Code session
 }
 
 // ContextMeta is the per-context settings stored in config.toml; the markdown
@@ -267,6 +268,9 @@ func fillConfig(c *Config) {
 	}
 	if c.Appearance.TermFontSize == 0 {
 		c.Appearance.TermFontSize = d.Appearance.TermFontSize
+	}
+	if c.Appearance.SessionView != "chat" {
+		c.Appearance.SessionView = "terminal"
 	}
 	if c.ZedCommand == "" {
 		c.ZedCommand = d.ZedCommand

@@ -4,11 +4,24 @@ import { computed, type Component } from 'vue'
 import {
   Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, Folder, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu, Minus,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Split, Square, SquareTerminal, TriangleAlert, Undo2, X,
+  ArrowUp, Bot, Brain, CircleX, Globe, ListChecks, LoaderCircle, MessageSquare, ShieldAlert, Sparkles, Wrench,
 } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: number }>(), { size: 14, stroke: 2 })
 
 const icons: Record<string, Component> = {
+  // the chat view
+  send: ArrowUp,
+  agent: Bot,
+  thinking: Brain,
+  error: CircleX,
+  globe: Globe,
+  todos: ListChecks,
+  spinner: LoaderCircle,
+  chat: MessageSquare,
+  approval: ShieldAlert,
+  skill: Sparkles,
+  tool: Wrench,
   play: Play,
   'play-outline': Play, // the play icon unfilled, beside outline icons
   stop: Square,

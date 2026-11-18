@@ -9,6 +9,7 @@ func DefaultConfig() Config {
 			UIFontSize:   13,
 			TermFont:     "Geist Mono",
 			TermFontSize: 12.5,
+			SessionView:  "terminal",
 		},
 		ZedCommand:      "zed",
 		ClaudeCommand:   "claude",

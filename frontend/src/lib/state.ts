@@ -114,6 +114,16 @@ class Herd {
     if (this.themeMode === 'pony') return 'pony'
     return this.themeMode === 'light' || (this.themeMode === 'system' && this.systemLight) ? 'flatwhite' : 'fleet-dark'
   }
+  /** sessionView: how the center shows a step's session (Settings > Appearance). */
+  get sessionView(): 'terminal' | 'chat' {
+    return this.settings?.config.appearance.sessionView ?? 'terminal'
+  }
+  async setSessionView(view: 'terminal' | 'chat') {
+    if (!this.settings || this.sessionView === view) return
+    this.settings.config.appearance.sessionView = view
+    this.edited()
+    await this.attempt('Could not save the session view', () => api.SetSessionView(view))
+  }
   /** dark: the theme in use is a dark one (diagrams, mermaid and the logo follow it). */
   get dark() {
     return this.theme !== 'flatwhite'

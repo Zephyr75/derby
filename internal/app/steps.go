@@ -29,6 +29,7 @@ type launch struct {
 	step    store.Step
 	prevSHA string
 	mode    launchMode
+	message string // modeResume: the user's message to send with it (the chat view)
 }
 
 // launchMode is how spec starts claude for a step.
@@ -222,6 +223,9 @@ func (a *App) spec(l launch) runner.Spec {
 	switch l.mode {
 	case modeResume:
 		args = append(args, "--resume", l.step.SessionID)
+		if l.message != "" {
+			args = append(args, "--", l.message)
+		}
 	case modeRerun:
 		args = append(args, "--resume", l.step.SessionID, "--", a.prompt(l))
 	default:
@@ -438,7 +442,10 @@ func (a *App) newStep(taskID, agentID, guidance string, n int, state string) (la
 }
 
 // resume reopens a step's Claude Code conversation in a new PTY.
-func (a *App) resume(stepID string) error {
+func (a *App) resume(stepID string) error { return a.resumeWith(stepID, "") }
+
+// resumeWith resumes a step's session and, unless message is empty, sends it.
+func (a *App) resumeWith(stepID, message string) error {
 	s, err := a.db.Step(stepID)
 	if err != nil {
 		return err
@@ -469,7 +476,7 @@ func (a *App) resume(stepID string) error {
 	}
 	ag := agentFor(a.settings.Agents(), s.Agent)
 	steps, _ := a.db.Steps(t.ID)
-	l := launch{task: t, proj: p, agent: ag, step: s, prevSHA: latestSHA(steps, s.Seq), mode: mode}
+	l := launch{task: t, proj: p, agent: ag, step: s, prevSHA: latestSHA(steps, s.Seq), mode: mode, message: message}
 	a.reap()
 	if _, err := a.run.Start(a.spec(l)); err != nil && !errors.Is(err, runner.ErrRunning) {
 		return err

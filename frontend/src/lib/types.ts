@@ -51,6 +51,27 @@ export interface Appearance {
   uiFontSize: number
   termFont: string
   termFontSize: number
+  sessionView: 'terminal' | 'chat' // how the center shows a step's Claude Code session
+}
+
+/** One entry of a step's conversation, read from Claude Code's transcript. */
+export interface ChatItem {
+  kind: 'user' | 'command' | 'text' | 'thinking' | 'tool' | 'result' | 'note' | 'error'
+  id: string // the tool call a tool or result item belongs to
+  text: string // the message; a result's output; a command's arguments
+  tool: string // a tool call's tool, a command's name
+  input: Record<string, unknown> | null // a tool call's input (long values cut)
+  diff: string // a result's change to a file, as a unified diff
+  isError: boolean
+}
+
+/** The part of a step's conversation after a byte offset (StepChat). */
+export interface Chat {
+  items: ChatItem[]
+  offset: number
+  reset: boolean // the transcript was replaced: drop what was shown
+  title: string
+  found: boolean
 }
 
 export interface FileChange {

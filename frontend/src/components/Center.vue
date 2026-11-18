@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { herd, resumeCommand } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import Terminal from './Terminal.vue'
+import ChatView from './ChatView.vue'
 import PRTracker from './PRTracker.vue'
 import SisterOverview from './SisterOverview.vue'
 import Toasts from './Toasts.vue'
@@ -26,6 +27,7 @@ const chip = computed(() => {
   if (s.state === 'approval') return { cls: 's-approval', text: 'Live · waiting for approval' }
   if (s.state === 'running' || s.state === 'idle') return { cls: 's-running', text: s.state === 'idle' ? 'Live · waiting for you' : 'Live' }
   if (s.state === 'failed') return { cls: 's-waiting', text: s.live ? 'Resumed · step ended early' : 'Ended early' }
+  if (!s.live && herd.sessionView === 'chat') return { cls: 's-idle', text: 'Ended' } // the chat reads it without resuming it
   return { cls: 's-idle', text: s.live ? 'Resumed' : 'Resumed on click' }
 })
 
@@ -51,6 +53,10 @@ const chip = computed(() => {
       <div class="toolbar">
         <span v-if="chip" :class="['chip', 'badge', chip.cls]"><span class="dot"></span>{{ chip.text }}</span>
         <span class="muted small">{{ agent?.name ?? step.agent }} agent · {{ model(step.model) }}</span>
+        <span class="pill views" role="radiogroup" aria-label="Session view">
+          <button role="radio" :aria-checked="herd.sessionView === 'terminal'" :class="{ on: herd.sessionView === 'terminal' }" title="Show the session as Claude Code's terminal" @click="herd.setSessionView('terminal')"><Icon name="terminal" :size="13" /></button>
+          <button role="radio" :aria-checked="herd.sessionView === 'chat'" :class="{ on: herd.sessionView === 'chat' }" title="Show the session as a chat" @click="herd.setSessionView('chat')"><Icon name="chat" :size="13" /></button>
+        </span>
         <span class="tbs">
           <button v-if="step.live" class="tb" :title="'Stop Claude in Herd and copy ' + resumeCommand(step) + ', e.g. to continue in Zed'" @click="herd.stopAndCopy(step)">
             <Icon name="stop" :size="14" />Stop and copy <span class="mono-s">claude --resume {{ step.session.slice(0, 8) }}</span>
@@ -63,7 +69,8 @@ const chip = computed(() => {
           </template>
         </span>
       </div>
-      <Terminal :key="step.id + ':' + herd.termRev" :step="step" />
+      <ChatView v-if="herd.sessionView === 'chat'" :step="step" />
+      <Terminal v-else :key="step.id + ':' + herd.termRev" :step="step" />
     </template>
     <div v-else-if="t" class="empty">
       <span class="ico"><Icon name="terminal" :size="26" /></span>
@@ -223,6 +230,13 @@ section {
 .tb:hover {
   background: var(--hover);
   color: var(--text);
+}
+.views {
+  flex: none;
+  height: 22px;
+}
+.views > button {
+  padding: 0 7px;
 }
 .empty {
   flex: 1;

@@ -5,6 +5,7 @@ import { computed } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import { herd } from '../../lib/state'
+import Icon from '../ui/Icon.vue'
 
 type Mode = 'dark' | 'light' | 'system' | 'pony'
 const ap = computed(() => herd.settings?.config.appearance)
@@ -14,6 +15,11 @@ const cards = computed<{ id: Mode; name: string; note: string; panes: string[] }
   { id: 'system', name: 'System', note: `now ${herd.systemLight ? 'Light' : 'Dark'}, follows the OS`, panes: ['fleet-dark', 'flatwhite'] },
   { id: 'pony', name: 'Pony', note: "Pony's purple, cyan and coral", panes: ['pony'] },
 ])
+
+const views = [
+  { id: 'terminal', name: 'Terminal' },
+  { id: 'chat', name: 'Chat' },
+] as const
 
 async function pick(id: Mode) {
   if (!herd.settings) return
@@ -113,6 +119,12 @@ function setZed(e: Event) {
       <span class="grow">Terminal font</span>
       <input class="val" :value="`${ap.termFont} ${ap.termFontSize}`" @change="setFont('term', $event)" />
     </label>
+    <div class="r">
+      <span class="grow">Session view <span class="muted small">how the center shows a step's Claude Code session; the toolbar switches it too</span></span>
+      <span class="pill views" role="radiogroup" aria-label="Session view">
+        <button v-for="v in views" :key="v.id" role="radio" :aria-checked="herd.sessionView === v.id" :class="{ on: herd.sessionView === v.id }" @click="herd.setSessionView(v.id)"><Icon :name="v.id === 'chat' ? 'chat' : 'terminal'" :size="13" />{{ v.name }}</button>
+      </span>
+    </div>
     <label class="r">
       <span class="grow">Zed command</span>
       <input class="val" :value="herd.settings?.config.zedCommand" @change="setZed" />
@@ -230,6 +242,9 @@ function setZed(e: Event) {
   }
   .r + .r {
     border-top: 1px solid var(--border);
+  }
+  .views > button {
+    flex: none; /* each as wide as its label, so the icons keep their size */
   }
   .grow {
     flex: 1;

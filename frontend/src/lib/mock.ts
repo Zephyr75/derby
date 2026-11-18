@@ -3,7 +3,7 @@
 // every screen; it never touches git, gh or Claude Code.
 
 import type { Api } from './api'
-import { afterOf, unsuccessful, type CICheck, type Agent, type Artifact, type Context, type Next, type Project, type Settings, type Step, type Task, type StatusKind, type Note, type Todo } from './types'
+import { afterOf, unsuccessful, type CICheck, type Agent, type Artifact, type Context, type Next, type Project, type Settings, type Step, type Task, type StatusKind, type Note, type Todo, type ChatItem } from './types'
 
 type Handler = (data: any) => void
 const listeners = new Map<string, Set<Handler>>()
@@ -50,7 +50,7 @@ let others: Todo[] = [{ id: 'o1', text: 'Update the Slack profile picture', done
 
 const settings: Settings = {
   config: {
-    appearance: { theme: 'dark', uiFont: 'Geist', uiFontSize: 13, termFont: 'Geist Mono', termFontSize: 12.5 },
+    appearance: { theme: 'dark', uiFont: 'Geist', uiFontSize: 13, termFont: 'Geist Mono', termFontSize: 12.5, sessionView: 'terminal' },
     zedCommand: 'zed', claudeCommand: 'claude', maxLiveSessions: 6, notifications: true, maxTabs: 5, branchPrefix: 'ar-', issuesRepo: '',
     rules: 'Never edit generated files under gen/.\nRun the tests you touched before writing the artifact.', projects,
   },
@@ -274,6 +274,38 @@ function prevSha(t: MockTask, key: string) {
 
 const C = { reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m', cyan: '\x1b[36m', grey: '\x1b[90m', addBg: '\x1b[42;30m', delBg: '\x1b[41;30m' }
 
+// The chat view's conversation for a mock step, like mockTerminal's.
+const chatSent: Record<string, ChatItem[]> = {}
+export function mockChat(stepId: string): ChatItem[] {
+  const [tid, key] = [stepId.slice(0, stepId.lastIndexOf('/')), stepId.slice(stepId.lastIndexOf('/') + 1)]
+  const t = find(tid), s = t.steps.find((x) => x.key === key)!
+  const fx = t.fx, p = proj(t.project), run = `~/.herd/runs/${p.name}/${t.slug}`
+  const files = fx.files ?? ['README.md'], test = fx.test ?? 'make test'
+  const it = (kind: ChatItem['kind'], o: Partial<ChatItem> = {}): ChatItem => ({ kind, id: '', text: '', tool: '', input: null, diff: '', isError: false, ...o })
+  let n = 0
+  const tool = (name: string, input: Record<string, unknown>, result?: string, diff = '', isError = false) => {
+    const id = `${stepId}#${n++}`
+    return result === undefined ? [it('tool', { id, tool: name, input })] : [it('tool', { id, tool: name, input }), it('result', { id, text: result, diff, isError })]
+  }
+  const cmd = s.agent === 'impl' ? 'implement' : s.agent
+  const out: ChatItem[] = [it('command', { tool: `/herd:${cmd}`, text: `${t.issue || '--local'}${s.guide ? ' -- ' + s.guide : ''}` })]
+  out.push(it('text', { text: `Reading the run files first: \`TASK.md\`, the newest plan${s.n > 1 ? ' and the last review' : ''}.` }))
+  out.push(...tool('Read', { file_path: `${run}/PLAN-1.md` }, '---\nstatus: done\n---\n\n**TLDR**: …'))
+  if (s.agent === 'plan') {
+    out.push(...tool('Grep', { pattern: fx.grep ?? t.title.split(' ')[0], path: '.' }, files.join('\n')))
+    files.slice(0, 2).forEach((f) => out.push(...tool('Read', { file_path: f }, '…')))
+  } else {
+    const diff = '@@ -40,6 +40,8 @@\n' + (fx.diff ?? [['+', 'return withRetry(ctx, budget, send)']]).map(([k, l]) => k + l).join('\n') + '\n'
+    out.push(it('thinking', { text: 'The retry budget lives in the config; the plan wants it per region, so the call site reads it from there.' }))
+    out.push(...tool('Edit', { file_path: files[0], old_string: '…', new_string: '…' }, `The file ${files[0]} has been updated.`, diff))
+    if (s.state === 'approval') out.push(...tool('Bash', { command: test, description: 'Run the tests' }))
+    else out.push(...tool('Bash', { command: test, description: 'Run the tests' }, 'ok   ./internal/unlock   1.84s\nok   ./internal/config   0.41s'))
+  }
+  if (s.state === 'running') out.push(it('text', { text: 'Writing the artifact now.' }))
+  else if (s.state !== 'approval') out.push(it('text', { text: `Done. The artifact is written in \`${run}\`:\n\n- the change keeps the diff small\n- tests pass (\`${test}\`)\n\nNext: start the next step from the left panel.` }))
+  return [...out, ...(chatSent[stepId] ?? [])]
+}
+
 export function mockTerminal(stepId: string): string {
   const [tid, key] = [stepId.slice(0, stepId.lastIndexOf('/')), stepId.slice(stepId.lastIndexOf('/') + 1)]
   const t = find(tid), s = t.steps.find((x) => x.key === key)!
@@ -475,6 +507,10 @@ export const api: Api = {
   RemoveProject: (id) => { const i = projects.findIndex((x) => x.id === id); if (i >= 0) projects.splice(i, 1); emit('settings:changed', settings); return ok(undefined) },
   AddProject: () => Promise.reject('The folder picker needs the desktop app'),
   AddProjectPath: () => Promise.reject('Adding projects needs the desktop app'),
+  SetSessionView: (view) => { settings.config.appearance.sessionView = view as any; emit('settings:changed', settings); return ok(undefined) },
+  StepChat: (step) => ok({ items: mockChat(step), offset: 1, reset: true, title: 'Retry BLE unlock on flaky connections', found: true }),
+  SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false }); return ok(undefined) },
+  InterruptStep: () => ok(undefined),
   SetTheme: (theme) => { settings.config.appearance.theme = theme as any; emit('settings:changed', settings); return ok(undefined) },
   SaveAppearance: (a, z) => { settings.config.appearance = a; settings.config.zedCommand = z; emit('settings:changed', settings); return ok(undefined) },
   CheckPrerequisites: () => ok([
