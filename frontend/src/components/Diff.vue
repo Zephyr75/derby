@@ -279,16 +279,16 @@ tr:hover .add-note {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 6px;
-  width: 6px;
+  left: 0;
+  width: 16px; /* as wide as the + button */
   background: var(--accent);
 }
 .sel-top .gut::before {
-  top: 3px;
+  top: 1px;
   border-radius: 3px 3px 0 0;
 }
 .sel-end .gut::before {
-  bottom: 3px;
+  bottom: 1px;
   border-radius: 0 0 3px 3px;
 }
 .sel-top.sel-end .gut::before {
