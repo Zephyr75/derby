@@ -2,8 +2,8 @@
 // herd's icons, from Lucide (lucide.dev), by the names herd uses.
 import { computed, type Component } from 'vue'
 import {
-  Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, Folder, FolderGit2, GitBranch, GitMerge, GitPullRequestArrow, GripVertical, ListTodo, Maximize2, Menu, Minus,
-  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Square, SquareTerminal, TriangleAlert, Undo2, X,
+  Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, Folder, GitBranch, GitMerge, GitPullRequestArrow, GripVertical, ListTodo, Maximize2, Menu, Minus,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Split, Square, SquareTerminal, TriangleAlert, Undo2, X,
 } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: number }>(), { size: 14, stroke: 2 })
@@ -33,7 +33,7 @@ const icons: Record<string, Component> = {
   check: Check,
   warn: TriangleAlert,
   copy: Copy,
-  worktree: FolderGit2,
+  worktree: Split, // turned to point right, like Zed's worktree icon
   maximize: Maximize2,
   menu: Menu,
   gear: Settings,
@@ -51,10 +51,11 @@ const icons: Record<string, Component> = {
   'panel-right-off': PanelRightOpen,
 }
 const filled = ['play', 'stop'] // solid, like media buttons
+const turned = ['worktree']
 
 const icon = computed(() => icons[props.name])
 </script>
 
 <template>
-  <component :is="icon" v-if="icon" :size="size" :stroke-width="stroke" :fill="filled.includes(name) ? 'currentColor' : 'none'" aria-hidden="true" />
+  <component :is="icon" v-if="icon" :size="size" :stroke-width="stroke" :fill="filled.includes(name) ? 'currentColor' : 'none'" :style="turned.includes(name) ? { transform: 'rotate(90deg)' } : undefined" aria-hidden="true" />
 </template>
