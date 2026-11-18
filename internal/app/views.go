@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"herd/internal/github"
@@ -83,6 +84,7 @@ type TaskView struct {
 	Checks      []github.Check       `json:"checks"`      // CI checks of the open PR, refreshed every minute
 	Labels      []string             `json:"labels"`      // labels of the open PR
 	Sisters     []SisterRef          `json:"sisters"`     // tasks for the other repositories of the same work
+	Part        string               `json:"part"`        // what this task's part of the work does, in a line (see Sisters)
 	Draft       bool                 `json:"draft"`       // the open PR is a draft (herd opens them so)
 	Conflicting bool                 `json:"conflicting"` // the open PR conflicts with its base: GitHub runs no checks
 	Feedback    []github.Feedback    `json:"feedback"`    // review threads (resolved ones too) and reviews of the open PR
@@ -225,8 +227,28 @@ func (a *App) view(t store.Task) (TaskView, error) {
 		v.Next.Sisters = a.sisterOffers(t, v.Steps, agents)
 	}
 	v.Sisters = []SisterRef{}
-	for _, x := range a.sisters(t.ID) {
-		v.Sisters = append(v.Sisters, SisterRef{ID: x.ID, Project: a.projectOf(x).Name})
+	if sis := a.sisters(t.ID); len(sis) > 0 || len(v.Next.Sisters) > 0 {
+		parts, plans, sig := a.parts(t, sis)
+		group := append([]store.Task{t}, sis...)
+		missing := slices.ContainsFunc(v.Next.Sisters, func(o SisterOffer) bool { return parts[strings.ToLower(o.Repo)] == "" }) ||
+			slices.ContainsFunc(group, func(x store.Task) bool { return partOf(parts, a.projectOf(x), "") == "" })
+		if missing { // plans written before "Parts overview"
+			for repo, line := range a.summarised(group, v.Next.Sisters, plans, sig) {
+				if parts[repo] == "" {
+					parts[repo] = line
+				}
+			}
+		}
+		v.Part = partOf(parts, a.projectOf(t), t.Title)
+		for _, x := range sis {
+			p := a.projectOf(x)
+			v.Sisters = append(v.Sisters, SisterRef{ID: x.ID, Project: p.Name, Part: partOf(parts, p, x.Title)})
+		}
+		for i, o := range v.Next.Sisters {
+			if v.Next.Sisters[i].Part = parts[strings.ToLower(o.Repo)]; v.Next.Sisters[i].Part == "" {
+				v.Next.Sisters[i].Part = firstLine(o.Scope)
+			}
+		}
 	}
 	v.Next.Elsewhere = []string{}
 	for _, o := range v.Next.Options {

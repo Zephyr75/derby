@@ -4,7 +4,6 @@ import { api } from '../lib/api'
 import { herd } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
-import { groupOf } from '../lib/sisters'
 import Preview from './Preview.vue'
 import Splitter from './ui/Splitter.vue'
 import { unsuccessful, type Step } from '../lib/types'
@@ -90,10 +89,6 @@ async function archive() {
             <button v-if="herd.canFix(t)" class="act" :title="`Start a ${herd.fixers(t)[0]?.name} step that rebases the branch on origin/${t.baseBranch}`" @click="rebase"><Icon name="rebase" :size="12" />Rebase</button>
           </template>
         </div>
-        <div v-if="t.sisters.length" class="sisters">
-          <span class="muted small">Sister</span>
-          <button v-for="x in t.sisters" :key="x.id" :class="['chip', 'sister', groupOf.get(t.id) ? 'sis-' + groupOf.get(t.id)!.color : '']" title="Go to the sister task: the same work in another repository" @click="herd.pickTask(x.id)">{{ x.project }} →</button>
-        </div>
         <p v-if="t.description" class="desc">{{ t.description }}</p>
       </div>
 
@@ -147,10 +142,6 @@ async function archive() {
 </template>
 
 <style scoped>
-  .chip.sister[class*='sis-'] {
-    color: var(--sis);
-    border-color: color-mix(in srgb, var(--sis) 45%, transparent);
-  }
   .src {
     display: flex;
     align-items: center;
@@ -368,24 +359,6 @@ async function archive() {
     padding: 0 4px;
   }
   .act:hover {
-    background: var(--hover);
-  }
-  .sisters {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px 6px;
-  }
-  .chip {
-    height: 22px;
-    padding: 0 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    font-size: 12px;
-  }
-  .chip:hover {
     background: var(--hover);
   }
   .act.danger {

@@ -169,6 +169,7 @@ export interface Option {
 export interface SisterOffer {
   repo: string
   scope: string
+  part: string // its line in the plan's overview
   project: string
 }
 
@@ -189,7 +190,8 @@ export interface Task {
   slug: string
   issue: string
   issueRepo: string // the repository holding the issue, when not the project's (a sister task)
-  sisters: { id: string; project: string }[] // tasks for the other repositories of the same work
+  sisters: { id: string; project: string; part: string }[] // tasks for the other repositories of the same work, with what each does
+  part: string // what this task's part of the work does, in a line
   title: string
   description: string
   createdAt: string

@@ -463,7 +463,7 @@ func Copilot() Agent {
 // branch, {file}: the file to write.
 const CopilotInstructions = `Explain the changes of PR #{pr} to someone who has not read the code. Read TASK.md and the newest PLAN-n.md in the run directory, then the diff: git diff origin/{base}...HEAD.
 Write {file} in markdown, without front matter:
-- ## TL;DR: the idea behind the change (what was wrong, how it is fixed), as you would tell a colleague. Then ### ELI5.
+- ## TL;DR: the idea behind the change (what was wrong, how it is fixed), as you would tell a colleague.
 - ## How it works: each change in the order the reader needs it, what it does and why, with the files it touches; an everyday analogy for what is hard to picture.
 - a diagram of the flow before and after, when the change alters a flow.
 Write only {file}: never change the code, commit or push.`

@@ -4,6 +4,7 @@ import { herd, resumeCommand } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import Terminal from './Terminal.vue'
 import PRTracker from './PRTracker.vue'
+import SisterOverview from './SisterOverview.vue'
 import Toasts from './Toasts.vue'
 
 const tabs = computed(() =>
@@ -44,12 +45,12 @@ const chip = computed(() => {
       <span class="grow"></span>
     </div>
 
+    <SisterOverview v-if="t && (t.sisters.length || t.next.sisters.length)" :task="t" />
     <PRTracker v-if="step && t && step.external" :task="t" :step="step" />
     <template v-else-if="step && t">
       <div class="toolbar">
         <span v-if="chip" :class="['chip', 'badge', chip.cls]"><span class="dot"></span>{{ chip.text }}</span>
         <span class="muted small">{{ agent?.name ?? step.agent }} agent · {{ model(step.model) }}</span>
-        <span v-if="step.guidance" class="guide" :title="step.guidance">“{{ step.guidance }}”</span>
         <span class="tbs">
           <button v-if="step.live" class="tb" :title="'Stop Claude in herd and copy ' + resumeCommand(step) + ', e.g. to continue in Zed'" @click="herd.stopAndCopy(step)">
             <Icon name="stop" :size="14" />Stop and copy <span class="mono-s">claude --resume {{ step.session.slice(0, 8) }}</span>
@@ -199,14 +200,6 @@ section {
   align-items: center;
   gap: 6px;
   margin-left: auto;
-}
-.guide {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 .tb {
   flex: none;

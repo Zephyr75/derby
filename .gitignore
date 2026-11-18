@@ -46,3 +46,6 @@ go.work.sum
 /.design-sync/learnings/
 /.design-sync/node_modules
 /.design-sync/theme/herd.css
+
+# macOS
+.DS_Store

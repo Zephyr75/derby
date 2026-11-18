@@ -29,6 +29,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "hold" {
 		os.Exit(holder.Main(os.Args[2:]))
 	}
+	useLoginShellPath()
 	svc := app.New(app.DefaultHome())
 	if exe, err := os.Executable(); err == nil {
 		svc.HoldCmd = []string{exe, "hold"}
@@ -43,14 +44,15 @@ func main() {
 		MinHeight:        600,
 		BackgroundColour: &options.RGBA{R: 0x18, G: 0x19, B: 0x1b, A: 0xff},
 		// herd's top bar is the titlebar: it drags the window and holds the
-		// window controls. macOS keeps its traffic lights (TitleBarHiddenInset).
+		// window controls. macOS keeps its traffic lights (TitleBarHidden:
+		// the inset variant places them for a taller toolbar, below the bar's centre).
 		Frameless:   runtime.GOOS != "darwin",
 		AssetServer: &assetserver.Options{Assets: assets, Handler: svc.RunFiles()}, // RunFiles: the agents' diagrams
 		OnStartup:   shell.startup,
 		OnShutdown:  shell.shutdown,
 		Bind:        []interface{}{svc},
 		Mac: &mac.Options{
-			TitleBar:             mac.TitleBarHiddenInset(),
+			TitleBar:             mac.TitleBarHidden(),
 			WebviewIsTransparent: false,
 			About:                &mac.AboutInfo{Title: "herd", Message: "Claude Code agents, one worktree per task."},
 		},

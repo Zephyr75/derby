@@ -1305,6 +1305,17 @@ func TestPlanRepos(t *testing.T) {
 	}
 }
 
+func TestPartsOverview(t *testing.T) {
+	body := "# Goal\nx\n\n## Parts overview\n\n- core: adds the flag; needs nothing\n- **okai-tcp-server** — echoes it, needs core's flag\n\n---\n\n## Sister tasks\n\n### okai-tcp-server\nEcho it.\n"
+	got := partsOverview(body)
+	if len(got) != 2 || got["core"] != "adds the flag; needs nothing" || got["okai-tcp-server"] != "echoes it, needs core's flag" {
+		t.Fatalf("parts overview: %v", got)
+	}
+	if partsOverview("# Goal\n- a: b\n") != nil {
+		t.Fatal("parts without the section")
+	}
+}
+
 func TestSisterTask(t *testing.T) {
 	t.Setenv("FAKE_SISTER", "okai-tcp-server")
 	a, repo := newTestApp(t)
