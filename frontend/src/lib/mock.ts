@@ -351,6 +351,7 @@ export const api: Api = {
   MyIssues: (p) => (projects.find((x) => x.id === p)?.repo ? ok([
     { number: 1190, title: ISSUE_TITLES['1190'], priority: 'Urgent' }, { number: 4356, title: ISSUE_TITLES['4356'], priority: 'High' }, { number: 4388, title: 'Export ride receipts as PDF', priority: '' },
   ]) : Promise.reject('the project has no GitHub repo')),
+  IssuePreview: (_p, issue) => (ISSUE_TITLES[issue] ? ok({ path: '', file: 'ISSUE.md', exists: true, front: [{ k: 'author', v: 'octocat' }, { k: 'created', v: '2026-11-03' }], body: `# ${ISSUE_TITLES[issue]}\n\nThe issue's description.\n\n## Comments\n\n### octocat · 2026-11-04 10:12\n\nA comment.\n` }) : Promise.reject('issue not found')),
   IssueTitle: (_p, issue) => (ISSUE_TITLES[issue] ? ok(ISSUE_TITLES[issue]) : Promise.reject('issue not found')),
   CreateTask: (project, issue, description, branch, runPlan) => {
     if (!issue && !description) return Promise.reject('add a GitHub issue number, a description, or both')

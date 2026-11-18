@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // herd's dropdown: a dashed chip that opens a small menu. The chip shows the
 // picked item, or the slot's content (e.g. "+ Add").
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Icon from './Icon.vue'
 
 export interface DropItem {
@@ -9,6 +9,8 @@ export interface DropItem {
   label: string
   disabled?: boolean
   title?: string
+  tag?: string // a short coloured label before it, e.g. the issue's priority
+  tagClass?: string // its colour: a status class (s-failed, s-waiting…)
 }
 
 const props = withDefaults(defineProps<{ items: DropItem[]; value?: string; placeholder?: string; wide?: boolean; strong?: boolean; disabled?: boolean }>(), {
@@ -16,6 +18,7 @@ const props = withDefaults(defineProps<{ items: DropItem[]; value?: string; plac
   placeholder: '',
 })
 const emit = defineEmits<{ pick: [value: string] }>()
+const picked = computed(() => props.items.find((i) => i.value === props.value))
 const open = ref(false)
 const root = ref<HTMLElement>()
 
@@ -35,13 +38,14 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
   <span ref="root" class="dd" :class="{ wide }" @keydown.esc.stop="open = false">
     <button type="button" class="chip" :class="{ on: open, strong }" :disabled="disabled" aria-haspopup="menu" :aria-expanded="open" @click="open = !open">
       <slot>
-        <span class="label">{{ items.find((i) => i.value === props.value)?.label ?? placeholder }}</span>
+        <span v-if="picked?.tag" :class="['tag', picked.tagClass]">{{ picked.tag }}</span>
+        <span class="label">{{ picked?.label ?? placeholder }}</span>
         <Icon name="chevron" :size="12" />
       </slot>
     </button>
     <span v-if="open" class="menu popup" role="menu">
       <button v-for="it in items" :key="it.value" type="button" class="item" :class="{ cur: it.value === value }" :disabled="it.disabled" :title="it.title" role="menuitem" @click="choose(it)">
-        {{ it.label }}
+        <span v-if="it.tag" :class="['tag', it.tagClass]">{{ it.tag }}</span>{{ it.label }}
       </button>
     </span>
   </span>
@@ -115,6 +119,19 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .tag {
+    flex: none;
+    display: inline-block;
+    margin-right: 7px;
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 17px;
+  }
+  .item:disabled .tag {
+    opacity: 0.6;
   }
   .item:hover:not(:disabled) {
     background: var(--hover);

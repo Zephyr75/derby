@@ -114,6 +114,12 @@ type IssueDoc struct {
 	} `json:"comments"`
 }
 
+// Token is the gh user's token, for GitHub URLs gh cannot fetch itself
+// (the files attached to issues of private repositories).
+func (g GH) Token(ctx context.Context) (string, error) {
+	return g.output(ctx, "auth", "token")
+}
+
 // Issue returns an issue with its comments.
 func (g GH) Issue(ctx context.Context, repo, issue string) (IssueDoc, error) {
 	out, err := g.run(ctx, "", "issue", "view", issue, "--repo", repo, "--json", "number,title,body,state,url,createdAt,author,labels,comments")

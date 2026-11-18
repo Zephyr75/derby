@@ -494,6 +494,7 @@ func (a *App) collectChecks(t store.Task) {
 	}
 	a.checksMu.Lock()
 	old, had := a.checks[t.ID]
+	cs = keepRerun(t.ID, old, cs, a.missing, time.Now())
 	a.checks[t.ID] = cs
 	a.checksMu.Unlock()
 	if !had || !slices.Equal(old, cs) {
@@ -501,6 +502,41 @@ func (a *App) collectChecks(t store.Task) {
 	}
 	a.settleCopilotStep(t) // a review waiting for CI ends when CI does
 	a.recheckCopilot(t)
+}
+
+// rerunGap is how long a failed check missing from its PR still counts as
+// running. Rerunning a job takes it off the PR a moment before its new run
+// appears: seen in that gap, CI looked passed and a failed Copilot step
+// passed (task 9848: the new job came a second after herd refreshed).
+const rerunGap = 2 * time.Minute
+
+// keepRerun returns cs plus, as pending, each check old had failed (or kept
+// pending here) that cs lacks, for rerunGap after it went missing. missing
+// holds when each went missing, by task id and check.
+func keepRerun(taskID string, old, cs []github.Check, missing map[string]time.Time, now time.Time) []github.Check {
+	key := func(c github.Check) string { return taskID + "\x00" + c.Workflow + "\x00" + c.Name }
+	here := map[string]bool{}
+	for _, c := range cs {
+		here[key(c)] = true
+		delete(missing, key(c))
+	}
+	for _, c := range old {
+		k := key(c)
+		since, kept := missing[k]
+		if here[k] || (!kept && c.Bucket != "fail" && c.Bucket != "cancel") {
+			continue
+		}
+		if !kept {
+			since, missing[k] = now, now
+		}
+		if now.Sub(since) < rerunGap {
+			c.Bucket = "pending"
+			cs = append(cs, c)
+		} else {
+			delete(missing, k)
+		}
+	}
+	return cs
 }
 
 // readyLabel marks a PR ready for a human review.

@@ -87,6 +87,7 @@ type App struct {
 
 	checksMu sync.Mutex
 	checks   map[string][]github.Check    // CI checks of each open PR, by task id
+	missing  map[string]time.Time         // when each failed check went missing from its PR, by task id and check (see keepRerun)
 	labels   map[string][]string          // labels of each open PR, by task id
 	drafts   map[string]bool              // whether each open PR is a draft, by task id
 	conflict map[string]bool              // whether each open PR conflicts with its base, by task id
@@ -98,7 +99,7 @@ type App struct {
 
 // New creates the service; call Start before use.
 func New(home string) *App {
-	return &App{Home: home, checks: map[string][]github.Check{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}}
+	return &App{Home: home, checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}}
 }
 
 // DefaultHome returns ~/.herd, or $HERD_HOME when set.

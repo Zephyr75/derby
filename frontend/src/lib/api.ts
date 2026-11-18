@@ -10,6 +10,7 @@ export interface Api {
   ListTasks(): Promise<Task[]>
   IssueTitle(project: string, issue: string): Promise<string>
   MyIssues(project: string): Promise<Issue[]>
+  IssuePreview(project: string, issue: string): Promise<Artifact>
   CreateSister(task: string, repo: string): Promise<Task>
   CreateTask(project: string, issue: string, description: string, branch: string, runPlan: boolean, files: string[]): Promise<Task>
   StartStep(task: string, agent: string, guidance: string, n: number): Promise<Step>

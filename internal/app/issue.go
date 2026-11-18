@@ -6,11 +6,17 @@ package app
 // and with Refresh issue.
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"herd/internal/artifacts"
 	"herd/internal/github"
 	"herd/internal/settings"
 	"herd/internal/store"
@@ -75,4 +81,95 @@ func (a *App) RefreshIssue(taskID string) error {
 	}
 	a.emitTask(t.ID)
 	return nil
+}
+
+// IssuePreview is an issue as New task shows it before there is a task:
+// ISSUE.md's text, with its images loading through herd (see previewImages).
+func (a *App) IssuePreview(projectID, issue string) (artifacts.Artifact, error) {
+	p, ok := a.settings.Project(projectID)
+	if !ok {
+		return artifacts.Artifact{}, fmt.Errorf("unknown project %q", projectID)
+	}
+	repo := a.settings.Config().IssuesOf(p)
+	if repo == "" {
+		return artifacts.Artifact{}, errors.New("the project has no GitHub repo")
+	}
+	d, err := a.gh.Issue(a.ctx, repo, issue)
+	if err != nil {
+		return artifacts.Artifact{}, err
+	}
+	art := artifacts.Artifact{File: issueFile, Exists: true}
+	art.Front, art.Body = artifacts.Parse(issueMarkdown(d, repo))
+	art.Body = previewImages(art.Body)
+	return art, nil
+}
+
+var (
+	imgTag     = regexp.MustCompile(`(?is)<img\b[^>]*>`)
+	imgAttr    = regexp.MustCompile(`(?is)\b(src|alt)\s*=\s*"([^"]*)"`)
+	attachment = regexp.MustCompile(`(!\[[^\]]*\]\()(https://github\.com/user-attachments/[^)\s]+)\)`)
+)
+
+// previewImages makes an issue's images show in herd: GitHub writes them as
+// <img> tags, which herd's markdown leaves out, and a private repository's
+// attachments only load signed in, so herd fetches them (ghFilePath). Other
+// attachments stay links, opened in the browser where the user is signed in.
+func previewImages(md string) string {
+	md = imgTag.ReplaceAllStringFunc(md, func(tag string) string {
+		src, alt := "", "image"
+		for _, m := range imgAttr.FindAllStringSubmatch(tag, -1) {
+			if strings.EqualFold(m[1], "src") {
+				src = m[2]
+			} else if m[2] != "" {
+				alt = m[2]
+			}
+		}
+		if src == "" {
+			return tag
+		}
+		return fmt.Sprintf("![%s](%s)", alt, src)
+	})
+	return attachment.ReplaceAllStringFunc(md, func(m string) string {
+		parts := attachment.FindStringSubmatch(m)
+		return parts[1] + ghFilePath + "?u=" + url.QueryEscape(parts[2]) + ")"
+	})
+}
+
+// ghFilePath serves a file attached to a GitHub issue (?u=<its URL>),
+// fetched with the gh user's token.
+const ghFilePath = "/gh-file"
+
+func (a *App) serveGHFile(w http.ResponseWriter, r *http.Request) {
+	u := r.URL.Query().Get("u")
+	if r.Method != http.MethodGet || !strings.HasPrefix(u, "https://github.com/user-attachments/") {
+		http.NotFound(w, r)
+		return
+	}
+	token, err := a.gh.Token(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, u, nil)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	// Go drops the header on the redirect to the file's storage host.
+	req.Header.Set("Authorization", "token "+strings.TrimSpace(token))
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		http.Error(w, res.Status, res.StatusCode)
+		return
+	}
+	w.Header().Set("Content-Type", res.Header.Get("Content-Type"))
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Header().Set("Content-Security-Policy", "sandbox") // shown as an image, never run as a page
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = io.Copy(w, res.Body)
 }

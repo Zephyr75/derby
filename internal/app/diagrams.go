@@ -125,6 +125,10 @@ const diagramCSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'u
 // RunFiles serves the diagrams to the webview, for Wails' asset server.
 func (a *App) RunFiles() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == ghFilePath {
+			a.serveGHFile(w, r)
+			return
+		}
 		rest, ok := strings.CutPrefix(r.URL.Path, diagramPrefix)
 		i := strings.LastIndex(rest, "/")
 		if !ok || i < 0 || r.Method != http.MethodGet {

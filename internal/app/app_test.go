@@ -1796,3 +1796,50 @@ func TestAgentProjects(t *testing.T) {
 		t.Fatalf("discuss started in core: %v", err)
 	}
 }
+
+func TestRerunCheckStaysRunning(t *testing.T) {
+	failed := github.Check{Workflow: "Regtests", Name: "Regtests 1/4", Bucket: "fail", Link: "old"}
+	passed := github.Check{Workflow: "CI", Name: "pytest", Bucket: "pass"}
+	missing := map[string]time.Time{}
+	now := time.Now()
+	// The rerun took the failed job off the PR; its new run is not there yet.
+	cs := keepRerun("t", []github.Check{failed, passed}, []github.Check{passed}, missing, now)
+	if ciSummary(cs) != "CI running" {
+		t.Fatalf("in the rerun gap: %s %+v", ciSummary(cs), cs)
+	}
+	// Still missing a minute later: still running, not passed.
+	if cs = keepRerun("t", cs, []github.Check{passed}, missing, now.Add(time.Minute)); ciSummary(cs) != "CI running" {
+		t.Fatalf("a minute later: %s", ciSummary(cs))
+	}
+	// Never back (the workflow was removed): it stops counting.
+	if cs = keepRerun("t", cs, []github.Check{passed}, missing, now.Add(rerunGap+time.Second)); ciSummary(cs) != "CI passed" || len(missing) != 0 {
+		t.Fatalf("after the gap: %s %v", ciSummary(cs), missing)
+	}
+	// The new run appears: GitHub's state, and nothing kept.
+	rerun := github.Check{Workflow: "Regtests", Name: "Regtests 1/4", Bucket: "pending", Link: "new"}
+	cs = keepRerun("t", []github.Check{failed, passed}, []github.Check{passed}, missing, now)
+	if cs = keepRerun("t", cs, []github.Check{passed, rerun}, missing, now.Add(time.Second)); len(cs) != 2 || cs[1].Link != "new" || len(missing) != 0 {
+		t.Fatalf("with the new run: %+v %v", cs, missing)
+	}
+	// A passing check that goes away is not kept.
+	if cs = keepRerun("t", []github.Check{passed}, nil, missing, now); len(cs) != 0 {
+		t.Fatalf("passing check kept: %+v", cs)
+	}
+}
+
+func TestPreviewImages(t *testing.T) {
+	in := "Before\n<img width=\"1329\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/abc-1\" />\n" +
+		"![shot](https://github.com/user-attachments/assets/def-2)\n![ext](https://example.com/a.png)\n" +
+		"[log.txt](https://github.com/user-attachments/files/3/log.txt)"
+	out := previewImages(in)
+	for _, want := range []string{
+		"![Image](/gh-file?u=https%3A%2F%2Fgithub.com%2Fuser-attachments%2Fassets%2Fabc-1)",
+		"![shot](/gh-file?u=https%3A%2F%2Fgithub.com%2Fuser-attachments%2Fassets%2Fdef-2)",
+		"![ext](https://example.com/a.png)",
+		"[log.txt](https://github.com/user-attachments/files/3/log.txt)", // a link: opened in the browser
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in:\n%s", want, out)
+		}
+	}
+}

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-// New task (⌘N): a project, then an issue, a description, or both.
+// New task (⌘N): a project, then an issue, a description, or both. A picked
+// issue shows in full (description, comments, images) before the task starts.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errorText } from '../../lib/api'
 import { herd } from '../../lib/state'
 import { isMac } from '../../lib/keymap'
 import Icon from '../ui/Icon.vue'
 import Dropdown from '../ui/Dropdown.vue'
-import type { Issue } from '../../lib/types'
+import ArtifactView from '../ArtifactView.vue'
+import type { Artifact, Issue } from '../../lib/types'
 
 // herd.previewNew pre-fills the preview's artboards 4 to 6 in the browser mock.
 const presets: Record<string, { p: string; i: string; d: string }> = {
@@ -29,6 +31,29 @@ onMounted(() => {
   issueInput.value?.focus()
   if (pre?.i) void fetchTitle()
 })
+
+// The picked issue in full, as Claude will read it (ISSUE.md).
+const preview = ref<Artifact | null>(null)
+const previewError = ref('')
+const previewOpen = ref(true)
+let pseq = 0
+async function loadPreview() {
+  const want = ++pseq
+  preview.value = null
+  previewError.value = ''
+  if (!nIssue.value || !issuesRepo.value) return
+  try {
+    const a = await api.IssuePreview(project.value, nIssue.value)
+    if (want === pseq) preview.value = a
+  } catch (e) {
+    if (want === pseq) previewError.value = errorText(e)
+  }
+}
+const front = (k: string) => preview.value?.front?.find((f) => f.k === k)?.v ?? ''
+const comments = computed(() => (preview.value?.body.split('\n## Comments\n')[1]?.match(/^### /gm) ?? []).length)
+const previewMeta = computed(() =>
+  [front('author') && 'by ' + front('author'), front('created'), front('labels'), comments.value ? `${comments.value} comment${comments.value > 1 ? 's' : ''}` : 'no comments'].filter(Boolean).join(' · '),
+)
 
 const p = computed(() => herd.project(project.value))
 const nIssue = computed(() => issue.value.trim())
@@ -73,10 +98,14 @@ function onIssue(e: Event) {
   el.value = issue.value
   issueTitle.value = ''
   titleError.value = ''
+  pseq++
+  preview.value = null
+  previewError.value = ''
 }
 
 async function fetchTitle() {
   if (!nIssue.value || !issuesRepo.value) return
+  if (!preview.value) void loadPreview()
   const want = nIssue.value
   try {
     const t = await api.IssueTitle(project.value, want)
@@ -108,11 +137,15 @@ watch(
   },
   { immediate: true },
 )
+// The issue's Priority field, coloured with the status colours of the theme.
+const priorityClass: Record<string, string> = { urgent: 's-failed', high: 's-waiting', medium: 's-running', low: 's-idle' }
 const hasTask = (n: number) => herd.tasks.some((t) => t.project === project.value && t.issue === String(n))
 const mineItems = computed(() =>
   (mine.value ?? []).map((is) => ({
     value: String(is.number),
-    label: `${is.priority ? is.priority + ' · ' : ''}#${is.number} ${is.title}${hasTask(is.number) ? ' (has a task)' : ''}`,
+    label: `#${is.number} ${is.title}${hasTask(is.number) ? ' (has a task)' : ''}`,
+    tag: is.priority,
+    tagClass: priorityClass[is.priority.toLowerCase()] ?? 's-idle',
     disabled: hasTask(is.number),
   })),
 )
@@ -125,6 +158,7 @@ function pickMine(v: string) {
   issue.value = String(is.number)
   issueTitle.value = is.title
   titleError.value = ''
+  void loadPreview()
 }
 
 // Files attached to the task: herd copies them to the run folder and TASK.md lists them.
@@ -145,6 +179,7 @@ async function addProject() {
 function pickProject(id: string) {
   project.value = id
   issueTitle.value = ''
+  preview.value = null
   void fetchTitle()
 }
 
@@ -201,6 +236,17 @@ function key(e: KeyboardEvent) {
           <span v-if="issueTitle" class="fetched">“{{ issueTitle }}”</span>
           <span v-if="titleError" class="err">{{ titleError }}</span>
         </div>
+        <div v-if="nIssue && (preview || previewError || issueTitle)" class="issue-view">
+          <button class="iv-head" :aria-expanded="previewOpen" @click="previewOpen = !previewOpen">
+            <Icon :name="previewOpen ? 'chevron' : 'chevron-right'" :size="13" />
+            <span class="iv-title">Issue #{{ nIssue }}</span>
+            <span class="muted small iv-meta">{{ preview ? previewMeta : previewError ? '' : 'Loading…' }}</span>
+          </button>
+          <div v-if="previewOpen" class="iv-body">
+            <p v-if="previewError" class="err">Could not load the issue: {{ previewError }}</p>
+            <ArtifactView v-else-if="preview" :art="preview" task="" :zoom="1" />
+          </div>
+        </div>
       </div>
       <div class="group">
         <label for="nfdesc" class="lbl">Description <span class="faint">optional</span></label>
@@ -253,13 +299,15 @@ function key(e: KeyboardEvent) {
     top: 64px;
     left: 50%;
     transform: translateX(-50%);
-    width: 580px;
+    width: 640px;
     max-width: calc(100% - 32px);
+    max-height: calc(100% - 96px);
     display: flex;
     flex-direction: column;
     outline: none;
   }
   .head {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -278,6 +326,52 @@ function key(e: KeyboardEvent) {
     flex-direction: column;
     gap: 14px;
     padding: 14px;
+    min-height: 0;
+    overflow: auto;
+  }
+  .issue-view {
+    margin-top: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  .iv-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    text-align: left;
+  }
+  .iv-head:hover {
+    color: var(--text);
+  }
+  .iv-title {
+    flex: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .iv-meta {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .iv-body {
+    max-height: 320px;
+    overflow: auto;
+    padding: 4px 14px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .iv-body :deep(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
   }
   .group {
     display: flex;
@@ -420,6 +514,7 @@ function key(e: KeyboardEvent) {
     color: var(--muted);
   }
   .foot {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 8px;
