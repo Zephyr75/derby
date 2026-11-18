@@ -52,9 +52,14 @@ func DefaultPrompts() []Prompt {
 - Open the artifact, right after its front matter, with **TLDR**: two or three sentences on what and why. When the change or the mechanism is not obvious, add **ELI5**: a short paragraph with an everyday metaphor, without jargon, file or function names. Write these two with the humanizer skill, and nothing else with it.
 - Verify every claim before you write it: in the code, by running it, or in logs or docs. Leave a claim unverified only when checking it is impossible (e.g. it needs production access or the user's knowledge), not because it takes effort; then mark it with your confidence and why it cannot be checked, in the artifact and in every reply, e.g. **Unverified (medium confidence, needs prod logs):** the retry also covers timeouts.`},
 		{ID: PromptCode, Name: "Code changes", Where: "Every agent's system prompt", Default: `# Code changes
+- Before you choose a fix, read the code it touches and trace the real flow.
+- Fix the root cause, not the symptom: when a shared function is wrong, fix it once there and check every caller.
+- Write only what the task needs. Before adding code, check in order: does it need to exist, does the codebase have it, does the standard library or platform, does an installed dependency; only then write the minimum that works.
 - Keep the diff small and in the repo's style; no new dependencies without asking.
+- No abstractions nobody asked for. Prefer deleting to adding, boring to clever, fewer files.
 - Never add a copy of existing code: reuse it, and merge the repeated code in what you touch.
 - Give new code a clean place in the structure (the right file, function and name) instead of bolting it on.
+- Never cut corners on validation at trust boundaries, error handling that prevents data loss, security or accessibility.
 - After changing code, run the existing tests that cover it and the build or type-check. Leave writing tests to the Test step, unless the user asks.
 - When there are several reasonable options, lay them out with your recommendation and let the user choose.
 - Problems you find outside the task (bugs, debt, confusing code): don't fix them; list them under "Problems found" in your artifact. If some are bugs worth fixing, ask before you finish: write the artifact without its status line, sum the bugs up in a few lines here, ask the user which to fix, and stop. Fix the ones they pick (maybe none), update the artifact, then finish. If you never edit code, only list them.`},
