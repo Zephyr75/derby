@@ -50,6 +50,7 @@ Fail when the task cannot be done as described.`,
 - after Plan: build the plan's New flow and Files.
 - after a failed Review: fix each finding of that REVIEW-n.md that holds.
 - after a failed Test: its failing tests show bugs; fix the code, never the tests (TEST-n.md explains each).
+- after another failed check (e.g. a regression run): fix the failures its artifact puts on this branch, not the ones it puts on its tools.
 - after Copilot, or when the task has a pull request: the comments and failing CI checks in the newest FEEDBACK-n.md (gh pr checks and gh run view --log-failed give the logs).
 - after Discuss: what the newest DISCUSS-n.md left to do.
 Once a first IMPLEMENT exists, the plan is built: read the earlier IMPLEMENT files to see what was done, and change only what the feedback needs.
@@ -63,7 +64,7 @@ Fail when you could not implement it (say what blocks).`,
 		{
 			ID: "discuss", Name: "Discuss", Command: "/herd:discuss {task} -- {guidance}", Model: "opus", Trigger: "manual",
 			Writes: "DISCUSS-{n}.md", ShowDiff: true, Sisters: true, Revert: true, Next: []string{"review", "impl"}, OnFail: []string{"discuss", "impl"},
-			Instructions: `Read the newest PLAN, the newest REVIEW, TEST, FEEDBACK and COPILOT files, and the branch's changes (git diff origin/{base}...HEAD, git status).
+			Instructions: `Read the newest PLAN, the newest file of each later step (REVIEW, TEST, FEEDBACK, COPILOT…), and the branch's changes (git diff origin/{base}...HEAD, git status).
 This step is a conversation led by the user: they may want to understand something, explore an idea or change code. Do not start working on your own: say in two or three lines where the task stands (the step this one follows and what it found, or the guidance when there is some), then wait for their questions.
 Change code only when asked, one change at a time, explaining each briefly.
 Write DISCUSS-{n}.md only when the user says the discussion is over: what you discussed and concluded, or what they asked for. If you changed code, add What changed (with the plan's option taken, if any) and Files, for Review.
