@@ -56,7 +56,7 @@ export interface Appearance {
 
 /** One entry of a step's conversation, read from Claude Code's transcript. */
 export interface ChatItem {
-  kind: 'user' | 'command' | 'text' | 'thinking' | 'tool' | 'result' | 'note' | 'error'
+  kind: 'user' | 'command' | 'bash' | 'bashout' | 'text' | 'thinking' | 'tool' | 'result' | 'note' | 'error'
   id: string // the tool call a tool or result item belongs to
   text: string // the message; a result's output; a command's arguments
   tool: string // a tool call's tool, a command's name
@@ -74,6 +74,13 @@ export interface Chat {
   found: boolean
   status: SessionStatus // from the session's statusline (live), else its transcript
   live: boolean
+  skills: Skill[] | null // the session's skills and plugin commands, when the transcript read listed them
+}
+
+/** A skill or command a session offers after "/". */
+export interface Skill {
+  name: string
+  description: string
 }
 
 /** A session's model, effort and context window, and the plan's usage. */

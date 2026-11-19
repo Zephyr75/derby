@@ -8,8 +8,8 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { api, errorText } from '../lib/api'
 import { herd, resumeCommand } from '../lib/state'
 import { render, renderInline } from '../lib/markdown'
-import { entries, toolView, diffStat, questions, todos, response, rawInput, type ToolCall } from '../lib/chat'
-import type { ChatItem, SessionStatus, Step } from '../lib/types'
+import { entries, toolView, diffStat, questions, todos, response, rawInput, commands, terminalCommand, type ToolCall } from '../lib/chat'
+import type { ChatItem, SessionStatus, Skill, Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
 import Diff from './Diff.vue'
 
@@ -19,6 +19,7 @@ const task = computed(() => herd.task(props.step.taskId))
 // ---- the conversation, followed while the session runs ----
 const items = ref<ChatItem[]>([])
 const status = ref<SessionStatus | null>(null)
+const skills = ref<Skill[]>([]) // the session's, for "/" (its transcript lists them once)
 const found = ref(true)
 const loaded = ref(false)
 let offset = 0
@@ -37,6 +38,7 @@ async function load(id: string, mine: number) {
     offset = c.offset
     found.value = c.found
     if (c.title) herd.chatTitles[id] = c.title
+    if (c.skills?.length) skills.value = c.skills
     // The statusline's report wins; from the transcript, keep what was read before.
     const st = c.status
     status.value = c.live || !status.value ? st : { ...st, model: st.model || status.value.model, effort: st.effort || status.value.effort, contextUsed: st.contextUsed || status.value.contextUsed }
@@ -117,6 +119,11 @@ async function send() {
   try {
     if (!(await herd.restoreFor(props.step))) return
     await api.SendToStep(props.step.id, text)
+    // Commands like /context or /usage show in a panel of Claude Code's own: there.
+    if (terminalCommand(text)) {
+      herd.toast(text.split(/\s/)[0] + ' opens in the terminal', 'Switch back with the chat button in the toolbar')
+      void herd.setSessionView('terminal')
+    }
     draft.value = ''
     scrollDown()
   } catch (e) {
@@ -128,15 +135,91 @@ async function send() {
   }
 }
 function key(e: KeyboardEvent) {
+  if (sugs.value.length && !e.isComposing) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const n = sugs.value.length
+      sugIx.value = (sugIx.value + (e.key === 'ArrowDown' ? 1 : n - 1)) % n
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      accept(sugs.value[sugIx.value])
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      dismissed.value = draft.value.slice(0, caret.value)
+      return
+    }
+  }
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault()
     void send()
   }
 }
+
+// ---- "/" for commands, "@" for files, "!" for bash mode, as Claude Code's prompt ----
+const caret = ref(0)
+const sync = () => (caret.value = box.value?.selectionStart ?? draft.value.length)
+// The word being completed: "/" at the start of the message, "@" after a space.
+const trigger = computed(() => {
+  const before = draft.value.slice(0, caret.value)
+  if (/^\/[^\s]*$/.test(before)) return { kind: 'command' as const, start: 0, query: before.slice(1) }
+  const m = /(^|\s)@("?)([^\s"]*)$/.exec(before)
+  if (m) return { kind: 'file' as const, start: before.length - m[3].length - m[2].length - 1, query: m[3] }
+  return null
+})
+const dismissed = ref('') // Esc closes the list until the word changes
+const files = ref<string[]>([])
+let fseq = 0
+let ftimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => (trigger.value?.kind === 'file' ? trigger.value.query : null),
+  (q) => {
+    clearTimeout(ftimer)
+    if (q === null) return
+    const mine = ++fseq
+    ftimer = setTimeout(() => {
+      api.StepFiles(props.step.id, q).then(
+        (fs) => mine === fseq && (files.value = fs),
+        () => mine === fseq && (files.value = []),
+      )
+    }, 120)
+  },
+)
+interface Sug {
+  label: string
+  detail: string
+  insert: string // replaces the word, trigger included
+  more: boolean // a folder: the list stays open to go into it
+}
+const sugs = computed<Sug[]>(() => {
+  const t = trigger.value
+  if (!t || blocked.value || dismissed.value === draft.value.slice(0, caret.value)) return []
+  if (t.kind === 'command') return commands(skills.value, t.query).map((c) => ({ label: '/' + c.name, detail: c.description + (c.terminal ? ' (opens in the terminal)' : ''), insert: '/' + c.name + ' ', more: false }))
+  return files.value.map((f) => ({ label: f, detail: f.endsWith('/') ? 'folder' : '', insert: (/\s/.test(f) ? `@"${f}"` : '@' + f) + (f.endsWith('/') ? '' : ' '), more: f.endsWith('/') }))
+})
+const sugIx = ref(0)
+watch(sugs, () => (sugIx.value = 0))
+function accept(s: Sug | undefined) {
+  const t = trigger.value
+  if (!s || !t) return
+  const end = caret.value
+  draft.value = draft.value.slice(0, t.start) + s.insert + draft.value.slice(end)
+  const at = t.start + s.insert.length
+  void nextTick(() => {
+    box.value?.focus()
+    box.value?.setSelectionRange(at, at)
+    caret.value = at
+  })
+}
+const bash = computed(() => draft.value.startsWith('!'))
 const interrupt = () => herd.attempt('Could not interrupt Claude', () => api.InterruptStep(props.step.id))
 const allow = () => herd.attempt('Could not allow it', () => api.AllowOnce(props.step.id))
 const placeholder = computed(() =>
-  props.step.live ? (running.value ? 'Queue a message for Claude…' : 'Message Claude… (Enter to send, Shift+Enter for a new line)') : task.value?.archived ? 'Send to restore the task and resume this session…' : 'Send a message to resume this session…',
+  props.step.live ? (running.value ? 'Queue a message for Claude…' : 'Message Claude… / for commands, @ for files, ! for bash (Enter to send, Shift+Enter for a new line)') : task.value?.archived ? 'Send to restore the task and resume this session…' : 'Send a message to resume this session…',
 )
 const agentName = computed(() => herd.settings?.agents.find((a) => a.id === props.step.agent)?.name ?? props.step.agent)
 const model = computed(() => (props.step.model ? props.step.model[0].toUpperCase() + props.step.model.slice(1) : ''))
@@ -196,7 +279,7 @@ async function checkAgain() {
 </script>
 
 <template>
-  <div class="chat" :style="{ '--code-blue': herd.dark ? '#b1b9f9' : '#5769f7', '--input-bg': herd.dark ? 'color-mix(in srgb, var(--bg) 60%, #000)' : 'color-mix(in srgb, var(--bg) 94%, #000)' }">
+  <div class="chat" :style="{ '--code-blue': herd.dark ? '#b1b9f9' : '#5769f7', '--bash': herd.dark ? '#fd5db1' : '#ff0087', '--input-bg': herd.dark ? 'color-mix(in srgb, var(--bg) 60%, #000)' : 'color-mix(in srgb, var(--bg) 94%, #000)' }">
     <div ref="thread" class="thread">
       <div class="inner">
         <p v-if="loaded && !found" class="empty">Claude Code has not saved this session's conversation yet. It shows here as soon as Claude starts.</p>
@@ -275,6 +358,10 @@ async function checkAgain() {
           </div>
 
           <!-- the user's message, or the /command Herd ran -->
+          <div v-else-if="e.kind === 'item' && e.item.kind === 'bash'" class="umsg" :data-turn="e.turn">
+            <div class="ubox bashbox"><span class="bang">!</span> <code>{{ e.item.text }}</code></div>
+          </div>
+          <pre v-else-if="e.kind === 'item' && e.item.kind === 'bashout'" class="bashout">{{ e.item.text || 'No output.' }}</pre>
           <div v-else-if="e.kind === 'item' && (e.item.kind === 'user' || e.item.kind === 'command')" class="umsg" :data-turn="e.turn">
             <div class="ubox"><code v-if="e.item.kind === 'command'" class="slash">{{ e.item.tool }}</code> {{ e.item.text }}</div>
           </div>
@@ -332,10 +419,16 @@ async function checkAgain() {
           <span class="grow">This task is archived and can no longer run{{ task.worktreeRemoved ? ': its worktree was removed' : '' }}.</span>
           <button class="btn" @click="herd.copyResume(step)"><Icon name="copy" :size="13" />Copy {{ resumeCommand(step).split(' ').slice(0, 2).join(' ') }}</button>
         </div>
-        <textarea ref="box" v-model="draft" rows="4" :placeholder="placeholder" :disabled="blocked" data-own-escape @keydown="key"></textarea>
+        <div v-if="sugs.length" class="sugs" role="listbox">
+          <button v-for="(s, i) in sugs" :key="s.label" role="option" :aria-selected="i === sugIx" :class="{ on: i === sugIx }" @mousedown.prevent="accept(s)" @mouseenter="sugIx = i">
+            <span class="sl">{{ s.label }}</span><span class="sd">{{ s.detail }}</span>
+          </button>
+        </div>
+        <textarea ref="box" v-model="draft" rows="4" :class="{ bash }" :placeholder="placeholder" :disabled="blocked" data-own-escape @keydown="key" @input="sync" @click="sync" @keyup="sync"></textarea>
         <div class="tools">
           <button class="ib" title="Attach files: Herd copies them to the run folder and mentions them in your message" aria-label="Attach files" :disabled="blocked" @click="attach"><Icon name="plus" :size="14" /></button>
-          <span class="sel who"><Icon name="agent" :size="13" />{{ agentName }}</span>
+          <span v-if="bash" class="bashpill" title="A message starting with ! runs as a shell command in the worktree; its output joins the conversation">! Bash mode</span>
+          <span v-else class="sel who"><Icon name="agent" :size="13" />{{ agentName }}</span>
           <span class="grow"></span>
           <span v-if="plan" class="usage" :class="{ warn: plan.warn }" :title="plan.tip">{{ plan.text }}</span>
           <span v-if="context" class="ring" :class="{ warn: context.warn }" :title="context.tip">
@@ -1049,6 +1142,97 @@ textarea:disabled {
   position: fixed;
   inset: 0;
   z-index: 10;
+}
+/* "/" and "@" suggestions, above the editor */
+.col {
+  position: relative;
+}
+.sugs {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 4px);
+  z-index: 20;
+  max-height: 280px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--elev);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+.sugs button {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.sugs button.on {
+  background: var(--hover);
+}
+.sl {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--code-blue);
+}
+.sd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--muted);
+}
+/* bash mode: Claude Code's pink */
+textarea.bash {
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.bashpill {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bash) 16%, transparent);
+  color: var(--bash);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.bashbox {
+  border-color: color-mix(in srgb, var(--bash) 45%, var(--border));
+  border-left-color: var(--bash);
+  background: color-mix(in srgb, var(--bash) 9%, var(--elev));
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+.bang {
+  color: var(--bash);
+  font-weight: 600;
+}
+.bashout {
+  margin: 0 20px 6px;
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--elev);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 /* send: a filled button with an accent icon; muted while empty; stop: tinted red */
 .send {

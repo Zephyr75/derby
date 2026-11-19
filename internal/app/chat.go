@@ -26,7 +26,7 @@ import (
 
 // ChatItem is one entry of a step's conversation.
 type ChatItem struct {
-	Kind    string         `json:"kind"`    // user | command | text | thinking | tool | result | note | error
+	Kind    string         `json:"kind"`    // user | command | bash | bashout | text | thinking | tool | result | note | error
 	ID      string         `json:"id"`      // the tool call a tool or result item belongs to
 	Text    string         `json:"text"`    // the message; a result's output; a command's arguments
 	Tool    string         `json:"tool"`    // a tool call's tool, a command's name
@@ -46,6 +46,15 @@ type Chat struct {
 	// else from the transcript read so far (Live: the statusline's).
 	Status SessionStatus `json:"status"`
 	Live   bool          `json:"live"`
+	// Skills: the session's skills and plugin commands (/herd:implement…),
+	// when the transcript read listed them.
+	Skills []Skill `json:"skills"`
+}
+
+// Skill is a skill or command the session offers after a "/".
+type Skill struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 const (
@@ -90,6 +99,7 @@ func (a *App) StepChat(stepID string, offset int64) (Chat, error) {
 	}
 	var meta chatMeta
 	c.Items, c.Title, meta = parseChat(b)
+	c.Skills = meta.skills
 	c.Offset = offset + int64(len(b))
 	st, ok := a.stepStatus(stepID)
 	if !ok {
@@ -118,6 +128,7 @@ func transcriptPath(session string) string {
 type chatMeta struct {
 	model, effort string
 	context       int
+	skills        []Skill
 }
 
 // transcriptLine is the part of a transcript line the chat shows.
@@ -130,13 +141,18 @@ type transcriptLine struct {
 			Effort string `json:"effort"`
 		} `json:"output_config"`
 	} `json:"params"`
-	Subtype     string          `json:"subtype"`
-	IsMeta      bool            `json:"isMeta"`
-	IsSidechain bool            `json:"isSidechain"`
-	Content     string          `json:"content"` // system lines
-	AITitle     string          `json:"aiTitle"`
-	Error       json.RawMessage `json:"error"`
-	Message     struct {
+	Subtype     string `json:"subtype"`
+	IsMeta      bool   `json:"isMeta"`
+	IsSidechain bool   `json:"isSidechain"`
+	Content     string `json:"content"` // system lines
+	AITitle     string `json:"aiTitle"`
+	Attachment  struct {
+		Type    string   `json:"type"`
+		Content string   `json:"content"`
+		Names   []string `json:"names"`
+	} `json:"attachment"`
+	Error   json.RawMessage `json:"error"`
+	Message struct {
 		Content json.RawMessage `json:"content"`
 		Usage   *struct {
 			Input       int `json:"input_tokens"`
@@ -164,6 +180,8 @@ var (
 	cmdNameTag = regexp.MustCompile(`<command-name>([^<]*)</command-name>`)
 	cmdArgsTag = regexp.MustCompile(`(?s)<command-args>(.*?)</command-args>`)
 	cmdOutTag  = regexp.MustCompile(`(?s)<local-command-std(?:out|err)>(.*?)</local-command-std(?:out|err)>`)
+	bashIn     = regexp.MustCompile(`(?s)^<bash-input>(.*)</bash-input>$`)
+	bashOut    = regexp.MustCompile(`(?s)<bash-std(?:out|err)>(.*?)</bash-std(?:out|err)>`)
 )
 
 // parseChat turns transcript lines into chat items, and the conversation's
@@ -182,6 +200,10 @@ func parseChat(b []byte) ([]ChatItem, string, chatMeta) {
 		switch l.Type {
 		case "ai-title":
 			title = l.AITitle
+		case "attachment":
+			if l.Attachment.Type == "skill_listing" && len(l.Attachment.Names) > 0 {
+				meta.skills = skillsOf(l.Attachment.Names, l.Attachment.Content)
+			}
 		case "api-request":
 			if l.QuerySource == "repl_main_thread" {
 				meta.model, meta.effort = orStr(l.Params.Model, meta.model), orStr(l.Params.Output.Effort, meta.effort)
@@ -266,6 +288,19 @@ func userText(s string) []ChatItem {
 		return nil
 	case strings.HasPrefix(s, "[Request interrupted by user"):
 		return []ChatItem{{Kind: "note", Text: "Interrupted"}}
+	}
+	// Bash mode (a message starting with "!"): the command, then its output.
+	if m := bashIn.FindStringSubmatch(s); m != nil {
+		return []ChatItem{{Kind: "bash", Text: strings.TrimSpace(m[1])}}
+	}
+	if strings.HasPrefix(s, "<bash-std") {
+		var out []string
+		for _, m := range bashOut.FindAllStringSubmatch(s, -1) {
+			if t := strings.TrimRight(m[1], "\n"); t != "" {
+				out = append(out, t)
+			}
+		}
+		return []ChatItem{{Kind: "bashout", Text: cut(strings.Join(out, "\n"), chatResultMax)}}
 	}
 	if m := cmdOutTag.FindStringSubmatch(s); m != nil {
 		if t := strings.TrimSpace(m[1]); t != "" {
@@ -561,4 +596,111 @@ func (a *App) AttachToStep(stepID string, files []string) ([]string, error) {
 		return nil, err
 	}
 	return copyAttachments(a.runDir(a.projectOf(t), t), files)
+}
+
+// skillsOf reads Claude Code's skill listing ("- name: description" lines)
+// for the names it lists.
+func skillsOf(names []string, content string) []Skill {
+	desc := map[string]string{}
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimPrefix(line, "- ")
+		best := "" // the longest name the line starts with: "herd:plan", not "herd"
+		for _, n := range names {
+			if strings.HasPrefix(line, n+": ") && len(n) > len(best) {
+				best = n
+			}
+		}
+		if best != "" {
+			desc[best] = strings.TrimPrefix(line, best+": ")
+		}
+	}
+	out := make([]Skill, 0, len(names))
+	for _, n := range names {
+		out = append(out, Skill{Name: n, Description: cut(desc[n], 200)})
+	}
+	return out
+}
+
+// StepFiles lists the files and folders of a step's worktree that match
+// query, best first, for the chat's "@" mentions (paths relative to the
+// worktree, folders ending in "/").
+func (a *App) StepFiles(stepID, query string) ([]string, error) {
+	s, err := a.db.Step(stepID)
+	if err != nil {
+		return nil, err
+	}
+	t, err := a.db.Task(s.TaskID)
+	if err != nil {
+		return nil, err
+	}
+	wt := worktreePath(a.projectOf(t), t)
+	out, err := a.git.Run(a.ctx, wt, "ls-files", "--cached", "--others", "--exclude-standard")
+	if err != nil {
+		return nil, err
+	}
+	return matchFiles(strings.Split(strings.TrimSpace(out), "\n"), query, 30), nil
+}
+
+// matchFiles ranks paths (and their folders) against query: a match in the
+// file name first, then in the path, then the letters in order.
+func matchFiles(files []string, query string, max int) []string {
+	seen := map[string]bool{}
+	var all []string
+	for _, f := range files {
+		if f == "" {
+			continue
+		}
+		for d := filepath.Dir(f); d != "." && !seen[d+"/"]; d = filepath.Dir(d) {
+			seen[d+"/"] = true
+			all = append(all, d+"/")
+		}
+		all = append(all, f)
+	}
+	q := strings.ToLower(query)
+	type hit struct {
+		path  string
+		score int
+	}
+	var hits []hit
+	for _, p := range all {
+		lp := strings.ToLower(p)
+		name := strings.ToLower(filepath.Base(strings.TrimSuffix(p, "/")))
+		score := -1
+		switch {
+		case q == "":
+			score = 0
+		case strings.HasPrefix(name, q):
+			score = 4
+		case strings.Contains(name, q):
+			score = 3
+		case strings.Contains(lp, q):
+			score = 2
+		case subsequence(lp, q):
+			score = 1
+		}
+		if score >= 0 {
+			hits = append(hits, hit{p, score})
+		}
+	}
+	slices.SortStableFunc(hits, func(x, y hit) int {
+		if x.score != y.score {
+			return y.score - x.score
+		}
+		return len(x.path) - len(y.path)
+	})
+	out := []string{}
+	for _, h := range hits[:min(len(hits), max)] {
+		out = append(out, h.path)
+	}
+	return out
+}
+
+func subsequence(s, q string) bool {
+	i := 0
+	for j := 0; j < len(s) && i < len(q); j++ {
+		if s[j] == q[i] {
+			i++
+		}
+	}
+	return i == len(q)
 }

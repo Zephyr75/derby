@@ -42,3 +42,29 @@ func TestParseChat(t *testing.T) {
 		t.Errorf("error: %+v", e)
 	}
 }
+
+func TestChatBashAndSkills(t *testing.T) {
+	lines := strings.Join([]string{
+		`{"type":"attachment","attachment":{"type":"skill_listing","names":["herd","herd:plan","archify"],"content":"- herd:plan: Plan a task\n- archify: Draw diagrams"}}`,
+		`{"type":"user","message":{"role":"user","content":"<bash-input>echo hi</bash-input>"}}`,
+		`{"type":"user","message":{"role":"user","content":"<bash-stdout>hi</bash-stdout><bash-stderr></bash-stderr>"}}`,
+	}, "\n") + "\n"
+	items, _, meta := parseChat([]byte(lines))
+	if len(items) != 2 || items[0].Kind != "bash" || items[0].Text != "echo hi" || items[1].Kind != "bashout" || items[1].Text != "hi" {
+		t.Fatalf("bash items: %+v", items)
+	}
+	if len(meta.skills) != 3 || meta.skills[1].Description != "Plan a task" || meta.skills[0].Description != "" {
+		t.Fatalf("skills: %+v", meta.skills)
+	}
+}
+
+func TestMatchFiles(t *testing.T) {
+	files := []string{"internal/unlock/ble.go", "internal/unlock/budget.go", "README.md", "cmd/ble/main.go"}
+	got := matchFiles(files, "ble", 10)
+	if len(got) == 0 || got[0] != "cmd/ble/" {
+		t.Fatalf("ble: %v", got)
+	}
+	if got := matchFiles(files, "iub", 10); len(got) == 0 || got[0] != "internal/unlock/budget.go" && got[0] != "internal/unlock/ble.go" {
+		t.Fatalf("subsequence: %v", got)
+	}
+}

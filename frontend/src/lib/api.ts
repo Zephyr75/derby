@@ -70,6 +70,7 @@ export interface Api {
   InterruptStep(step: string): Promise<void>
   SetStepModel(step: string, model: string, effort: string): Promise<void>
   AttachToStep(step: string, files: string[]): Promise<string[]>
+  StepFiles(step: string, query: string): Promise<string[]>
   SaveAppearance(a: Appearance, zedCommand: string): Promise<void>
   CheckPrerequisites(): Promise<Check[]>
 }
