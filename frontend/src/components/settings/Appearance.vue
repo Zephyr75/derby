@@ -7,13 +7,13 @@ import { debounce } from '../../lib/debounce'
 import { herd } from '../../lib/state'
 import Icon from '../ui/Icon.vue'
 
-type Mode = 'dark' | 'light' | 'system' | 'pony'
+type Mode = 'dark' | 'light' | 'system' | 'zed'
 const ap = computed(() => herd.settings?.config.appearance)
 const cards = computed<{ id: Mode; name: string; note: string; panes: string[] }[]>(() => [
   { id: 'dark', name: 'Dark', note: 'Fleet Dark', panes: ['fleet-dark'] },
   { id: 'light', name: 'Light', note: 'Flatwhite', panes: ['flatwhite'] },
   { id: 'system', name: 'System', note: `now ${herd.systemLight ? 'Light' : 'Dark'}, follows the OS`, panes: ['fleet-dark', 'flatwhite'] },
-  { id: 'pony', name: 'Pony', note: "Pony's purple, cyan and coral", panes: ['pony'] },
+  { id: 'zed', name: 'Zed', note: "One Dark, Zed's default", panes: ['one-dark'] },
 ])
 
 const views = [
@@ -78,7 +78,7 @@ function setZed(e: Event) {
 <template>
   <div class="intro">
     <h1>Appearance</h1>
-    <p>Dark uses Fleet Dark and Light uses Flatwhite, the themes you use in Zed. System follows your OS setting. Pony wears the colours of Pony's apps and websites.</p>
+    <p>Dark uses Fleet Dark and Light uses Flatwhite, the themes you use in Zed. System follows your OS setting. Zed has the colours of Zed's default theme, One Dark.</p>
   </div>
 
   <div class="cards">

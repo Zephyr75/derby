@@ -1,0 +1,64 @@
+/* Zed's default theme, One Dark (zed-industries/zed, assets/themes/one/one.json):
+   its colours only, on herd's own layout. */
+[data-theme='one-dark'] {
+  color-scheme: dark;
+  --bg: #282c33; /* editor.background */
+  --chrome: #2f343e; /* tab_bar.background, panel.background */
+  --surface: #2e343e; /* element.background */
+  --elev: #2f343e; /* elevated_surface.background */
+  --border: #464b57;
+  --text: #dce0e5;
+  --muted: #a9afbc;
+  --faint: #878a98; /* text.placeholder */
+  --sel: #454a56; /* element.selected */
+  --toggle-sel: #454a56; /* ghost_element.selected, with text.accent */
+  --toggle-text: #74ade8;
+  --hover: #363c46; /* element.hover */
+  --button: #74ade8;
+  --button-text: #282c33;
+  --overlay: rgba(0, 0, 0, 0.5);
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --accent: #74ade8; /* text.accent */
+  --code-kw: #b477cf;
+  --decision: #dec184;
+
+  --running: #74ade8; /* info */
+  --running-dot: #74ade8;
+  --running-bg: rgba(116, 173, 232, 0.14);
+  --waiting: #dec184; /* warning */
+  --waiting-dot: #dec184;
+  --waiting-bg: rgba(222, 193, 132, 0.14);
+  --approval: #d07277; /* error */
+  --approval-dot: #d07277;
+  --approval-bg: rgba(208, 114, 119, 0.16);
+  --idle: #a9afbc;
+  --idle-dot: #878a98;
+  --idle-bg: rgba(255, 255, 255, 0.06);
+  --done: #a1c181; /* success */
+  --done-dot: #a1c181;
+  --done-bg: rgba(161, 193, 129, 0.14);
+
+  --local: #b477cf;
+  --local-bg: rgba(180, 119, 207, 0.14);
+  --local-border: rgba(180, 119, 207, 0.4);
+
+  --add: #a1c181; /* created */
+  --add-bg: rgba(161, 193, 129, 0.13);
+  --del: #d07277; /* deleted */
+  --del-bg: rgba(208, 114, 119, 0.13);
+
+  /* todos marked urgent */
+  --urgent: #d07277;
+
+  /* terminal ANSI palette: terminal.ansi.* */
+  --ansi-black: #282c34;
+  --ansi-red: #e06c75;
+  --ansi-green: #98c379;
+  --ansi-yellow: #e5c07b;
+  --ansi-blue: #61afef;
+  --ansi-magenta: #c678dd;
+  --ansi-cyan: #56b6c2;
+  --ansi-white: #abb2bf;
+  --ansi-bright-black: #636d83;
+  --ansi-selection: rgba(116, 173, 232, 0.24);
+}

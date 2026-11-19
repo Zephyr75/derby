@@ -112,7 +112,7 @@ class Herd {
     return this.settings?.config.appearance.theme ?? 'dark'
   }
   get theme() {
-    if (this.themeMode === 'pony') return 'pony'
+    if (this.themeMode === 'zed') return 'one-dark'
     return this.themeMode === 'light' || (this.themeMode === 'system' && this.systemLight) ? 'flatwhite' : 'fleet-dark'
   }
   /** sessionView: how the center shows a step's session (Settings > Appearance). */
@@ -202,7 +202,7 @@ class Herd {
     const left = q.get('left')
     if (left === 'archive' || left === 'tasks') this.left = left
     const theme = q.get('theme')
-    if (theme && this.settings && (theme === 'dark' || theme === 'light' || theme === 'system' || theme === 'pony')) this.settings.config.appearance.theme = theme
+    if (theme && this.settings && (theme === 'dark' || theme === 'light' || theme === 'system' || theme === 'zed')) this.settings.config.appearance.theme = theme
     if (q.get('view') === 'settings') {
       this.view = 'settings'
       this.settingsTab = (q.get('tab') as SettingsTab) || 'context'
