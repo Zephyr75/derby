@@ -43,9 +43,13 @@
   --local-border: rgba(175, 156, 255, 0.4);
 
   --add: #69b090;
-  --add-bg: #283732;
   --del: #f87c88;
-  --del-bg: #452d31;
+  /* diffs as Zed shows them in Fleet Dark: version_control.added/deleted for
+     the bar left of a changed line, at 12% behind the line */
+  --vc-add: #14835e;
+  --vc-del: #d73251;
+  --add-bg: color-mix(in srgb, var(--vc-add) 12%, var(--bg));
+  --del-bg: color-mix(in srgb, var(--vc-del) 12%, var(--bg));
 
   /* todos marked urgent */
   --urgent: #f87c88;

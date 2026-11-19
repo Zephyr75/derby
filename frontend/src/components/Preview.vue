@@ -125,7 +125,7 @@ const tab = computed(() =>
     display: flex;
     align-items: stretch;
     flex: none;
-    height: 34px;
+    height: 32px; /* Zed's tab bar */
     background: var(--chrome);
     border-bottom: 1px solid var(--border);
   }

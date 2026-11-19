@@ -91,7 +91,7 @@ aside {
   display: flex;
   align-items: center;
   flex: none;
-  height: 34px;
+  height: 32px;
   padding: 0 8px;
   border-bottom: 1px solid var(--border);
 }

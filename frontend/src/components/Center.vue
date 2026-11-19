@@ -110,7 +110,7 @@ section {
   display: flex;
   align-items: stretch;
   flex: none;
-  height: 34px;
+  height: 32px; /* Zed's tab bar */
   background: var(--chrome);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
@@ -176,6 +176,10 @@ section {
 .x:hover {
   background: var(--hover);
   color: var(--text);
+}
+/* as Zed's default: a tab's close button shows on hover, and on the active tab */
+.tab:not(.on):not(:hover) .x {
+  visibility: hidden;
 }
 .grow {
   flex: 1;

@@ -43,9 +43,12 @@
   --local-border: rgba(180, 119, 207, 0.4);
 
   --add: #a1c181; /* created */
-  --add-bg: rgba(161, 193, 129, 0.13);
   --del: #d07277; /* deleted */
-  --del-bg: rgba(208, 114, 119, 0.13);
+  /* diffs: version_control.added/deleted for the bar left of a changed line, at 12% behind it */
+  --vc-add: #27a657;
+  --vc-del: #e06c76;
+  --add-bg: color-mix(in srgb, var(--vc-add) 12%, var(--bg));
+  --del-bg: color-mix(in srgb, var(--vc-del) 12%, var(--bg));
 
   /* todos marked urgent */
   --urgent: #d07277;

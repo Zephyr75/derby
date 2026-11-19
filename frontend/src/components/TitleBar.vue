@@ -64,16 +64,17 @@ function dblclick(e: MouseEvent) {
       <Icon name="plus" :size="14" />New task
     </button>
     <div v-if="controls" class="win" aria-label="Window">
-      <!-- Zed's Linux window controls: 16px icons with an 8px glyph -->
+      <!-- Zed's Linux window controls (an 8px glyph in a 16px icon, in a 20px round button),
+           scaled by Zed's 16px UI font to herd's 13px: they look as big as Zed's -->
       <button class="wc" aria-label="Minimise" title="Minimise" @click="minimise()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 8h8" /></svg>
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 8h8" /></svg>
       </button>
       <button class="wc" :aria-label="maximised ? 'Restore' : 'Maximise'" :title="maximised ? 'Restore' : 'Maximise'" @click="toggleMaximise()">
-        <svg v-if="maximised" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3.5 6.5h6v6h-6z M7.5 6V3.5h5v5H10" /></svg>
-        <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4.5 4.5h7v7h-7z" /></svg>
+        <svg v-if="maximised" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3.5 6.5h6v6h-6z M7.5 6V3.5h5v5H10" /></svg>
+        <svg v-else width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4.5 4.5h7v7h-7z" /></svg>
       </button>
       <button class="wc close" aria-label="Close" title="Close" @click="quit()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M11.5 4.5l-7 7M4.5 4.5l7 7" /></svg>
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M11.5 4.5l-7 7M4.5 4.5l7 7" /></svg>
       </button>
     </div>
   </header>
@@ -229,11 +230,11 @@ button {
   align-items: center;
   gap: 12px; /* Zed: gap-3 px-3 */
   padding: 0 8px 0 12px;
-  height: 20px;
+  height: 24px;
 }
 .wc {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;

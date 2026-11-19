@@ -466,7 +466,28 @@ tr:hover .add-note,
 .split td.blank.r {
   border-left: 1px solid var(--border);
 }
-.split .blank {
-  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--surface) 6px 7px);
+/* Zed's diff strip: a bar at the left edge of each changed line, 0.275 of
+   the line height wide, in the full version-control colour */
+.diff tr.add > td:first-child,
+.diff tr.del > td:first-child,
+.split td.ln.add,
+.split td.ln.del {
+  position: relative;
+}
+.diff tr.add > td:first-child::after,
+.diff tr.del > td:first-child::after,
+.split td.ln.add::after,
+.split td.ln.del::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: var(--vc-add);
+}
+.diff tr.del > td:first-child::after,
+.split td.ln.del::after {
+  background: var(--vc-del);
 }
 </style>

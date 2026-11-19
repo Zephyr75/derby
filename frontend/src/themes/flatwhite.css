@@ -43,9 +43,13 @@
   --local-border: #e0c3e0;
 
   --add: #525643;
-  --add-bg: #e2e9c1;
   --del: #5b4343;
-  --del-bg: #f6cfcb;
+  /* diffs: Zed's own green and red (One Light's version_control.added/deleted),
+     for the bar left of a changed line, at 16% behind it as Zed's light themes */
+  --vc-add: #27a657;
+  --vc-del: #e06c76;
+  --add-bg: color-mix(in srgb, var(--vc-add) 16%, var(--bg));
+  --del-bg: color-mix(in srgb, var(--vc-del) 16%, var(--bg));
 
   /* todos marked urgent */
   --urgent: #c0392b;
