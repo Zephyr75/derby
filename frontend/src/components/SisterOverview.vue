@@ -7,7 +7,6 @@
 import { computed, ref } from 'vue'
 import { api } from '../lib/api'
 import { herd } from '../lib/state'
-import { groupOf } from '../lib/sisters'
 import Icon from './ui/Icon.vue'
 import StatusBadge from './ui/StatusBadge.vue'
 import type { SisterOffer, Task } from '../lib/types'
@@ -30,7 +29,6 @@ function toggle() {
   }
 }
 
-const color = computed(() => groupOf.value.get(props.task.id)?.color)
 interface Row {
   key: string
   name: string
@@ -55,7 +53,7 @@ const addProject = () => herd.attempt('Could not add the project', () => api.Add
 </script>
 
 <template>
-  <div class="overview" :class="color !== undefined ? 'sis-' + color : ''">
+  <div class="overview">
     <button class="head" :aria-expanded="!collapsed" @click="toggle">
       <Icon :name="collapsed ? 'chevron-right' : 'chevron'" :size="13" />
       <span class="title">Sister tasks</span>

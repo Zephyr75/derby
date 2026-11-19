@@ -423,17 +423,68 @@ class Herd {
 
   /** A project's tasks in the left panel's tab, newest first: tasks by
    *  creation, archives by when they were closed (archived). */
-  panelTasks(projectId: string): Task[] {
-    const key = this.left === 'archive' ? 'archivedAt' : 'createdAt'
-    const time = (iso: string) => Date.parse(iso) || 0 // Go's times vary in offset and precision: compare them as dates
-    return this.tasks
-      .filter((t) => t.project === projectId && (this.left === 'archive' ? t.archived : !t.archived))
-      .sort((a, b) => time(b[key]) - time(a[key]))
+  /** sisterGroups: the families of tasks linked as sisters (the same work in
+   *  several repositories), each task's family by its id. */
+  get sisterGroups(): Map<string, string[]> {
+    const out = new Map<string, string[]>()
+    const byId = new Map(this.tasks.map((t) => [t.id, t]))
+    for (const t of this.tasks) {
+      if (out.has(t.id) || !t.sisters.length) continue
+      // Links go both ways, but follow them all in case one side is missing.
+      const ids: string[] = []
+      const todo = [t.id]
+      while (todo.length) {
+        const id = todo.pop()!
+        if (ids.includes(id)) continue
+        ids.push(id)
+        for (const x of byId.get(id)?.sisters ?? []) if (byId.has(x.id)) todo.push(x.id)
+      }
+      if (ids.length < 2) continue
+      for (const id of ids) out.set(id, ids)
+    }
+    return out
   }
 
-  /** The tasks in the left panel, in display order. */
+  /** The tasks of the list the left panel shows (Tasks or Archive). */
+  private listed(): Task[] {
+    return this.tasks.filter((t) => (this.left === 'archive' ? t.archived : !t.archived))
+  }
+  private newest(a: Task, b: Task) {
+    const key = this.left === 'archive' ? 'archivedAt' : 'createdAt'
+    const time = (iso: string) => Date.parse(iso) || 0 // Go's times vary in offset and precision: compare them as dates
+    return time(b[key]) - time(a[key])
+  }
+
+  /** panelFamilies: the sister families in the list, shown first under
+   *  Sisters, each with the big sister (the task that started the others)
+   *  first; a family with one task in the list shows under its project. */
+  panelFamilies(): Task[][] {
+    const listed = this.listed()
+    const groups = this.sisterGroups
+    const seen = new Set<string[]>()
+    const out: Task[][] = []
+    for (const t of listed.sort((a, b) => this.newest(a, b))) {
+      const ids = groups.get(t.id)
+      if (!ids || seen.has(ids)) continue
+      seen.add(ids)
+      const members = listed.filter((x) => ids.includes(x.id))
+      if (members.length < 2) continue
+      out.push(members.sort((a, b) => Number(a.sister) - Number(b.sister) || -this.newest(a, b)))
+    }
+    return out
+  }
+
+  panelTasks(projectId: string): Task[] {
+    const inFamily = new Set(this.panelFamilies().flat().map((t) => t.id))
+    return this.listed()
+      .filter((t) => t.project === projectId && !inFamily.has(t.id))
+      .sort((a, b) => this.newest(a, b))
+  }
+
+  /** The tasks in the left panel, in display order: the sister families, then each project's. */
   visibleTasks(): Task[] {
-    return this.groups.filter((p) => !this.isCollapsed(p.id)).flatMap((p) => this.panelTasks(p.id))
+    const families = this.isCollapsed(SISTERS) ? [] : this.panelFamilies().flat()
+    return [...families, ...this.groups.filter((p) => !this.isCollapsed(p.id)).flatMap((p) => this.panelTasks(p.id))]
   }
 
   moveTask(delta: number) {
@@ -802,5 +853,8 @@ class Herd {
 
 /** resumeCommand continues a step's session elsewhere. */
 export const resumeCommand = (step: Step) => `claude --resume ${step.session}`
+
+/** The left panel's Sisters group, collapsed like a project. */
+export const SISTERS = ':sisters' // no project id has a colon
 
 export const herd = reactive(new Herd())

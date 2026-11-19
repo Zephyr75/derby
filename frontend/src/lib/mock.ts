@@ -65,7 +65,7 @@ interface Fx {
   diff?: [string, string][]; changes?: string[]; findings?: string[]; copilot?: string[]; options?: boolean // the plan lists options
 }
 interface MockStep { key: string; agent: string; n: number; state: Step['state']; guide?: string; session: string; sha?: string; verdict?: string; manual?: boolean }
-interface MockTask { notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
+interface MockTask { sisterOf?: string[]; sister?: boolean; notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
 
 const T: MockTask[] = [
   { id: 'core:4356', project: 'core', issue: '4356', slug: '4356', title: 'Retry BLE unlock on flaky connections', description: '',
@@ -81,7 +81,7 @@ const T: MockTask[] = [
       { key: 'review-1', agent: 'review', n: 1, state: 'done', sha: 'b7c41d9', verdict: 'failed', session: 'c83f0e55' },
       { key: 'impl-2', agent: 'impl', n: 2, state: 'running', guide: 'keep the retry budget configurable, default 3', session: '7f3c91d4' },
     ] },
-  { id: 'core:4361', project: 'core', issue: '4361', slug: '4361', title: 'Per-minute pricing rounding', description: 'Keep the per-minute rule identical to the B2B tariff.',
+  { sisterOf: ['rider:1188'], id: 'core:4361', project: 'core', issue: '4361', slug: '4361', title: 'Per-minute pricing rounding', description: 'Keep the per-minute rule identical to the B2B tariff.',
     fx: { goal: 'Ride prices are rounded per second in one code path and per minute in another. Make per-minute ceiling rounding the single rule.',
       files: ['internal/pricing/minute.go', 'internal/pricing/minute_test.go'], grep: 'RoundDuration', test: 'go test ./internal/pricing/...', testOut: 'ok   pony-core/internal/pricing   0.62s',
       flow: ['Ride ends', 'Compute duration', 'Ceil to minute', 'Apply tariff'], diff: [['-', '\tsecs := d.Seconds()'], ['+', '\tmins := decimal.NewFromFloat(d.Minutes()).Ceil()']],
@@ -101,7 +101,7 @@ const T: MockTask[] = [
     ] },
   { id: 'core:local-heatmap', project: 'core', issue: '', slug: 'local-heatmap', title: 'Fleet rebalancing heatmap endpoint',
     description: 'Add GET /fleet/heatmap returning vehicle density per H3 cell for the ops dashboard.', fx: {}, steps: [] },
-  { id: 'rider:1188', project: 'rider', issue: '1188', slug: '1188', title: 'Show unlock retry progress in the app', description: '',
+  { sisterOf: ['core:4361'], sister: true, id: 'rider:1188', project: 'rider', issue: '1188', slug: '1188', title: 'Show unlock retry progress in the app', description: '',
     fx: { goal: 'When the backend retries a BLE unlock, the rider sees nothing for up to 6 seconds. Show the attempt count in the unlock sheet.', files: ['src/unlock/UnlockSheet.tsx', 'src/unlock/useUnlock.ts'],
       grep: 'useUnlock', test: 'pnpm test unlock', testOut: 'Tests  12 passed', flow: ['Tap unlock', 'Show progress sheet', 'Retry event from API', 'Update attempt count', 'Success or error state'] },
     steps: [{ key: 'plan-1', agent: 'plan', n: 1, state: 'idle', session: '6e0d1f93' }] },
@@ -253,7 +253,7 @@ function derive(t: MockTask): Task {
   return {
     id: t.id, project: t.project, slug: t.slug, issue: t.issue, title: t.title, description: t.description, createdAt: '',
     archived: !!t.archived, archivedAt: t.archivedOn ?? '', pr: t.pr ?? 0, prUrl: t.pr ? `https://github.com/pony-org/${t.project}/pull/${t.pr}` : '', prState: t.prState ?? '', worktreeRemoved: !!t.removed,
-    projectName: p.name, repo: p.repo, issueRepo: '', sisters: [], part: '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
+    projectName: p.name, repo: p.repo, issueRepo: '', sister: !!t.sister, sisters: (t.sisterOf ?? []).map((id) => ({ id, project: proj(find(id).project).name, part: '' })), part: '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
     branch: t.branch ?? 'ar-' + t.slug, runDir: `~/.herd/runs/${p.name}/${t.slug}`,
     source: t.issue && t.description ? `GitHub issue #${t.issue} + description · ${p.repo}` : t.issue ? `GitHub issue #${t.issue} · ${p.repo}` : 'LOCAL · description only, no GitHub issue',
     status, steps, next, projectGone: !projects.some((x) => x.id === t.project), checks: t.checks ?? [], labels: t.labels ?? [], draft: t.draft ?? false, conflicting: false, feedback: [], rejected: {}, behind: 0, notes: t.notes ?? [], todos: t.todos ?? [],

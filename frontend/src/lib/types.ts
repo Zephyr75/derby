@@ -232,6 +232,7 @@ export interface Task {
   slug: string
   issue: string
   issueRepo: string // the repository holding the issue, when not the project's (a sister task)
+  sister: boolean // created as a sister task; the family's task without it started the others
   sisters: { id: string; project: string; part: string }[] // tasks for the other repositories of the same work, with what each does
   part: string // what this task's part of the work does, in a line
   title: string

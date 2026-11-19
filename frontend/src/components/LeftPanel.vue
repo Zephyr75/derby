@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { herd } from '../lib/state'
+import { herd, SISTERS } from '../lib/state'
 import Icon from './ui/Icon.vue'
-import TaskRef from './ui/TaskRef.vue'
-import StatusBadge from './ui/StatusBadge.vue'
+import TaskCard from './TaskCard.vue'
 import NextStep from './NextStep.vue'
 import Splitter from './ui/Splitter.vue'
-import type { Task } from '../lib/types'
 
 const counts = computed(() => ({
   active: herd.tasks.filter((t) => !t.archived).length,
@@ -14,14 +12,8 @@ const counts = computed(() => ({
 }))
 const groups = computed(() => herd.groups.map((p) => ({ p, tasks: herd.panelTasks(p.id) })).filter((g) => !g.p.gone || g.tasks.length))
 
-const prTitle = (t: Task) => {
-  const b = herd.prBadge(t)!
-  const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'no CI checks yet', Conflict: 'conflicts with its base' }[b.label] ?? b.label.toLowerCase()
-  return `PR #${t.pr}: ${what}` + (b.ready === 'draft' ? ', a draft' : b.ready === 'ready' ? ', ready for review' : '')
-}
-
-// GitHub's PR icons: draft, open (ready for review), merged, closed.
-const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.prState !== 'open' ? 'pr-closed' : t.draft ? 'pr-draft' : 'pr')
+// Sister families first, under Sisters, each in a box; single tasks under their project.
+const families = computed(() => herd.panelFamilies())
 
 function addProject() {
   herd.view = 'settings'
@@ -40,6 +32,19 @@ function addProject() {
     </div>
 
     <div class="list">
+      <template v-if="families.length">
+        <button class="group" :aria-expanded="!herd.isCollapsed(SISTERS)" @click="herd.toggleCollapsed(SISTERS)">
+          <Icon :name="herd.isCollapsed(SISTERS) ? 'chevron-right' : 'chevron'" :size="14" />
+          <Icon name="sisters" />
+          <span class="name">Sisters</span>
+          <span>{{ families.length }}</span>
+        </button>
+        <template v-if="!herd.isCollapsed(SISTERS)">
+          <div v-for="f in families" :key="f[0].id" class="family" :title="'The same work in ' + f.map((t) => t.projectName).join(', ')">
+            <TaskCard v-for="(t, i) in f" :key="t.id" :task="t" family :big="i === 0 && !t.sister" />
+          </div>
+        </template>
+      </template>
       <template v-for="g in groups" :key="g.p.id">
         <button class="group" :aria-expanded="!herd.isCollapsed(g.p.id)" @click="herd.toggleCollapsed(g.p.id)">
           <Icon :name="herd.isCollapsed(g.p.id) ? 'chevron-right' : 'chevron'" :size="14" />
@@ -50,20 +55,7 @@ function addProject() {
         </button>
         <template v-if="!herd.isCollapsed(g.p.id)">
           <span v-if="!g.tasks.length" class="empty">{{ herd.left === 'archive' ? 'Nothing archived' : 'No open tasks' }}</span>
-          <div v-for="t in g.tasks" :key="t.id" class="cardw">
-            <button class="card" :class="{ on: t.id === herd.sel }" @click="herd.pickTask(t.id)">
-              <span class="row">
-                <TaskRef :issue="t.issue" :task="t.id" />
-                <span class="title">{{ t.title }}</span>
-              </span>
-              <span class="row">
-                <StatusBadge :kind="t.status.kind" :label="t.status.label" />
-                <span v-if="herd.prBadge(t)" :class="['badge', 'pr', `s-${herd.prBadge(t)!.kind}`]" :title="prTitle(t)">
-                  <Icon :name="prIcon(t)" :size="12" />#{{ t.pr }} · {{ herd.prBadge(t)!.label }}
-                </span>
-              </span>
-            </button>
-          </div>
+          <div v-for="t in g.tasks" :key="t.id" class="cardw"><TaskCard :task="t" /></div>
         </template>
       </template>
       <div v-if="!groups.length" class="none">
@@ -137,51 +129,18 @@ aside {
   font-size: var(--fs-12);
   color: var(--muted);
 }
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  flex: none;
-  text-align: left;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background: transparent;
-  font-size: var(--fs-13);
-  color: var(--text);
-}
 .cardw {
   position: relative;
 }
-.card:hover {
-  background: var(--hover);
-}
-.card.on {
-  background: var(--sel);
-}
-.row {
+/* a sister family: its tasks in one box, a little wider than a task */
+.family {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-  width: 100%;
-}
-.row > .badge {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pr {
-  flex: none;
-  gap: 5px;
-  margin-left: auto;
-}
-.title {
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 6px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
 }
 .none {
   padding: 16px 10px;

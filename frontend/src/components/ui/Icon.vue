@@ -4,7 +4,7 @@ import { computed, type Component } from 'vue'
 import {
   Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, Folder, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Split, Square, SquareTerminal, TriangleAlert, Undo2, X,
-  ArrowDown, ArrowUp, Bot, Brain, ChevronUp, Hammer, Lightbulb, ListPlus, SendHorizontal, UserRound, CircleX, Globe, ListChecks, LoaderCircle, MessageSquare, ShieldAlert, Sparkles, Wrench,
+  ArrowDown, ArrowUp, Bot, Brain, Crown, UsersRound, ChevronUp, Hammer, Lightbulb, ListPlus, SendHorizontal, UserRound, CircleX, Globe, ListChecks, LoaderCircle, MessageSquare, ShieldAlert, Sparkles, Wrench,
 } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: number }>(), { size: 14, stroke: 2 })
@@ -12,6 +12,8 @@ const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: n
 const icons: Record<string, Component> = {
   // the chat view
   send: ArrowUp,
+  crown: Crown,
+  sisters: UsersRound,
   'send-msg': SendHorizontal,
   queue: ListPlus,
   hammer: Hammer,

@@ -117,17 +117,6 @@ button:disabled {
   color: var(--muted);
 }
 
-/* sister groups (lib/sisters.ts): the same color for the linked tasks */
-.sis-0 { --sis: #4f8ff7; }
-.sis-1 { --sis: #b36cf0; }
-.sis-2 { --sis: #1fb3a3; }
-.sis-3 { --sis: #e2589a; }
-.sis-4 { --sis: #45b164; }
-.sis-5 { --sis: #e56d7a; }
-.issue-ref.sis {
-  color: var(--sis);
-}
-
 /* status badge and dot, by kind */
 .badge {
   display: inline-flex;

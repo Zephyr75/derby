@@ -95,9 +95,6 @@ const markDone = (id: string) => herd.attempt('Mark done failed', () => api.Mark
   font-size: var(--fs-11);
   color: var(--muted);
 }
-.tref.sis {
-  color: var(--sis);
-}
 .grow {
   flex: 1;
 }
