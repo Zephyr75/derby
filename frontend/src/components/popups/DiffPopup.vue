@@ -13,6 +13,24 @@ import Splitter from '../ui/Splitter.vue'
 import Dropdown from '../ui/Dropdown.vue'
 import { SIDEBAR, useSidebar } from '../../lib/sidebar'
 
+// Unified or split, as Zed's diff toggle; remembered per viewer.
+const splitView = ref(read('herd.diff.split') === '1')
+watch(splitView, (v) => write('herd.diff.split', v ? '1' : '0'))
+function read(k: string) {
+  try {
+    return localStorage.getItem(k)
+  } catch {
+    return null
+  }
+}
+function write(k: string, v: string) {
+  try {
+    localStorage.setItem(k, v)
+  } catch {
+    /* private window: not remembered */
+  }
+}
+
 const stepId = computed(() => herd.diffOf?.step ?? '')
 const task = computed(() => herd.tasks.find((t) => t.steps.some((s) => s.id === stepId.value)))
 const step = computed(() => task.value?.steps.find((s) => s.id === stepId.value))
@@ -150,6 +168,14 @@ function key(e: KeyboardEvent) {
         <div v-if="file" class="fhead">
           <span :class="['st', statusCls(file.status)]" :title="statusTitle(file.status)">{{ file.status === '?' ? 'U' : file.status }}</span>
           <span class="path mono" :title="file.path"><span class="dir">{{ split(file.path).dir }}</span>{{ split(file.path).name }}</span>
+          <span class="views" role="radiogroup" aria-label="Diff view">
+            <button role="radio" :aria-checked="!splitView" :class="{ on: !splitView }" title="Unified" aria-label="Unified" @click="splitView = false">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="2.6" width="10" height="4.4" rx="1" /><rect x="3" y="9" width="10" height="4.4" rx="1" fill="currentColor" fill-opacity="0.5" /></svg>
+            </button>
+            <button role="radio" :aria-checked="splitView" :class="{ on: splitView }" title="Split" aria-label="Split" @click="splitView = true">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.6" y="3" width="4.4" height="10" rx="1" fill="currentColor" fill-opacity="0.5" /><rect x="9" y="3" width="4.4" height="10" rx="1" /></svg>
+            </button>
+          </span>
           <button class="zed" :title="changes?.source === 'commit' ? `Open commit ${changes.sha} in Zed's diff view` : 'Open the worktree in Zed, where it shows the uncommitted changes'" @click="openInZed"><Icon name="diff" :size="13" />Diff</button>
         </div>
         <div class="scroll">
@@ -158,7 +184,7 @@ function key(e: KeyboardEvent) {
           <p v-else-if="diff.binary" class="empty">Binary file: no text diff.</p>
           <p v-else-if="!diff.diff" class="empty">No text changes (mode or whitespace only).</p>
           <template v-else>
-            <DiffView :diff="diff.diff" :notes="fileNotes" commentable @add="addNote" @update="updateNote" @remove="removeNote" />
+            <DiffView :diff="diff.diff" :notes="fileNotes" :split="splitView" commentable @add="addNote" @update="updateNote" @remove="removeNote" />
             <p v-if="diff.truncated" class="empty">The diff is too long to show in full; open the file in Zed for the rest.</p>
           </template>
         </div>
@@ -294,6 +320,30 @@ function key(e: KeyboardEvent) {
   }
   .dir {
     color: var(--muted);
+  }
+  .views {
+    flex: none;
+    display: flex;
+    gap: 2px;
+  }
+  .views button {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--muted);
+  }
+  .views button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .views button.on {
+    background: var(--hover);
+    color: var(--text);
   }
   .zed {
     flex: none;
