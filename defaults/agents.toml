@@ -15,11 +15,12 @@ Read ISSUE.md too when the task has a GitHub issue (Herd copied it there, commen
 When an earlier PLAN exists (planning again after a failed plan, a discussion or a failed step), start from it and from what showed it wrong (the step this one follows, your guidance): keep what still holds, and say right after the TLDR what changed from it and why.
 PLAN-{n}.md sections, after the TLDR:
 1. Goal: what is wrong or missing today and what will be true once it is done.
-2. Current flow: an archify diagram of how the code works today (PLAN-{n}-current.html), from the code with source evidence, the part that goes wrong marked.
-3. New flow: the same flow with the fix applied and what changes marked (PLAN-{n}-new.html), laid out like the current one so the two compare at a glance.
-4. Options, only when there is a real choice (designs, libraries, where the code goes): a table of each one's pros, cons and size (about +N / -M lines), then the one you recommend.
-5. Files: a table, one row per file to change, with what changes there and why. Under it: "Estimated change: about +N / -M lines".
-6. Tests: the behaviours to verify (main path, edge cases, what must not change).
+2. Where it happens: an archify diagram of the systems this issue involves (PLAN-{n}-context.html): the services, databases, Firebase functions, Pub/Sub topics, queues and outside APIs on its path, and what each sends the next, from the code and config with source evidence, the ones this issue changes marked. The higher-level view the two flows below zoom into.
+3. Current flow: an archify diagram of how the code works today (PLAN-{n}-current.html), from the code with source evidence, the part that goes wrong marked.
+4. New flow: the same flow with the fix applied and what changes marked (PLAN-{n}-new.html), laid out like the current one so the two compare at a glance.
+5. Options, only when there is a real choice (designs, libraries, where the code goes): a table of each one's pros, cons and size (about +N / -M lines), then the one you recommend.
+6. Files: a table, one row per file to change, with what changes there and why. Under it: "Estimated change: about +N / -M lines".
+7. Tests: the behaviours to verify (main path, edge cases, what must not change).
 Fail when the task cannot be done as described.'''
 
 [[agent]]
