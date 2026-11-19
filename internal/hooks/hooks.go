@@ -113,9 +113,33 @@ func Command(event string) string {
 		`{ d="${HERD_ENDPOINT%/*}/spool"; mkdir -p "$d" && printf '%s\n%s\n%s\n%s' ` + event + ` "$HERD_TASK/$HERD_STEP" "$PPID" "$b" > "$d/.$$" && mv "$d/.$$" "$d/$(date +%s%N)-$$"; }; exit 0`
 }
 
+// StatusCommand is the statusline every herd session runs: it hands Claude
+// Code's status (context window, plan usage, model, effort) to herd, in the
+// background so the line never waits, then runs the user's own statusline
+// (user, from their Claude Code settings), so the terminal looks the same.
+func StatusCommand(user string) string {
+	post := `b=$(cat); if [ -n "$HERD_TASK" ] && [ -r "$HERD_ENDPOINT" ]; then . "$HERD_ENDPOINT"; ` +
+		`( printf '%s' "$b" | curl -sf -m 2 -X POST "$HERD_URL/hook?event=` + StatusEvent + `" -H "X-Herd-Token: $HERD_TOKEN" -H "X-Herd-Step: $HERD_TASK/$HERD_STEP" -H "Content-Type: application/json" --data-binary @- ) >/dev/null 2>&1 & fi`
+	if strings.TrimSpace(user) == "" {
+		return post
+	}
+	return post + `; printf '%s' "$b" | sh -c '` + strings.ReplaceAll(user, `'`, `'\''`) + `'`
+}
+
+// StatusEvent is the event name StatusCommand posts.
+const StatusEvent = "StatusLine"
+
+// StatusLine is a Claude Code statusLine setting.
+type StatusLine struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+	Padding *int   `json:"padding,omitempty"`
+}
+
 // Settings returns the Claude Code settings every herd session gets: herd's
-// hooks, and claudeMdExcludes (CLAUDE.md files the sessions must not load).
-func Settings(excludes []string) ([]byte, error) {
+// hooks, its statusline (around the user's, if any), and claudeMdExcludes
+// (CLAUDE.md files the sessions must not load).
+func Settings(excludes []string, user StatusLine) ([]byte, error) {
 	type hook struct {
 		Type    string `json:"type"`
 		Command string `json:"command"`
@@ -132,12 +156,13 @@ func Settings(excludes []string) ([]byte, error) {
 		}
 		all[e] = []matcher{m}
 	}
-	return json.MarshalIndent(map[string]any{"hooks": all, "claudeMdExcludes": excludes}, "", "  ")
+	status := StatusLine{Type: "command", Command: StatusCommand(user.Command), Padding: user.Padding}
+	return json.MarshalIndent(map[string]any{"hooks": all, "claudeMdExcludes": excludes, "statusLine": status}, "", "  ")
 }
 
 // WriteSettings writes the settings file (~/.herd/hooks.json).
-func WriteSettings(path string, excludes []string) error {
-	b, err := Settings(excludes)
+func WriteSettings(path string, excludes []string, user StatusLine) error {
+	b, err := Settings(excludes, user)
 	if err != nil {
 		return err
 	}

@@ -57,6 +57,11 @@ export function render(src: string, env: RenderEnv = {}): string {
   return md.render(src, { ...env })
 }
 
+/** renderInline renders one line of markdown, without a paragraph. */
+export function renderInline(src: string): string {
+  return md.renderInline(src)
+}
+
 let mermaidMod: typeof import('mermaid').default | null = null
 
 function token(name: string): string {

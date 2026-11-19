@@ -14,19 +14,21 @@ import (
 // attachDir holds the files attached at task creation, in the run dir.
 const attachDir = "attachments"
 
-// copyAttachments copies files to dir/attachments, renaming duplicates.
-func copyAttachments(dir string, files []string) error {
+// copyAttachments copies files to dir/attachments, renaming duplicates, and
+// returns where they went.
+func copyAttachments(dir string, files []string) ([]string, error) {
 	if len(files) == 0 {
-		return nil
+		return nil, nil
 	}
 	dst := filepath.Join(dir, attachDir)
 	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return err
+		return nil, err
 	}
+	var out []string
 	for _, f := range files {
 		b, err := os.ReadFile(f)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ext := filepath.Ext(f)
 		base := strings.TrimSuffix(filepath.Base(f), ext)
@@ -38,10 +40,11 @@ func copyAttachments(dir string, files []string) error {
 			name = fmt.Sprintf("%s-%d%s", base, i, ext)
 		}
 		if err := os.WriteFile(filepath.Join(dst, name), b, 0o644); err != nil {
-			return err
+			return nil, err
 		}
+		out = append(out, filepath.Join(dst, name))
 	}
-	return nil
+	return out, nil
 }
 
 // attachments lists the attached files' names, sorted.

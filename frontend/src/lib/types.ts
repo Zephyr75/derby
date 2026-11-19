@@ -72,6 +72,18 @@ export interface Chat {
   reset: boolean // the transcript was replaced: drop what was shown
   title: string
   found: boolean
+  status: SessionStatus // from the session's statusline (live), else its transcript
+  live: boolean
+}
+
+/** A session's model, effort and context window, and the plan's usage. */
+export interface SessionStatus {
+  model: string // e.g. claude-opus-5-5
+  modelName: string // e.g. Opus 5.5
+  effort: string
+  contextUsed: number
+  contextSize: number // 0: unknown
+  plan: { fiveHour: number; fiveHourReset: number; week: number; weekReset: number; at: number } // percents, -1 unknown; resets in unix seconds
 }
 
 export interface FileChange {
@@ -162,6 +174,8 @@ export interface Step {
   sha: string
   verdict: string
   skipped?: boolean // ended by the check or cross button
+  modelSet?: string // the model picked in the chat view for this session
+  effortSet?: string // likewise its effort
   model: string
   completed: boolean
   startedAt: string

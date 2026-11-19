@@ -15,8 +15,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
+
+	"herd/internal/hooks"
+	"herd/internal/settings"
+	"herd/internal/store"
 )
 
 // ChatItem is one entry of a step's conversation.
@@ -37,6 +42,10 @@ type Chat struct {
 	Reset  bool       `json:"reset"`  // the transcript was replaced: drop the items shown so far
 	Title  string     `json:"title"`  // Claude Code's title for the conversation, when it named it
 	Found  bool       `json:"found"`  // Claude Code saved a transcript for this session
+	// Status: the session's model, effort and context, from its statusline,
+	// else from the transcript read so far (Live: the statusline's).
+	Status SessionStatus `json:"status"`
+	Live   bool          `json:"live"`
 }
 
 const (
@@ -79,8 +88,14 @@ func (a *App) StepChat(stepID string, offset int64) (Chat, error) {
 	} else {
 		b = nil
 	}
-	c.Items, c.Title = parseChat(b)
+	var meta chatMeta
+	c.Items, c.Title, meta = parseChat(b)
 	c.Offset = offset + int64(len(b))
+	st, ok := a.stepStatus(stepID)
+	if !ok {
+		st.Model, st.Effort, st.ContextUsed = meta.model, meta.effort, meta.context
+	}
+	c.Status, c.Live = st, ok
 	return c, nil
 }
 
@@ -97,9 +112,24 @@ func transcriptPath(session string) string {
 	return m[0]
 }
 
+// chatMeta is what the transcript read says of the session, for when no
+// statusline reported it: the model and effort of its last request, and the
+// tokens in its context after the last answer.
+type chatMeta struct {
+	model, effort string
+	context       int
+}
+
 // transcriptLine is the part of a transcript line the chat shows.
 type transcriptLine struct {
-	Type        string          `json:"type"`
+	Type        string `json:"type"`
+	QuerySource string `json:"querySource"` // api-request: repl_main_thread for the conversation's own
+	Params      struct {
+		Model  string `json:"model"`
+		Output struct {
+			Effort string `json:"effort"`
+		} `json:"output_config"`
+	} `json:"params"`
 	Subtype     string          `json:"subtype"`
 	IsMeta      bool            `json:"isMeta"`
 	IsSidechain bool            `json:"isSidechain"`
@@ -108,6 +138,12 @@ type transcriptLine struct {
 	Error       json.RawMessage `json:"error"`
 	Message     struct {
 		Content json.RawMessage `json:"content"`
+		Usage   *struct {
+			Input       int `json:"input_tokens"`
+			CacheCreate int `json:"cache_creation_input_tokens"`
+			CacheRead   int `json:"cache_read_input_tokens"`
+			Output      int `json:"output_tokens"`
+		} `json:"usage"`
 	} `json:"message"`
 	ToolUseResult json.RawMessage `json:"toolUseResult"`
 }
@@ -131,10 +167,11 @@ var (
 )
 
 // parseChat turns transcript lines into chat items, and the conversation's
-// latest title.
-func parseChat(b []byte) ([]ChatItem, string) {
+// latest title and meta.
+func parseChat(b []byte) ([]ChatItem, string, chatMeta) {
 	items := []ChatItem{}
 	title := ""
+	var meta chatMeta
 	sc := bufio.NewScanner(bytes.NewReader(b))
 	sc.Buffer(make([]byte, 0, 1<<20), 64<<20)
 	for sc.Scan() {
@@ -145,11 +182,18 @@ func parseChat(b []byte) ([]ChatItem, string) {
 		switch l.Type {
 		case "ai-title":
 			title = l.AITitle
+		case "api-request":
+			if l.QuerySource == "repl_main_thread" {
+				meta.model, meta.effort = orStr(l.Params.Model, meta.model), orStr(l.Params.Output.Effort, meta.effort)
+			}
 		case "user":
 			if !l.IsMeta {
 				items = append(items, userItems(l)...)
 			}
 		case "assistant":
+			if u := l.Message.Usage; u != nil {
+				meta.context = u.Input + u.CacheCreate + u.CacheRead + u.Output
+			}
 			var blocks []contentBlock
 			if json.Unmarshal(l.Message.Content, &blocks) != nil {
 				continue
@@ -185,7 +229,7 @@ func parseChat(b []byte) ([]ChatItem, string) {
 			}
 		}
 	}
-	return items, title
+	return items, title, meta
 }
 
 // userItems: what the user typed (a message or a /command), a local
@@ -371,4 +415,150 @@ func (a *App) InterruptStep(stepID string) error {
 	}
 	_, err := sess.Write([]byte("\x1b"))
 	return err
+}
+
+// SessionStatus is what a session's statusline tells: its model, effort and
+// context window (Claude Code hands it to statuslines only; see
+// hooks.StatusCommand), else what its transcript says.
+type SessionStatus struct {
+	Model       string    `json:"model"`       // e.g. claude-opus-5-5
+	ModelName   string    `json:"modelName"`   // e.g. Opus 5.5
+	Effort      string    `json:"effort"`      // low … max
+	ContextUsed int       `json:"contextUsed"` // tokens in the context window
+	ContextSize int       `json:"contextSize"` // the window's size; 0 when unknown
+	Plan        PlanUsage `json:"plan"`        // the account's plan usage
+}
+
+// PlanUsage is the share of the plan's 5-hour and weekly limits used.
+type PlanUsage struct {
+	FiveHour      float64 `json:"fiveHour"` // percent; -1 when unknown
+	FiveHourReset int64   `json:"fiveHourReset"`
+	Week          float64 `json:"week"`
+	WeekReset     int64   `json:"weekReset"`
+	At            int64   `json:"at"` // when a statusline last reported it (unix seconds); 0: never
+}
+
+// setStatus keeps a statusline's report for the chat view.
+func (a *App) setStatus(ev hooks.Event) {
+	var in struct {
+		Model struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"display_name"`
+		} `json:"model"`
+		ContextWindow struct {
+			Size  int `json:"context_window_size"`
+			Usage *struct {
+				Input       int `json:"input_tokens"`
+				CacheCreate int `json:"cache_creation_input_tokens"`
+				CacheRead   int `json:"cache_read_input_tokens"`
+			} `json:"current_usage"`
+		} `json:"context_window"`
+		RateLimits *struct {
+			FiveHour *struct {
+				Used   *float64 `json:"used_percentage"`
+				Resets int64    `json:"resets_at"`
+			} `json:"five_hour"`
+			SevenDay *struct {
+				Used   *float64 `json:"used_percentage"`
+				Resets int64    `json:"resets_at"`
+			} `json:"seven_day"`
+		} `json:"rate_limits"`
+		Effort json.RawMessage `json:"effort"`
+	}
+	if json.Unmarshal(ev.Raw, &in) != nil {
+		return
+	}
+	st := SessionStatus{Model: in.Model.ID, ModelName: in.Model.DisplayName, ContextSize: in.ContextWindow.Size, Effort: effortOf(in.Effort)}
+	if u := in.ContextWindow.Usage; u != nil {
+		st.ContextUsed = u.Input + u.CacheCreate + u.CacheRead
+	}
+	a.statusMu.Lock()
+	defer a.statusMu.Unlock()
+	if r := in.RateLimits; r != nil {
+		p := PlanUsage{FiveHour: -1, Week: -1, At: time.Now().Unix()}
+		if r.FiveHour != nil && r.FiveHour.Used != nil {
+			p.FiveHour, p.FiveHourReset = *r.FiveHour.Used, r.FiveHour.Resets
+		}
+		if r.SevenDay != nil && r.SevenDay.Used != nil {
+			p.Week, p.WeekReset = *r.SevenDay.Used, r.SevenDay.Resets
+		}
+		a.planUse = p
+	}
+	a.status[ev.StepID] = st
+}
+
+// effortOf reads the statusline's effort: "high", or {"level": "high"}.
+func effortOf(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var o struct{ Level string }
+	_ = json.Unmarshal(raw, &o)
+	return o.Level
+}
+
+// stepStatus is a step's latest statusline report, with the account's plan
+// usage; ok is false when none came since herd started.
+func (a *App) stepStatus(stepID string) (SessionStatus, bool) {
+	a.statusMu.Lock()
+	defer a.statusMu.Unlock()
+	st, ok := a.status[stepID]
+	st.Plan = a.planUse
+	if st.Plan.At == 0 {
+		st.Plan.FiveHour, st.Plan.Week = -1, -1
+	}
+	return st, ok
+}
+
+// SetStepModel changes the model and effort of a step's session (empty:
+// unchanged). Claude Code's /model and /effort would also change the user's
+// default for every new session, so herd restarts the session with --model
+// and --effort instead, while Claude waits for the user.
+func (a *App) SetStepModel(stepID, model, effort string) error {
+	if effort != "" && !slices.Contains(settings.Efforts, effort) {
+		return fmt.Errorf("unknown effort %q", effort)
+	}
+	s, err := a.db.Step(stepID)
+	if err != nil {
+		return err
+	}
+	sess, live := a.run.Get(stepID)
+	if live && (s.State == store.Running || s.State == store.Approval) {
+		return errors.New("Claude is working: change the model or effort once it waits for you")
+	}
+	s, _ = a.updateStep(stepID, func(x *store.Step) bool {
+		if model != "" {
+			x.ModelSet, x.Model = model, model
+		}
+		if effort != "" {
+			x.EffortSet = effort
+		}
+		return true
+	})
+	if !live {
+		a.emitTask(s.TaskID)
+		return nil
+	}
+	a.run.Stop(stepID)
+	select {
+	case <-sess.Done():
+	case <-time.After(5 * time.Second):
+		return errors.New("Claude Code did not stop: try again")
+	}
+	return a.resumeWith(stepID, "")
+}
+
+// AttachToStep copies files to the step's run directory (attachments/) and
+// returns their new paths, for the user's message to mention.
+func (a *App) AttachToStep(stepID string, files []string) ([]string, error) {
+	s, err := a.db.Step(stepID)
+	if err != nil {
+		return nil, err
+	}
+	t, err := a.db.Task(s.TaskID)
+	if err != nil {
+		return nil, err
+	}
+	return copyAttachments(a.runDir(a.projectOf(t), t), files)
 }

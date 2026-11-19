@@ -95,11 +95,15 @@ type App struct {
 	behind   map[string]int               // commits of origin/<base> each task's branch lacks, by task id
 
 	busy sync.Map // ids of the steps whose post-success actions (git, automatic next steps) are running
+
+	statusMu sync.Mutex
+	status   map[string]SessionStatus // the latest statusline of each step's session, by step id (the chat view)
+	planUse  PlanUsage                // the account's latest plan usage, from any session's statusline
 }
 
 // New creates the service; call Start before use.
 func New(home string) *App {
-	return &App{Home: home, checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}}
+	return &App{Home: home, checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}, status: map[string]SessionStatus{}}
 }
 
 // DefaultHome returns ~/.herd, or $HERD_HOME when set.
@@ -135,7 +139,7 @@ func Start(a *App, ctx context.Context, plat Platform) error {
 		return err
 	}
 	a.token = hex.EncodeToString(tok)
-	if err := hooks.WriteSettings(a.hooksPath(), userMemory()); err != nil {
+	if err := hooks.WriteSettings(a.hooksPath(), userMemory(), userStatusLine()); err != nil {
 		return err
 	}
 	if err := a.writePlugin(); err != nil {
@@ -205,6 +209,17 @@ func Stop(a *App) {
 	if a.db != nil {
 		_ = a.db.Close()
 	}
+}
+
+// userStatusLine is the statusline of the user's Claude Code settings: herd
+// sessions run it after handing the status to herd (hooks.StatusCommand).
+func userStatusLine() hooks.StatusLine {
+	var s struct {
+		StatusLine hooks.StatusLine `json:"statusLine"`
+	}
+	b, _ := os.ReadFile(filepath.Join(claudeDir(), "settings.json"))
+	_ = json.Unmarshal(b, &s)
+	return s.StatusLine
 }
 
 // userMemory is the user's own CLAUDE.md and rules: herd sessions skip them,

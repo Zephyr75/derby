@@ -21,7 +21,7 @@ func TestParseChat(t *testing.T) {
 		`{"type":"system","subtype":"stop_hook_summary"}`,
 		`{"type":"attachment","attachment":{"type":"hook_success"}}`,
 	}, "\n") + "\n"
-	items, title := parseChat([]byte(lines))
+	items, title, _ := parseChat([]byte(lines))
 	if title != "Fix the unlock retry" {
 		t.Errorf("title %q", title)
 	}

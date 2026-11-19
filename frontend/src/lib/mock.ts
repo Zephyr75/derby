@@ -303,6 +303,7 @@ export function mockChat(stepId: string): ChatItem[] {
   }
   if (s.state === 'running') out.push(it('text', { text: 'Writing the artifact now.' }))
   else if (s.state !== 'approval') out.push(it('text', { text: `Done. The artifact is written in \`${run}\`:\n\n- the change keeps the diff small\n- tests pass (\`${test}\`)\n\nNext: start the next step from the left panel.` }))
+  if (s.state === 'done') out.push(it('user', { text: 'Why did you keep the old retry helper?' }), it('text', { text: 'Two callers outside `internal/unlock` still use it; removing it belongs in its own change.' }))
   return [...out, ...(chatSent[stepId] ?? [])]
 }
 
@@ -508,7 +509,10 @@ export const api: Api = {
   AddProject: () => Promise.reject('The folder picker needs the desktop app'),
   AddProjectPath: () => Promise.reject('Adding projects needs the desktop app'),
   SetSessionView: (view) => { settings.config.appearance.sessionView = view as any; emit('settings:changed', settings); return ok(undefined) },
-  StepChat: (step) => ok({ items: mockChat(step), offset: 1, reset: true, title: 'Retry BLE unlock on flaky connections', found: true }),
+  StepChat: (step) => ok({ items: mockChat(step), offset: 1, reset: true, title: 'Retry BLE unlock on flaky connections', found: true, live: true,
+    status: { model: 'claude-opus-5-5', modelName: 'Opus 5.5', effort: 'xhigh', contextUsed: 61400, contextSize: 200000, plan: { fiveHour: 23, fiveHourReset: Math.floor(Date.now() / 1000) + 7200, week: 41, weekReset: Math.floor(Date.now() / 1000) + 3 * 86400, at: 1 } } }),
+  SetStepModel: () => ok(undefined),
+  AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.herd/runs/core/4356/attachments/' + f.split('/').pop())),
   SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false }); return ok(undefined) },
   InterruptStep: () => ok(undefined),
   SetTheme: (theme) => { settings.config.appearance.theme = theme as any; emit('settings:changed', settings); return ok(undefined) },

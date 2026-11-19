@@ -64,6 +64,7 @@ class Herd {
   hideDone = false // the todo lists hide the done items (Todos tab and pop-up)
   /** Steps whose session another process still runs (the resume guard). */
   elsewhere: Record<string, Proc[]> = {}
+  chatTitles: Record<string, string> = {} // Claude Code's title for each step's conversation, by step id (the chat view)
   scope: ScopeMode = 'project'
   /** Projects folded in the left panel, by tab and project ("archive:core"): each tab folds its own. */
   collapsed: Record<string, boolean> = {}
@@ -659,9 +660,10 @@ class Herd {
 
   // ---- a step's Claude Code session, e.g. to continue it in Zed ----
 
-  async copy(text: string) {
-    if (await copyText(text)) this.toast('Copied', text)
-    else this.toast('Could not copy', text, true)
+  /** copy puts text on the clipboard; the toast names what, or shows the text. */
+  async copy(text: string, what = text) {
+    if (await copyText(text)) this.toast('Copied', what)
+    else this.toast('Could not copy', what, true)
   }
 
   copyResume(step: Step) {

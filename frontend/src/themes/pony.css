@@ -132,6 +132,17 @@
 [data-theme='pony'] .app > main .bar .tab.on {
   background: var(--hover);
 }
+/* the center: the active tab runs down into the step's toolbar, one ⊥ shape */
+[data-theme='pony'] .app > main > section .tabs {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+[data-theme='pony'] .app > main > section .tabs .tab.on {
+  border-radius: 8px 8px 0 0;
+}
+[data-theme='pony'] .app > main > section .toolbar {
+  background: var(--hover);
+}
 
 /* rounder, softer controls */
 [data-theme='pony'] .btn,

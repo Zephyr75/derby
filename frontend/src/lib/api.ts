@@ -68,6 +68,8 @@ export interface Api {
   StepChat(step: string, offset: number): Promise<Chat>
   SendToStep(step: string, text: string): Promise<void>
   InterruptStep(step: string): Promise<void>
+  SetStepModel(step: string, model: string, effort: string): Promise<void>
+  AttachToStep(step: string, files: string[]): Promise<string[]>
   SaveAppearance(a: Appearance, zedCommand: string): Promise<void>
   CheckPrerequisites(): Promise<Check[]>
 }

@@ -709,6 +709,9 @@ func (a Agent) ArtifactName(n int) string {
 // DefaultEffort is the effort of an agent that does not set one.
 const DefaultEffort = "xhigh"
 
+// Efforts are Claude Code's effort levels (--effort).
+var Efforts = []string{"low", "medium", "high", "xhigh", "max"}
+
 // For reports whether the tasks of a project offer the agent.
 func (a Agent) For(project string) bool {
 	return len(a.Projects) == 0 || slices.Contains(a.Projects, project)

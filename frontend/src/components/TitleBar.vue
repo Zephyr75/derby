@@ -64,15 +64,16 @@ function dblclick(e: MouseEvent) {
       <Icon name="plus" :size="14" />New task
     </button>
     <div v-if="controls" class="win" aria-label="Window">
+      <!-- Zed's Linux window controls: 16px icons with an 8px glyph -->
       <button class="wc" aria-label="Minimise" title="Minimise" @click="minimise()">
-        <Icon name="win-min" :size="16" />
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 8h8" /></svg>
       </button>
       <button class="wc" :aria-label="maximised ? 'Restore' : 'Maximise'" :title="maximised ? 'Restore' : 'Maximise'" @click="toggleMaximise()">
-        <Icon v-if="maximised" name="win-restore" :size="16" />
-        <Icon v-else name="win-max" :size="16" />
+        <svg v-if="maximised" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3.5 6.5h6v6h-6z M7.5 6V3.5h5v5H10" /></svg>
+        <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4.5 4.5h7v7h-7z" /></svg>
       </button>
       <button class="wc close" aria-label="Close" title="Close" @click="quit()">
-        <Icon name="win-close" :size="16" />
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M11.5 4.5l-7 7M4.5 4.5l7 7" /></svg>
       </button>
     </div>
   </header>
@@ -135,7 +136,10 @@ button {
   color: var(--text);
 }
 .sep {
-  color: var(--faint);
+  /* Zed: a small muted slash at a quarter of its opacity */
+  color: var(--muted);
+  opacity: 0.25;
+  font-size: 12px;
 }
 .stext {
   overflow: hidden;
@@ -223,20 +227,20 @@ button {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 2px;
-  margin-left: 6px;
+  gap: 12px; /* Zed: gap-3 px-3 */
+  padding: 0 8px 0 12px;
   height: 20px;
 }
 .wc {
-  width: 30px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
-  color: var(--muted);
+  color: var(--text);
 }
 .wc:hover {
   background: var(--hover);

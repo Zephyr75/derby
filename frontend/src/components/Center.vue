@@ -17,6 +17,8 @@ const tabs = computed(() =>
   }),
 )
 const step = computed(() => herd.selStep)
+// The sister tasks' overview: under the step's toolbar, which joins its tab.
+const sisters = computed(() => !!herd.selTask && (herd.selTask.sisters.length > 0 || herd.selTask.next.sisters.length > 0))
 const t = computed(() => herd.selTask)
 const agent = computed(() => (step.value ? herd.settings?.agents.find((a) => a.id === step.value!.agent) : undefined))
 const model = (m: string) => (m ? m[0].toUpperCase() + m.slice(1) : '')
@@ -47,12 +49,13 @@ const chip = computed(() => {
       <span class="grow"></span>
     </div>
 
-    <SisterOverview v-if="t && (t.sisters.length || t.next.sisters.length)" :task="t" />
+    <SisterOverview v-if="sisters && !(step && !step.external)" :task="t!" />
     <PRTracker v-if="step && t && step.external" :task="t" :step="step" />
     <template v-else-if="step && t">
       <div class="toolbar">
         <span v-if="chip" :class="['chip', 'badge', chip.cls]"><span class="dot"></span>{{ chip.text }}</span>
-        <span class="muted small">{{ agent?.name ?? step.agent }} agent · {{ model(step.model) }}</span>
+        <span v-if="herd.sessionView === 'chat' && herd.chatTitles[step.id]" class="small ttl" :title="herd.chatTitles[step.id]">{{ herd.chatTitles[step.id] }}</span>
+        <span v-else class="muted small">{{ agent?.name ?? step.agent }} agent · {{ model(step.model) }}</span>
         <span class="pill views" role="radiogroup" aria-label="Session view">
           <button role="radio" :aria-checked="herd.sessionView === 'terminal'" :class="{ on: herd.sessionView === 'terminal' }" title="Show the session as Claude Code's terminal" @click="herd.setSessionView('terminal')"><Icon name="terminal" :size="13" /></button>
           <button role="radio" :aria-checked="herd.sessionView === 'chat'" :class="{ on: herd.sessionView === 'chat' }" title="Show the session as a chat" @click="herd.setSessionView('chat')"><Icon name="chat" :size="13" /></button>
@@ -69,6 +72,7 @@ const chip = computed(() => {
           </template>
         </span>
       </div>
+      <SisterOverview v-if="sisters" :task="t" />
       <ChatView v-if="herd.sessionView === 'chat'" :step="step" />
       <Terminal v-else :key="step.id + ':' + herd.termRev" :step="step" />
     </template>
@@ -182,8 +186,9 @@ section {
   align-items: center;
   gap: 4px 10px;
   flex: none;
-  min-height: 32px;
-  padding: 4px 12px;
+  min-height: 44px; /* Zed's toolbar: 32px rows, 6px above and below */
+  padding: 6px 12px;
+  background: var(--bg); /* the active tab's: the two read as one ⊥ */
   border-bottom: 1px solid var(--border);
   min-width: 0;
 }
@@ -230,6 +235,11 @@ section {
 .tb:hover {
   background: var(--hover);
   color: var(--text);
+}
+.ttl {
+  flex: 1 1 0; /* shrinks to an ellipsis before the buttons wrap */
+  min-width: 80px;
+  font-weight: 500;
 }
 .views {
   flex: none;

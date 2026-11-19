@@ -75,7 +75,9 @@ type Step struct {
 	Verdict   string    `json:"verdict"`
 	Skipped   bool      `json:"skipped,omitempty"` // ended by the user's check or cross button
 	Model     string    `json:"model"`
-	Completed bool      `json:"completed"` // post-done actions ran
+	ModelSet  string    `json:"modelSet,omitempty"`  // the model the user picked in the chat view; empty: the agent's
+	EffortSet string    `json:"effortSet,omitempty"` // likewise its effort
+	Completed bool      `json:"completed"`           // post-done actions ran
 	StartedAt time.Time `json:"startedAt"`
 	EndedAt   time.Time `json:"endedAt"`
 }
@@ -279,6 +281,7 @@ func (d *DB) SaveStep(s Step) error {
 			x := &r.Steps[i]
 			x.State, x.Guidance, x.SessionID, x.SHA, x.Verdict, x.Model = s.State, s.Guidance, s.SessionID, s.SHA, s.Verdict, s.Model
 			x.Completed, x.StartedAt, x.EndedAt, x.Skipped = s.Completed, s.StartedAt, s.EndedAt, s.Skipped
+			x.ModelSet, x.EffortSet = s.ModelSet, s.EffortSet
 			return d.save(r)
 		}
 	}

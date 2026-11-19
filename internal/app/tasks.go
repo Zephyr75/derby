@@ -242,7 +242,7 @@ func (a *App) createTask(projectID, issue, issueRepo, description, branch string
 	if err := a.db.SaveTask(t); err != nil {
 		return TaskView{}, err
 	}
-	if err := copyAttachments(a.runDir(p, t), files); err != nil {
+	if _, err := copyAttachments(a.runDir(p, t), files); err != nil {
 		return TaskView{}, err
 	}
 	if err := a.writeIssueFile(p, t); err != nil {

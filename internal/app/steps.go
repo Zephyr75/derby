@@ -205,11 +205,12 @@ func (a *App) spec(l launch) runner.Spec {
 	for _, x := range a.sisters(l.task.ID) {
 		args = append(args, "--add-dir", a.runDir(a.projectOf(x), x)) // its plan, to stay consistent
 	}
-	if l.agent.Model != "" {
-		args = append(args, "--model", l.agent.Model)
+	// The model and effort the user picked for this session (the chat view), else the agent's.
+	if m := orStr(l.step.ModelSet, l.agent.Model); m != "" {
+		args = append(args, "--model", m)
 	}
-	if l.agent.Effort != "" {
-		args = append(args, "--effort", l.agent.Effort)
+	if e := orStr(l.step.EffortSet, l.agent.Effort); e != "" {
+		args = append(args, "--effort", e)
 	}
 	// The agent's own rules run without asking (Settings > Agents).
 	if len(l.agent.Allow) > 0 {
@@ -525,6 +526,10 @@ func (a *App) artifactDone(s store.Step) (bool, string) {
 
 // onHook turns Claude Code hook events into step states.
 func (a *App) onHook(ev hooks.Event) {
+	if ev.Name == hooks.StatusEvent {
+		a.setStatus(ev)
+		return
+	}
 	if ev.Name == "PostToolUse" {
 		a.recordExternal(ev)
 	}
