@@ -2,7 +2,7 @@
 // Opened from the status bar counts: every task that is working or needs
 // you, grouped by what it is doing. A click opens the task.
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import TaskRef from '../ui/TaskRef.vue'
 import type { Task } from '../../lib/types'
 
@@ -11,7 +11,7 @@ const tick = setInterval(() => (now.value = Date.now()), 30_000)
 onBeforeUnmount(() => clearInterval(tick))
 
 const groups = computed(() => {
-  const active = herd.tasks.filter((t) => !t.archived)
+  const active = derby.tasks.filter((t) => !t.archived)
   const of = (k: string) => active.filter((t) => t.status.kind === k)
   return [
     { kind: 'approval', label: 'Needs approval', tasks: of('approval') },
@@ -34,13 +34,13 @@ function current(t: Task) {
 }
 
 function open(t: Task) {
-  herd.overlay = 'none'
-  herd.pickTask(t.id)
+  derby.overlay = 'none'
+  derby.pickTask(t.id)
 }
 </script>
 
 <template>
-  <button class="scrim" aria-label="Close activity" @click="herd.overlay = 'none'"></button>
+  <button class="scrim" aria-label="Close activity" @click="derby.overlay = 'none'"></button>
   <div class="box popup" role="dialog" aria-label="Activity">
     <div class="head">
       <span class="title">Activity</span>

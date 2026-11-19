@@ -1,18 +1,18 @@
 <script setup lang="ts">
-// herd's top bar is the window's titlebar: drag it to move the window,
+// derby's top bar is the window's titlebar: drag it to move the window,
 // double-click to maximise. On Linux and Windows the window is frameless and
 // the controls are drawn here; macOS keeps its traffic lights.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import { label } from '../lib/keymap'
 import { isFullscreen, isMaximised, minimise, quit, toggleMaximise } from '../lib/window'
 import Icon from './ui/Icon.vue'
 
-const t = computed(() => herd.selTask)
-const scopeOpen = (m: string) => herd.overlay === 'scope' && herd.scope === m
-const controls = computed(() => herd.os !== 'darwin')
-const openTodos = computed(() => herd.todos.filter((x) => !x.done).length + herd.tasks.reduce((n, x) => n + x.todos.filter((y) => !y.done).length, 0))
-const todosKey = computed(() => label(herd.settings?.keymap.todos?.[0]))
+const t = computed(() => derby.selTask)
+const scopeOpen = (m: string) => derby.overlay === 'scope' && derby.scope === m
+const controls = computed(() => derby.os !== 'darwin')
+const openTodos = computed(() => derby.todos.filter((x) => !x.done).length + derby.tasks.reduce((n, x) => n + x.todos.filter((y) => !y.done).length, 0))
+const todosKey = computed(() => label(derby.settings?.keymap.todos?.[0]))
 
 const maximised = ref(false)
 const fullscreen = ref(false)
@@ -35,37 +35,37 @@ function dblclick(e: MouseEvent) {
 </script>
 
 <template>
-  <header :class="{ mac: herd.os === 'darwin', full: fullscreen }" @dblclick="dblclick">
-    <button class="menu" :class="{ on: herd.view === 'settings' }" aria-label="Settings" title="Settings" @click="herd.command('settings')">
+  <header :class="{ mac: derby.os === 'darwin', full: fullscreen }" @dblclick="dblclick">
+    <button class="menu" :class="{ on: derby.view === 'settings' }" aria-label="Settings" title="Settings" @click="derby.command('settings')">
       <Icon name="menu" :size="15" />
     </button>
-    <template v-if="herd.view === 'board' && t">
-      <button class="crumb project" :class="{ on: scopeOpen('project') }" @click="herd.openOverlay('scope', 'project')">
+    <template v-if="derby.view === 'board' && t">
+      <button class="crumb project" :class="{ on: scopeOpen('project') }" @click="derby.openOverlay('scope', 'project')">
         {{ t.projectName }}<Icon name="chevron" :size="13" />
       </button>
       <span class="sep" aria-hidden="true">/</span>
-      <button class="crumb" :class="{ on: scopeOpen('worktree') }" @click="herd.openOverlay('scope', 'worktree')">
+      <button class="crumb" :class="{ on: scopeOpen('worktree') }" @click="derby.openOverlay('scope', 'worktree')">
         <Icon name="worktree" /><span class="ct">{{ t.worktreeRel }}</span>
       </button>
       <span class="sep" aria-hidden="true">/</span>
-      <button class="crumb" :class="{ on: scopeOpen('branch') }" @click="herd.openOverlay('scope', 'branch')">
+      <button class="crumb" :class="{ on: scopeOpen('branch') }" @click="derby.openOverlay('scope', 'branch')">
         <Icon name="branch" /><span class="ct">{{ t.branch }}</span>
       </button>
     </template>
-    <span v-else-if="herd.view === 'settings'" class="muted label">Settings</span>
+    <span v-else-if="derby.view === 'settings'" class="muted label">Settings</span>
     <span class="grow"></span>
-    <button class="todos" :class="{ on: herd.overlay === 'todos' }" :title="`Todo lists${todosKey ? ' (' + todosKey + ')' : ''}`" @click="herd.command('todos')">
+    <button class="todos" :class="{ on: derby.overlay === 'todos' }" :title="`Todo lists${todosKey ? ' (' + todosKey + ')' : ''}`" @click="derby.command('todos')">
       <Icon name="todo" :size="15" /><span v-if="openTodos" class="tcount">{{ openTodos }}</span>
     </button>
-    <button class="search" @click="herd.openOverlay('palette')">
+    <button class="search" @click="derby.openOverlay('palette')">
       <Icon name="search" /><span class="grow stext">Search tasks</span>
     </button>
-    <button class="new" @click="herd.openOverlay('new')">
+    <button class="new" @click="derby.openOverlay('new')">
       <Icon name="plus" :size="14" />New task
     </button>
     <div v-if="controls" class="win" aria-label="Window">
       <!-- Zed's Linux window controls (an 8px glyph in a 16px icon, in a 20px round button),
-           scaled by Zed's 16px UI font to herd's 13px: they look as big as Zed's -->
+           scaled by Zed's 16px UI font to derby's 13px: they look as big as Zed's -->
       <button class="wc" aria-label="Minimise" title="Minimise" @click="minimise()">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 8h8" /></svg>
       </button>

@@ -2,7 +2,7 @@
 // The user's comments on the task's diff, waiting to be sent: Send to
 // <agent> starts that agent with them as guidance, then clears them.
 import { computed, ref } from 'vue'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import type { Agent, Note, Task } from '../lib/types'
 import Icon from './ui/Icon.vue'
 
@@ -13,12 +13,12 @@ const confirmClear = ref(false)
 const span = (x: Note) => (x.from === x.to ? `line ${x.to}` : `lines ${x.from}–${x.to}`) + (x.side === 'old' ? ' (removed lines)' : '')
 async function send(agent: Agent) {
   const comments = props.task.notes.map((x) => `### ${x.path}, ${span(x)}\n\`\`\`diff\n${x.code}\n\`\`\`\n${x.text}`).join('\n\n')
-  if (await herd.fixWith(props.task, herd.prompt('diffNotes', { comments }), agent)) await herd.setNotes(props.task, [])
+  if (await derby.fixWith(props.task, derby.prompt('diffNotes', { comments }), agent)) await derby.setNotes(props.task, [])
 }
 function clear() {
   if (!confirmClear.value) return void (confirmClear.value = true)
   confirmClear.value = false
-  void herd.setNotes(props.task, [])
+  void derby.setNotes(props.task, [])
 }
 </script>
 
@@ -26,8 +26,8 @@ function clear() {
   <div v-if="n" class="notes-bar">
     <span class="count"><Icon name="pencil" :size="12" />{{ n }} {{ n > 1 ? 'comments' : 'comment' }} on the diff</span>
     <span class="grow"></span>
-    <template v-if="herd.canFix(task)">
-      <button v-for="a in herd.fixers(task)" :key="a.id" class="b" :title="`Start a ${a.name} step with your comments as guidance; they are cleared once it starts`" @click="send(a)">Send to {{ a.name }}</button>
+    <template v-if="derby.canFix(task)">
+      <button v-for="a in derby.fixers(task)" :key="a.id" class="b" :title="`Start a ${a.name} step with your comments as guidance; they are cleared once it starts`" @click="send(a)">Send to {{ a.name }}</button>
     </template>
     <span v-else class="muted">a step is running</span>
     <button class="b ghost" :class="{ danger: confirmClear }" @blur="confirmClear = false" @click="clear">{{ confirmClear ? 'Delete them?' : 'Clear' }}</button>

@@ -13,13 +13,13 @@ import (
 
 	"github.com/google/uuid"
 
-	"herd/internal/artifacts"
-	"herd/internal/github"
-	"herd/internal/gitops"
-	"herd/internal/hooks"
-	"herd/internal/runner"
-	"herd/internal/settings"
-	"herd/internal/store"
+	"derby/internal/artifacts"
+	"derby/internal/github"
+	"derby/internal/gitops"
+	"derby/internal/hooks"
+	"derby/internal/runner"
+	"derby/internal/settings"
+	"derby/internal/store"
 )
 
 type launch struct {
@@ -144,7 +144,7 @@ func (a *App) stepBlock(l launch, runDir, wt string) string {
 	return b.String()
 }
 
-// The Herd step block's data (the stepBlock prompt).
+// The Derby step block's data (the stepBlock prompt).
 type blockData struct {
 	Task, Title, Project, Step  string
 	N                           int
@@ -234,37 +234,37 @@ func (a *App) spec(l launch) runner.Spec {
 		args = append(args, "--session-id", l.step.SessionID, "--", a.prompt(l))
 	}
 	env := []string{
-		"HERD_URL=" + a.baseURL(), "HERD_TOKEN=" + a.token, "HERD_TASK=" + l.task.ID, "HERD_STEP=" + l.step.Key,
-		"HERD_RUN_DIR=" + runDir, "HERD_N=" + fmt.Sprint(l.step.N), "HERD_SHA=" + l.prevSHA, "HERD_ISSUE=" + l.task.Issue,
-		"HERD_ARTIFACT=" + filepath.Join(runDir, l.agent.ArtifactName(l.step.N)),
-		"HERD_ENDPOINT=" + a.endpointPath(),
+		"DERBY_URL=" + a.baseURL(), "DERBY_TOKEN=" + a.token, "DERBY_TASK=" + l.task.ID, "DERBY_STEP=" + l.step.Key,
+		"DERBY_RUN_DIR=" + runDir, "DERBY_N=" + fmt.Sprint(l.step.N), "DERBY_SHA=" + l.prevSHA, "DERBY_ISSUE=" + l.task.Issue,
+		"DERBY_ARTIFACT=" + filepath.Join(runDir, l.agent.ArtifactName(l.step.N)),
+		"DERBY_ENDPOINT=" + a.endpointPath(),
 	}
 	return runner.Spec{StepID: l.step.ID, Dir: wt, Env: env, Unset: inheritedSessionVars, Bin: bin[0], Args: args}
 }
 
-// promptPath is where herd keeps what it sent a step's agent, to show it.
+// promptPath is where derby keeps what it sent a step's agent, to show it.
 func promptPath(runDir string, s store.Step) string {
 	return filepath.Join(runDir, ".prompts", s.Key+".md")
 }
 
 // savePrompt keeps the command, the agent's instructions and the system
-// prompt herd gives a step, as the agent gets them (Prompt in the artifact
+// prompt derby gives a step, as the agent gets them (Prompt in the artifact
 // pop-up). A resumed session gets the newest system prompt, not the command.
 func (a *App) savePrompt(l launch, runDir, block string) {
 	cmd := a.prompt(l)
 	_, text, _ := strings.Cut(a.CommandText(l.agent), "---\n\n") // without its front matter
 	if name := commandName(l.agent.Command); name != "" {
-		text = strings.ReplaceAll(text, "$ARGUMENTS", strings.TrimSpace(strings.TrimPrefix(cmd, "/herd:"+name)))
+		text = strings.ReplaceAll(text, "$ARGUMENTS", strings.TrimSpace(strings.TrimPrefix(cmd, "/derby:"+name)))
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "# Command\n\n`%s`\n\n# Instructions (/herd:%s)\n\n%s\n# System prompt (added to Claude Code's)\n\n%s", cmd, commandName(l.agent.Command), strings.TrimSpace(text)+"\n", block)
+	fmt.Fprintf(&b, "# Command\n\n`%s`\n\n# Instructions (/derby:%s)\n\n%s\n# System prompt (added to Claude Code's)\n\n%s", cmd, commandName(l.agent.Command), strings.TrimSpace(text)+"\n", block)
 	path := promptPath(runDir, l.step)
 	if os.MkdirAll(filepath.Dir(path), 0o755) == nil {
 		_ = os.WriteFile(path, []byte(b.String()), 0o644)
 	}
 }
 
-// StepPrompt reads what herd last sent a step's agent (see savePrompt).
+// StepPrompt reads what derby last sent a step's agent (see savePrompt).
 func (a *App) StepPrompt(stepID string) (artifacts.Artifact, error) {
 	s, err := a.db.Step(stepID)
 	if err != nil {
@@ -278,7 +278,7 @@ func (a *App) StepPrompt(stepID string) (artifacts.Artifact, error) {
 }
 
 // inheritedSessionVars are set by Claude Code for processes it spawns. When
-// herd itself was started from a Claude Code session (e.g. "! make dev"),
+// derby itself was started from a Claude Code session (e.g. "! make dev"),
 // passing them on makes every step a "child session": Claude Code then turns
 // off transcript saving and --resume finds nothing.
 var inheritedSessionVars = []string{
@@ -307,7 +307,7 @@ func sessionSaved(id string) bool {
 	return len(m) > 0
 }
 
-// latestSHA returns the sha of the last commit herd made before seq.
+// latestSHA returns the sha of the last commit derby made before seq.
 func latestSHA(steps []store.Step, beforeSeq int) string {
 	sha := ""
 	for _, s := range steps {
@@ -369,7 +369,7 @@ func (a *App) newStep(taskID, agentID, guidance string, n int, state string) (la
 		return launch{}, fmt.Errorf("unknown agent %q", agentID)
 	}
 	if ag.Builtin {
-		return launch{}, fmt.Errorf("%s is run by herd: it starts by itself after the agent it follows", ag.Name)
+		return launch{}, fmt.Errorf("%s is run by derby: it starts by itself after the agent it follows", ag.Name)
 	}
 	p := a.projectOf(t)
 	if !ag.For(t.Project) {
@@ -463,8 +463,8 @@ func (a *App) resumeWith(stepID, message string) error {
 		return errors.New("the worktree was removed, so the session cannot be resumed")
 	}
 	p := a.projectOf(t)
-	// Removed outside herd, or a task from another machine. Without this,
-	// starting the holder there fails as "fork/exec <herd>: no such file".
+	// Removed outside derby, or a task from another machine. Without this,
+	// starting the holder there fails as "fork/exec <derby>: no such file".
 	if wt := worktreePath(p, t); !isDir(wt) {
 		return fmt.Errorf("the worktree %s does not exist, so the session cannot be resumed", wt)
 	}
@@ -646,11 +646,11 @@ func (a *App) MarkDone(stepID string) error {
 }
 
 // SkipStep ends a step at once as succeeded (ok) or failed, whatever its
-// agent did: its session ends, herd skips its git actions, and the task goes
+// agent did: its session ends, derby skips its git actions, and the task goes
 // on from that verdict (automatic next steps, or the Next step options).
 func (a *App) SkipStep(stepID string, ok bool) error {
 	if _, busy := a.busy.Load(stepID); busy {
-		return errors.New("Herd is still finishing this step")
+		return errors.New("Derby is still finishing this step")
 	}
 	a.run.Stop(stepID) // its Stop hook must not change the verdict afterwards
 	a.setPaused(stepID, false)
@@ -699,7 +699,7 @@ func (a *App) AllowOnce(stepID string) error {
 	return nil
 }
 
-// StopStep pauses a step: its Claude Code process ends and herd leaves the
+// StopStep pauses a step: its Claude Code process ends and derby leaves the
 // session alone (no auto-resume) until ResumeStep, e.g. while the user
 // continues it with claude --resume in Zed.
 func (a *App) StopStep(stepID string) error {
@@ -822,7 +822,7 @@ func (a *App) afterDone(s store.Step, git bool) {
 	sess, _ := a.run.Get(s.ID)
 	say := func(line string) {
 		if sess != nil {
-			sess.Inject([]byte("\r\n\x1b[36m● herd: " + line + "\x1b[0m\r\n"))
+			sess.Inject([]byte("\r\n\x1b[36m● derby: " + line + "\x1b[0m\r\n"))
 		}
 	}
 
@@ -894,7 +894,7 @@ func (a *App) gitActions(t store.Task, s store.Step, ag settings.Agent, say func
 	switch {
 	case err != nil:
 		say("commit failed: " + err.Error())
-		return fmt.Errorf("Herd could not commit: %w", err)
+		return fmt.Errorf("Derby could not commit: %w", err)
 	case sha == "":
 		say("nothing new to commit")
 	default:
@@ -907,7 +907,7 @@ func (a *App) gitActions(t store.Task, s store.Step, ag settings.Agent, say func
 	}
 	if err := g.Push(a.ctx, wt, branchName(t)); err != nil {
 		say("push failed: " + err.Error())
-		return fmt.Errorf("Herd could not push: %w", err)
+		return fmt.Errorf("Derby could not push: %w", err)
 	}
 	say("pushed " + branchName(t))
 	if !ag.OpenPR {
@@ -919,7 +919,7 @@ func (a *App) gitActions(t store.Task, s store.Step, ag settings.Agent, say func
 	n, url, err := github.GH{Log: say}.CreatePR(a.ctx, wt, p.Repo, p.BaseBranch, branchName(t), title, body)
 	if err != nil {
 		say("gh pr create failed: " + err.Error())
-		return fmt.Errorf("Herd could not open the PR: %w", err)
+		return fmt.Errorf("Derby could not open the PR: %w", err)
 	}
 	if t.PRNumber == n {
 		say(fmt.Sprintf("updated PR #%d %s", n, url))
@@ -952,12 +952,12 @@ func (a *App) runCopilot(taskID string, say func(string)) {
 	go a.pollPRs()
 }
 
-// copilotAgent is the built-in step herd runs itself: it waits for Copilot's
+// copilotAgent is the built-in step derby runs itself: it waits for Copilot's
 // review and the CI checks (FEEDBACK-<n>.md), while Claude explains the
 // PR's changes in COPILOT-<n>.md (see explain.go).
 const copilotAgent = settings.CopilotID
 
-// skipped is the Verdict of a Copilot step herd stopped waiting on.
+// skipped is the Verdict of a Copilot step derby stopped waiting on.
 const skipped = "skipped"
 
 // takeCopilotReview writes a review to the waiting Copilot step. A review
@@ -1193,9 +1193,9 @@ func splitTitle(md string) (string, string) {
 func (a *App) collectCopilot(t store.Task) {
 	p := a.projectOf(t)
 	seen, _ := a.db.Get("copilot:" + t.ID)
-	after, _ := strconv.ParseInt(seen, 10, 64) // "timeout" (older herd): read them all
+	after, _ := strconv.ParseInt(seen, 10, 64) // "timeout" (older derby): read them all
 	rs, err := a.gh.CopilotReviews(a.ctx, p.Repo, t.PRNumber, after)
-	if seen == "done" && len(rs) > 0 { // older herd appended the latest already
+	if seen == "done" && len(rs) > 0 { // older derby appended the latest already
 		_ = a.db.Set("copilot:"+t.ID, strconv.FormatInt(rs[len(rs)-1].ID, 10))
 		return
 	}
@@ -1261,7 +1261,7 @@ func lastLines(s string, n int) string {
 	return strings.TrimRight(strings.Join(lines, "\n"), " \n")
 }
 
-// reconcile fixes steps left live by a previous run: herd owns every
+// reconcile fixes steps left live by a previous run: derby owns every
 // process, so after a restart none of them is running any more.
 func (a *App) reconcile() {
 	steps, err := a.db.StepsInStates(store.Running, store.Idle, store.Approval)
@@ -1270,10 +1270,10 @@ func (a *App) reconcile() {
 	}
 	for _, s := range steps {
 		if a.paused(s.ID) || s.Agent == copilotAgent {
-			continue // the user resumes it; herd itself waits for Copilot
+			continue // the user resumes it; derby itself waits for Copilot
 		}
 		if _, err := a.run.Attach(s.ID); err == nil {
-			continue // still running in its holder since the last herd
+			continue // still running in its holder since the last derby
 		}
 		done, verdict := a.artifactDone(s)
 		s2, changed := a.updateStep(s.ID, func(x *store.Step) bool {

@@ -1,8 +1,8 @@
-// Package holder keeps a step's Claude Code process alive across herd
-// restarts. herd runs itself as `herd hold <socket> -- <cmd...>`: a small
+// Package holder keeps a step's Claude Code process alive across derby
+// restarts. derby runs itself as `derby hold <socket> -- <cmd...>`: a small
 // detached process that owns the PTY, keeps the scrollback, and serves both
-// on a unix socket. herd connects as a client; when herd quits it only
-// disconnects, and the next herd reconnects and replays the output.
+// on a unix socket. derby connects as a client; when derby quits it only
+// disconnects, and the next derby reconnects and replays the output.
 package holder
 
 import (
@@ -80,7 +80,7 @@ type holder struct {
 // inherits the holder's environment and working directory.
 func Main(args []string) int {
 	if len(args) < 3 || args[1] != "--" {
-		fmt.Fprintln(os.Stderr, "usage: herd hold <socket> -- <command> [args...]")
+		fmt.Fprintln(os.Stderr, "usage: derby hold <socket> -- <command> [args...]")
 		return 2
 	}
 	sock := args[0]
@@ -149,7 +149,7 @@ func (h *holder) output(p []byte) {
 	for c := range h.clients {
 		select {
 		case c.out <- frame:
-		default: // too slow: drop it; herd reconnects and replays
+		default: // too slow: drop it; derby reconnects and replays
 			delete(h.clients, c)
 			close(c.out)
 		}

@@ -1,7 +1,7 @@
 // Package store keeps tasks, steps and their state in files: one JSON file
-// per task, in the task's run directory (.herd-task.json: the task, its
+// per task, in the task's run directory (.derby-task.json: the task, its
 // steps, its values and the files its steps edited outside the worktree),
-// and the values tied to no task in ~/.herd/state.json. herd is the only
+// and the values tied to no task in ~/.derby/state.json. derby is the only
 // writer: a lock and atomic writes are enough.
 package store
 
@@ -83,7 +83,7 @@ type Step struct {
 }
 
 // TaskFile is the name of a task's file in its run directory.
-const TaskFile = ".herd-task.json"
+const TaskFile = ".derby-task.json"
 
 // DB holds every task in memory and writes each change to its file.
 type DB struct {
@@ -139,6 +139,11 @@ func toJSON(t Task) taskJSON {
 // says where a new task's file goes (its run directory).
 func Open(home string, pathFor func(Task) string) (*DB, error) {
 	d := &DB{home: home, pathFor: pathFor, tasks: map[string]*record{}, global: map[string]string{}}
+	// Derby was called herd: its task files were .herd-task.json.
+	old, _ := filepath.Glob(filepath.Join(home, "runs", "*", "*", ".herd-task.json"))
+	for _, f := range old {
+		_ = os.Rename(f, filepath.Join(filepath.Dir(f), TaskFile))
+	}
 	files, _ := filepath.Glob(filepath.Join(home, "runs", "*", "*", TaskFile))
 	for _, f := range files {
 		b, err := os.ReadFile(f)

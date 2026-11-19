@@ -1,4 +1,4 @@
-// Package settings loads and saves herd's files under ~/.herd: config.toml,
+// Package settings loads and saves derby's files under ~/.derby: config.toml,
 // agents.toml and context/*.md.
 package settings
 
@@ -50,7 +50,7 @@ type Config struct {
 	ZedCommand      string                 `toml:"zed_command" json:"zedCommand"`
 	ClaudeCommand   string                 `toml:"claude_command" json:"claudeCommand"`
 	MaxLiveSessions int                    `toml:"max_live_sessions" json:"maxLiveSessions"`
-	Notifications   bool                   `toml:"notifications" json:"notifications"`      // desktop notifications while herd is in the background
+	Notifications   bool                   `toml:"notifications" json:"notifications"`      // desktop notifications while derby is in the background
 	MaxTabs         int                    `toml:"max_tabs" json:"maxTabs"`                 // open terminal tabs; the oldest closes first
 	Rules           string                 `toml:"rules" json:"rules"`                      // always followed by every agent
 	BranchPrefix    string                 `toml:"branch_prefix" json:"branchPrefix"`       // every new task's branch starts with it
@@ -79,13 +79,13 @@ type Agent struct {
 	Effort       string   `toml:"effort,omitempty" json:"effort"` // low | medium | high | xhigh | max (default xhigh)
 	Trigger      string   `toml:"trigger" json:"trigger"`         // manual | after:<agent id> (when that step succeeds)
 	Writes       string   `toml:"writes" json:"writes"`
-	Commit       bool     `toml:"commit,omitempty" json:"commit"`            // herd commits when it succeeds: its artifact's title line and body are the message
+	Commit       bool     `toml:"commit,omitempty" json:"commit"`            // derby commits when it succeeds: its artifact's title line and body are the message
 	Push         bool     `toml:"push,omitempty" json:"push"`                // then pushes the branch (needs Commit)
 	OpenPR       bool     `toml:"open_pr,omitempty" json:"openPR"`           // then opens (or updates) the draft PR from its artifact (needs Push)
 	Revert       bool     `toml:"revert,omitempty" json:"revert"`            // its latest step can be reverted while nothing is committed after it
 	Rerun        bool     `toml:"rerun,omitempty" json:"rerun"`              // its step can be run again on the current worktree while it is the latest
 	Choose       bool     `toml:"choose,omitempty" json:"choose"`            // when its artifact lists Options, Next step asks which one to take
-	Builtin      bool     `toml:"builtin,omitempty" json:"builtin"`          // run by herd itself, not Claude: Copilot
+	Builtin      bool     `toml:"builtin,omitempty" json:"builtin"`          // run by derby itself, not Claude: Copilot
 	IgnoreRules  bool     `toml:"ignore_rules,omitempty" json:"ignoreRules"` // the common rules (Settings > Context) are not given to it
 	ShowDiff     bool     `toml:"show_diff,omitempty" json:"showDiff"`       // its steps have a Diff button (open their changes in Zed)
 	Sisters      bool     `toml:"sisters,omitempty" json:"sisters"`          // its artifact can ask for sister tasks in other repositories
@@ -262,7 +262,7 @@ func fillConfig(c *Config) {
 	d := DefaultConfig()
 	switch c.Appearance.Theme {
 	case "dark", "light", "system", "zed":
-	default: // empty, or a theme herd no longer has
+	default: // empty, or a theme derby no longer has
 		c.Appearance.Theme = d.Appearance.Theme
 	}
 	if c.Appearance.UIFont == "" {
@@ -517,7 +517,7 @@ func (s *Store) SaveAgents(agents []Agent) error {
 	return nil
 }
 
-// CopilotID is the built-in agent herd runs itself: it asks Copilot for a
+// CopilotID is the built-in agent derby runs itself: it asks Copilot for a
 // review of the PR, then waits for the review and the CI checks.
 const CopilotID = "copilot"
 

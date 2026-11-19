@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The artifact and changes pop-ups: one alone is large, both open side by
 // side with half the width each. A click around them closes both.
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import ArtifactPopup from './ArtifactPopup.vue'
 import DiffPopup from './DiffPopup.vue'
 import DiagramPopup from './DiagramPopup.vue'
@@ -9,13 +9,13 @@ import DiagramPopup from './DiagramPopup.vue'
 </script>
 
 <template>
-  <button class="scrim dim" aria-label="Close" @click="herd.closeViews()"></button>
-  <div v-if="herd.diagramOf" class="pair">
+  <button class="scrim dim" aria-label="Close" @click="derby.closeViews()"></button>
+  <div v-if="derby.diagramOf" class="pair">
     <DiagramPopup />
   </div>
   <div v-else class="pair">
-    <ArtifactPopup v-if="herd.artifactOf" />
-    <DiffPopup v-if="herd.diffOf" />
+    <ArtifactPopup v-if="derby.artifactOf" />
+    <DiffPopup v-if="derby.diffOf" />
   </div>
 </template>
 

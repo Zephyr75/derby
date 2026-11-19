@@ -24,10 +24,10 @@ func useLoginShellPath() {
 	defer cancel()
 	// Interactive, so .zshrc/.bashrc run too; the markers cut away anything
 	// the rc files print.
-	const mark = "__HERD_PATH__"
+	const mark = "__DERBY_PATH__"
 	out, err := exec.CommandContext(ctx, shell, "-ilc", "printf '"+mark+"%s"+mark+"' \"$PATH\"").Output()
 	if err != nil {
-		log.Printf("herd: reading PATH from %s: %v", shell, err)
+		log.Printf("derby: reading PATH from %s: %v", shell, err)
 		return
 	}
 	parts := strings.Split(string(out), mark)

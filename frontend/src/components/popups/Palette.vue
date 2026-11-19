@@ -2,12 +2,12 @@
 // Go to task (⌘P): every word must match the title, issue number, project,
 // description or LOCAL. Open tasks first, archived last.
 import { computed, onMounted, ref, watch } from 'vue'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import { isMac } from '../../lib/keymap'
 import Icon from '../ui/Icon.vue'
 import TaskRef from '../ui/TaskRef.vue'
 
-const query = ref(herd.previewQuery)
+const query = ref(derby.previewQuery)
 const hi = ref(0)
 const list = ref<HTMLDivElement>()
 const input = ref<HTMLInputElement>()
@@ -15,7 +15,7 @@ onMounted(() => input.value?.focus())
 
 const matches = computed(() => {
   const words = query.value.toLowerCase().trim().split(/\s+/).filter(Boolean)
-  const out = herd.tasks.filter((t) => {
+  const out = derby.tasks.filter((t) => {
     const hay = `${t.title} ${t.issue} ${t.projectName} ${t.issue ? '' : 'local'} ${t.description} ${t.slug}`.toLowerCase()
     return words.every((w) => hay.includes(w))
   })
@@ -29,8 +29,8 @@ function key(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') hi.value = Math.min(rows.length - 1, hi.value + 1)
   else if (e.key === 'ArrowUp') hi.value = Math.max(0, hi.value - 1)
   else if (e.key === 'Enter' && rows[hi.value]) {
-    herd.pickTask(rows[hi.value].id)
-    if (mod) void herd.openWorktree()
+    derby.pickTask(rows[hi.value].id)
+    if (mod) void derby.openWorktree()
   } else return
   e.preventDefault()
   list.value?.querySelectorAll('button')[hi.value]?.scrollIntoView({ block: 'nearest' })
@@ -38,7 +38,7 @@ function key(e: KeyboardEvent) {
 </script>
 
 <template>
-  <button class="scrim" aria-label="Close search" @click="herd.overlay = 'none'"></button>
+  <button class="scrim" aria-label="Close search" @click="derby.overlay = 'none'"></button>
   <div class="box popup" role="dialog" aria-label="Go to task">
     <div class="search">
       <span class="muted ico"><Icon name="search" :size="14" /></span>
@@ -47,7 +47,7 @@ function key(e: KeyboardEvent) {
     </div>
     <span class="heading">{{ query.trim() ? `${matches.length} task${matches.length === 1 ? '' : 's'} match` : 'Recent tasks · all projects' }} · archived included</span>
     <div ref="list" class="rows">
-      <button v-for="(t, i) in matches" :key="t.id" class="row" :class="{ hi: i === hi }" @click="herd.pickTask(t.id)" @mousemove="hi = i">
+      <button v-for="(t, i) in matches" :key="t.id" class="row" :class="{ hi: i === hi }" @click="derby.pickTask(t.id)" @mousemove="hi = i">
         <TaskRef :issue="t.issue" width="46px" :task="t.id" />
         <span class="title">{{ t.title }}</span>
         <span class="proj">{{ t.projectName }}</span>

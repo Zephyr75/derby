@@ -1,6 +1,6 @@
 package app
 
-// ISSUE.md: herd copies the task's GitHub issue, comments included, to the
+// ISSUE.md: derby copies the task's GitHub issue, comments included, to the
 // run directory, so every agent reads the same text without calling GitHub.
 // It is copied when the task is created, before each run of the first agent,
 // and with Refresh issue.
@@ -16,10 +16,10 @@ import (
 	"regexp"
 	"strings"
 
-	"herd/internal/artifacts"
-	"herd/internal/github"
-	"herd/internal/settings"
-	"herd/internal/store"
+	"derby/internal/artifacts"
+	"derby/internal/github"
+	"derby/internal/settings"
+	"derby/internal/store"
 )
 
 const issueFile = "ISSUE.md"
@@ -84,7 +84,7 @@ func (a *App) RefreshIssue(taskID string) error {
 }
 
 // IssuePreview is an issue as New task shows it before there is a task:
-// ISSUE.md's text, with its images loading through herd (see previewImages).
+// ISSUE.md's text, with its images loading through derby (see previewImages).
 func (a *App) IssuePreview(projectID, issue string) (artifacts.Artifact, error) {
 	p, ok := a.settings.Project(projectID)
 	if !ok {
@@ -110,9 +110,9 @@ var (
 	attachment = regexp.MustCompile(`(!\[[^\]]*\]\()(https://github\.com/user-attachments/[^)\s]+)\)`)
 )
 
-// previewImages makes an issue's images show in herd: GitHub writes them as
-// <img> tags, which herd's markdown leaves out, and a private repository's
-// attachments only load signed in, so herd fetches them (ghFilePath). Other
+// previewImages makes an issue's images show in derby: GitHub writes them as
+// <img> tags, which derby's markdown leaves out, and a private repository's
+// attachments only load signed in, so derby fetches them (ghFilePath). Other
 // attachments stay links, opened in the browser where the user is signed in.
 func previewImages(md string) string {
 	md = imgTag.ReplaceAllStringFunc(md, func(tag string) string {

@@ -1,26 +1,26 @@
 <script setup lang="ts">
 // The task's artifacts, large: every step's markdown listed on the left, the
 // selected one rendered on the right for easier reading. Prompt shows what
-// herd sent the step's agent instead: its command, instructions and system prompt.
+// derby sent the step's agent instead: its command, instructions and system prompt.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import type { Artifact } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import ArtifactView from '../ArtifactView.vue'
 import Splitter from '../ui/Splitter.vue'
 import { SIDEBAR, useSidebar } from '../../lib/sidebar'
 
-const task = computed(() => herd.tasks.find((t) => t.steps.some((s) => s.id === herd.artifactOf)))
+const task = computed(() => derby.tasks.find((t) => t.steps.some((s) => s.id === derby.artifactOf)))
 const steps = computed(() => task.value?.steps ?? [])
-const step = computed(() => steps.value.find((s) => s.id === herd.artifactOf))
+const step = computed(() => steps.value.find((s) => s.id === derby.artifactOf))
 const art = ref<Artifact | null>(null)
 const prompt = ref(false)
 
 // Reload as Claude rewrites it.
 let seq = 0
 watch(
-  () => [herd.artifactOf, step.value?.state, herd.artifactRev, prompt.value] as const,
+  () => [derby.artifactOf, step.value?.state, derby.artifactRev, prompt.value] as const,
   async ([id, , , p]) => {
     const mine = ++seq
     art.value = null
@@ -30,20 +30,20 @@ watch(
   { immediate: true },
 )
 watch(
-  () => herd.artifactOf,
+  () => derby.artifactOf,
   () => scroll.value?.scrollTo({ top: 0 }),
 )
 
-const pick = (id: string) => (herd.artifactOf = id)
+const pick = (id: string) => (derby.artifactOf = id)
 const sb = useSidebar('artifact', 220)
-const close = () => herd.closeArtifactPopup()
+const close = () => derby.closeArtifactPopup()
 const box = ref<HTMLDivElement>()
 const scroll = ref<HTMLDivElement>()
 onMounted(() => box.value?.focus())
 
 // Up and down move through the steps.
 function key(e: KeyboardEvent) {
-  const i = steps.value.findIndex((s) => s.id === herd.artifactOf)
+  const i = steps.value.findIndex((s) => s.id === derby.artifactOf)
   if (e.key === 'ArrowDown' && i < steps.value.length - 1) pick(steps.value[i + 1].id)
   else if (e.key === 'ArrowUp' && i > 0) pick(steps.value[i - 1].id)
   else return
@@ -59,16 +59,16 @@ function key(e: KeyboardEvent) {
       <span class="title">{{ prompt ? 'Prompt' : art?.file || step?.artifact || 'Artifact' }}</span>
       <span class="muted small">{{ step?.name }}</span>
       <span class="grow"></span>
-      <button class="other" :title="prompt ? 'Back to the artifact' : 'What Herd sent this step\'s agent: the command, its instructions and the system prompt'" @click="prompt = !prompt">
+      <button class="other" :title="prompt ? 'Back to the artifact' : 'What Derby sent this step\'s agent: the command, its instructions and the system prompt'" @click="prompt = !prompt">
         <Icon :name="prompt ? 'file' : 'terminal'" :size="13" />{{ prompt ? 'Artifact' : 'Prompt' }}
       </button>
-      <button v-if="!herd.diffOf" class="other" title="Open this step's changes beside the artifact" @click="herd.showDiffToo(herd.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
+      <button v-if="!derby.diffOf" class="other" title="Open this step's changes beside the artifact" @click="derby.showDiffToo(derby.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
       <button class="x" aria-label="Close" title="Close (Esc closes both)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div v-if="!sb.hidden.value" class="side-wrap" :style="{ width: sb.width.value + 'px' }">
         <div class="side">
-          <button v-for="s in steps" :key="s.id" class="item" :class="{ on: s.id === herd.artifactOf }" @click="pick(s.id)">
+          <button v-for="s in steps" :key="s.id" class="item" :class="{ on: s.id === derby.artifactOf }" @click="pick(s.id)">
             <span class="name">{{ s.name }}</span>
             <span class="file mono">{{ s.artifact }}</span>
           </button>
@@ -78,7 +78,7 @@ function key(e: KeyboardEvent) {
       <div ref="scroll" class="scroll">
         <div class="page">
           <p v-if="!art" class="empty">Loading…</p>
-          <p v-else-if="!art.exists && prompt" class="empty">Herd did not keep the prompt of this step: it keeps the ones it sends from now on.</p>
+          <p v-else-if="!art.exists && prompt" class="empty">Derby did not keep the prompt of this step: it keeps the ones it sends from now on.</p>
           <p v-else-if="!art.exists" class="empty">{{ art.file || 'The artifact' }} has not been written yet.</p>
           <ArtifactView v-else :art="art" :task="task?.id ?? ''" :zoom="1.6" />
         </div>

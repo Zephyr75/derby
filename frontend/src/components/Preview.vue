@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { api } from '../lib/api'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import ChangesView from './Changes.vue'
 import PRTracker from './PRTracker.vue'
@@ -9,12 +9,12 @@ import ArtifactView from './ArtifactView.vue'
 import TodoList from './TodoList.vue'
 import type { Artifact, Changes } from '../lib/types'
 
-const step = computed(() => herd.selStep)
+const step = computed(() => derby.selStep)
 const art = ref<Artifact | null>(null)
 
 let seq = 0
 watch(
-  () => [step.value?.id, step.value?.state, herd.artifactRev] as const,
+  () => [step.value?.id, step.value?.state, derby.artifactRev] as const,
   ([id]) => {
     const mine = ++seq
     if (!id) {
@@ -61,34 +61,34 @@ watch(
   { immediate: true },
 )
 watch(
-  () => [herd.selTask, step.value?.sha, step.value?.state] as const,
+  () => [derby.selTask, step.value?.sha, step.value?.state] as const,
   () => loadChanges(step.value?.id, 800),
 )
 
 const file = computed(() => art.value?.file || step.value?.artifact || '')
 // The Changes tab only shows when the step changed files, the PR tab when the
 // task has a PR; the artifact's tab stands in otherwise.
-const task = computed(() => herd.selTask)
+const task = computed(() => derby.selTask)
 const openTodos = computed(() => task.value?.todos.filter((x) => !x.done).length ?? 0)
 const tab = computed(() =>
-  herd.rightTab === 'todos' && task.value ? 'todos' : herd.rightTab === 'pr' && task.value?.pr ? 'pr' : step.value && changes.value?.files.length && herd.rightTab === 'changes' ? 'changes' : 'preview',
+  derby.rightTab === 'todos' && task.value ? 'todos' : derby.rightTab === 'pr' && task.value?.pr ? 'pr' : step.value && changes.value?.files.length && derby.rightTab === 'changes' ? 'changes' : 'preview',
 )
 </script>
 
 <template>
   <div class="wrap">
     <div class="bar">
-      <div class="tab" role="tab" tabindex="0" :class="{ on: tab === 'preview' }" @click="herd.rightTab = 'preview'" @keydown.enter="herd.rightTab = 'preview'">
+      <div class="tab" role="tab" tabindex="0" :class="{ on: tab === 'preview' }" @click="derby.rightTab = 'preview'" @keydown.enter="derby.rightTab = 'preview'">
         <Icon name="file" />{{ file || 'Preview' }}
-        <button v-if="step && art?.exists" class="big" aria-label="Open in a large pop-up" title="Open in a large pop-up" @click.stop="herd.openArtifactPopup(step.id)">
+        <button v-if="step && art?.exists" class="big" aria-label="Open in a large pop-up" title="Open in a large pop-up" @click.stop="derby.openArtifactPopup(step.id)">
           <Icon name="maximize" :size="16" />
         </button>
       </div>
-      <button v-if="step && changes?.files.length" class="tab" :class="{ on: tab === 'changes' }" @click="herd.rightTab = 'changes'">
+      <button v-if="step && changes?.files.length" class="tab" :class="{ on: tab === 'changes' }" @click="derby.rightTab = 'changes'">
         <Icon name="diff" />{{ step.external ? 'Full changes' : 'Changes' }}<span class="count">{{ changes.files.length }}</span>
       </button>
-      <button v-if="task?.pr" class="tab" :class="{ on: tab === 'pr' }" @click="herd.rightTab = 'pr'"><Icon name="pr" />PR #{{ task.pr }}</button>
-      <button v-if="task" class="tab" :class="{ on: tab === 'todos' }" @click="herd.rightTab = 'todos'">
+      <button v-if="task?.pr" class="tab" :class="{ on: tab === 'pr' }" @click="derby.rightTab = 'pr'"><Icon name="pr" />PR #{{ task.pr }}</button>
+      <button v-if="task" class="tab" :class="{ on: tab === 'todos' }" @click="derby.rightTab = 'todos'">
         <Icon name="todo" />Todos<span v-if="openTodos" class="count">{{ openTodos }}</span>
       </button>
       <span class="grow"></span>
@@ -99,9 +99,9 @@ const tab = computed(() =>
           <span class="todo-title">Todos for this task</span>
           <span class="muted small">{{ openTodos }} open · {{ task.todos.length - openTodos }} done</span>
           <span class="grow"></span>
-          <label class="hide-done"><input v-model="herd.hideDone" type="checkbox" />Hide done</label>
+          <label class="hide-done"><input v-model="derby.hideDone" type="checkbox" />Hide done</label>
         </div>
-        <TodoList :todos="task.todos" :hide-done="herd.hideDone" @change="herd.setTodos(task, $event)" :run="herd.todoAgent(task)?.name ?? 'Implement'" :blocked="herd.todoBlocked(task)" @run="herd.runTodo(task, $event)" />
+        <TodoList :todos="task.todos" :hide-done="derby.hideDone" @change="derby.setTodos(task, $event)" :run="derby.todoAgent(task)?.name ?? 'Implement'" :blocked="derby.todoBlocked(task)" @run="derby.runTodo(task, $event)" />
       </template>
       <PRTracker v-else-if="tab === 'pr' && task" :task="task" />
       <ChangesView v-else-if="tab === 'changes'" :changes="changes" />

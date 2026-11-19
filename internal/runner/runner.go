@@ -1,7 +1,7 @@
 // Package runner owns one PTY per live step: start, resume, input, resize,
 // scrollback replay for viewers, and reaping idle sessions. With Hold set,
 // each PTY lives in a holder process (see package holder) so the session
-// survives a herd restart.
+// survives a derby restart.
 package runner
 
 import (
@@ -21,7 +21,7 @@ import (
 
 	"github.com/creack/pty"
 
-	"herd/internal/holder"
+	"derby/internal/holder"
 )
 
 // Spec describes the process to start for a step.
@@ -53,7 +53,7 @@ type Session struct {
 	viewers    map[*Viewer]struct{}
 	lastSeen   time.Time // last time a viewer detached or output arrived
 	killed     bool
-	detached   bool // herd let go of the holder; the process keeps running
+	detached   bool // derby let go of the holder; the process keeps running
 	exited     bool
 	exitCode   int
 	heldCode   int // exit code sent by the holder
@@ -71,8 +71,8 @@ type Viewer struct {
 // Runner tracks every live session, and the last output of sessions that
 // ended during this run so a viewer can still see why a process exited.
 type Runner struct {
-	// Hold is the holder command (e.g. herd's own path and "hold"); empty
-	// runs each process in a local PTY that dies with herd.
+	// Hold is the holder command (e.g. derby's own path and "hold"); empty
+	// runs each process in a local PTY that dies with derby.
 	Hold    []string
 	SockDir string // holder sockets
 
@@ -217,11 +217,11 @@ func (r *Runner) startHeld(stepID string, cmd *exec.Cmd) (*Session, error) {
 	args := append(append([]string{}, r.Hold[1:]...), sock, "--", cmd.Path)
 	h := exec.Command(r.Hold[0], append(args, cmd.Args[1:]...)...)
 	h.Dir, h.Env = cmd.Dir, cmd.Env
-	h.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // outlives herd
+	h.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // outlives derby
 	if err := h.Start(); err != nil {
 		return nil, err
 	}
-	go func() { _ = h.Wait() }() // reap it if it ends while herd runs
+	go func() { _ = h.Wait() }() // reap it if it ends while derby runs
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		conn, err := net.Dial("unix", sock)
@@ -249,7 +249,7 @@ func (r *Runner) Sweep() {
 	}
 }
 
-// Attach reconnects to a step's holder left running by an earlier herd.
+// Attach reconnects to a step's holder left running by an earlier derby.
 func (r *Runner) Attach(stepID string) (*Session, error) {
 	if len(r.Hold) == 0 {
 		return nil, errors.New("sessions are not held")
@@ -348,7 +348,7 @@ func (r *Runner) Stop(stepID string) {
 }
 
 // Shutdown lets go of the sessions keep approves (their holders keep the
-// process running for the next herd) and ends every other one.
+// process running for the next derby) and ends every other one.
 func (r *Runner) Shutdown(keep func(stepID string) bool) {
 	r.mu.Lock()
 	var kill []*Session
@@ -463,7 +463,7 @@ func (s *Session) broadcast(b []byte) {
 	}
 }
 
-// Inject writes herd's own output into the session's stream (not to the
+// Inject writes derby's own output into the session's stream (not to the
 // process), e.g. the push and PR lines.
 func (s *Session) Inject(b []byte) { s.broadcast(b) }
 

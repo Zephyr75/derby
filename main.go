@@ -1,4 +1,4 @@
-// Command herd is a desktop app that runs Claude Code through a pipeline of
+// Command derby is a desktop app that runs Claude Code through a pipeline of
 // agents, on tasks from several repositories, each in its own git worktree.
 package main
 
@@ -16,20 +16,21 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
-	"herd/internal/app"
-	"herd/internal/holder"
+	"derby/internal/app"
+	"derby/internal/holder"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
-	// `herd hold <socket> -- <cmd>` keeps one Claude Code session alive
-	// across herd restarts (see internal/holder).
+	// `derby hold <socket> -- <cmd>` keeps one Claude Code session alive
+	// across derby restarts (see internal/holder).
 	if len(os.Args) > 1 && os.Args[1] == "hold" {
 		os.Exit(holder.Main(os.Args[2:]))
 	}
 	useLoginShellPath()
+	app.MigrateHome()
 	svc := app.New(app.DefaultHome())
 	if exe, err := os.Executable(); err == nil {
 		svc.HoldCmd = []string{exe, "hold"}
@@ -37,13 +38,13 @@ func main() {
 	shell := &Shell{svc: svc}
 
 	opts := &options.App{
-		Title:            "Herd",
+		Title:            "Derby",
 		Width:            1440,
 		Height:           900,
 		MinWidth:         960,
 		MinHeight:        600,
 		BackgroundColour: &options.RGBA{R: 0x18, G: 0x19, B: 0x1b, A: 0xff},
-		// herd's top bar is the titlebar: it drags the window and holds the
+		// derby's top bar is the titlebar: it drags the window and holds the
 		// window controls. macOS keeps its traffic lights (TitleBarHidden:
 		// the inset variant places them for a taller toolbar, below the bar's centre).
 		Frameless:   runtime.GOOS != "darwin",
@@ -54,9 +55,9 @@ func main() {
 		Mac: &mac.Options{
 			TitleBar:             mac.TitleBarHidden(),
 			WebviewIsTransparent: false,
-			About:                &mac.AboutInfo{Title: "Herd", Message: "Claude Code agents, one worktree per task."},
+			About:                &mac.AboutInfo{Title: "Derby", Message: "Claude Code agents, one worktree per task."},
 		},
-		Linux: &linux.Options{ProgramName: "herd"},
+		Linux: &linux.Options{ProgramName: "derby"},
 	}
 	// ⌘P and ⌘N also work as menu items on macOS; elsewhere the frontend
 	// handles every shortcut and the window has no menu bar.

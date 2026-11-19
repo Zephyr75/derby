@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Log receives each command herd runs, for toasts and the Push tab.
+// Log receives each command derby runs, for toasts and the Push tab.
 type Log func(line string)
 
 // Git runs git commands.
@@ -270,7 +270,7 @@ func (g Git) privateIndex(ctx context.Context, worktree, index string, args ...s
 // SnapshotIndex is where a worktree's snapshot index lives: in its own git
 // directory, so it goes with the worktree and never shows in it.
 func (g Git) SnapshotIndex(ctx context.Context, worktree string) (string, error) {
-	p, err := g.Run(ctx, worktree, "rev-parse", "--git-path", "herd-snapshot-index")
+	p, err := g.Run(ctx, worktree, "rev-parse", "--git-path", "derby-snapshot-index")
 	if err != nil {
 		return "", err
 	}

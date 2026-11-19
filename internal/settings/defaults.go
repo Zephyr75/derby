@@ -3,7 +3,7 @@ package settings
 import (
 	"github.com/BurntSushi/toml"
 
-	"herd/defaults"
+	"derby/defaults"
 )
 
 // DefaultConfig is written to config.toml on first launch.

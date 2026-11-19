@@ -1,22 +1,22 @@
 <script setup lang="ts">
-// Settings > Context > Prompts: every text Herd gives agents besides their
+// Settings > Context > Prompts: every text Derby gives agents besides their
 // instructions (prompts.toml): around them, and the fix steps' guidance.
 import { reactive } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 
 const savers: Record<string, (t: string) => void> = {}
 const drafts = reactive<Record<string, string>>({})
 function edit(id: string, e: Event) {
   const text = (e.target as HTMLTextAreaElement).value
   drafts[id] = text
-  savers[id] ??= debounce((t: string) => void herd.attempt('Could not save the prompt', () => api.SetPrompt(id, t)), 500)
+  savers[id] ??= debounce((t: string) => void derby.attempt('Could not save the prompt', () => api.SetPrompt(id, t)), 500)
   savers[id](text)
 }
 async function reset(id: string) {
   delete drafts[id]
-  await herd.attempt('Could not reset the prompt', () => api.SetPrompt(id, ''))
+  await derby.attempt('Could not reset the prompt', () => api.SetPrompt(id, ''))
 }
 const textOf = (id: string, text: string) => drafts[id] ?? text
 // Tall enough to read the whole prompt: each line counts once per ~90
@@ -26,8 +26,8 @@ const rows = (text: string) => Math.max(8, Math.min(30, text.split('\n').reduce(
 
 <template>
   <div class="prompts">
-    <p class="muted small">Every text Herd gives agents besides their instructions, saved in {{ herd.settings?.dir ?? '~/.herd' }}/prompts.toml: around each agent's command (Preview full context in Settings › Agents shows the result), the files it writes for them, and the guidance of the steps the PR tab starts. Words in braces are replaced by Herd; prompts marked “Go template” use <code v-pre>{{.Field}}</code>, and fall back to their default if they no longer work. An emptied prompt goes back to its default.</p>
-    <div v-for="p in herd.settings?.prompts ?? []" :key="p.id" class="editor card">
+    <p class="muted small">Every text Derby gives agents besides their instructions, saved in {{ derby.settings?.dir ?? '~/.derby' }}/prompts.toml: around each agent's command (Preview full context in Settings › Agents shows the result), the files it writes for them, and the guidance of the steps the PR tab starts. Words in braces are replaced by Derby; prompts marked “Go template” use <code v-pre>{{.Field}}</code>, and fall back to their default if they no longer work. An emptied prompt goes back to its default.</p>
+    <div v-for="p in derby.settings?.prompts ?? []" :key="p.id" class="editor card">
       <div class="title">
         <span class="name">{{ p.name }}</span>
         <span class="muted small">{{ p.where }}</span>

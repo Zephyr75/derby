@@ -1,17 +1,17 @@
 <script setup lang="ts">
 // Settings > Agents: the pipeline and one agent's definition. Edits save to
-// ~/.herd/agents.toml and regenerate the agent's /herd: command. The first
-// agent starts every task; Copilot is built in (herd runs it, not Claude).
+// ~/.derby/agents.toml and regenerate the agent's /derby: command. The first
+// agent starts every task; Copilot is built in (derby runs it, not Claude).
 import { computed, ref } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import { afterOf, type Agent } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import Dropdown from '../ui/Dropdown.vue'
 import ContextPreview from './ContextPreview.vue'
 
-const agents = computed(() => herd.settings?.agents ?? [])
+const agents = computed(() => derby.settings?.agents ?? [])
 const claudeAgents = computed(() => agents.value.filter((a) => !a.builtin))
 const firstId = computed(() => claudeAgents.value[0]?.id ?? '')
 const selId = ref(claudeAgents.value[0]?.id ?? '')
@@ -25,11 +25,11 @@ const isAuto = (a: Agent) => a.trigger.startsWith('after:')
 const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
 const save = debounce(() => {
-  const s = herd.settings
-  if (s) void herd.attempt('Could not save agents.toml', () => api.SaveAgents(JSON.parse(JSON.stringify(s.agents))))
+  const s = derby.settings
+  if (s) void derby.attempt('Could not save agents.toml', () => api.SaveAgents(JSON.parse(JSON.stringify(s.agents))))
 }, 500)
 function changed() {
-  herd.edited()
+  derby.edited()
   save()
 }
 
@@ -49,7 +49,7 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
 
 const nameOf = (id: string) => agents.value.find((x) => x.id === id)?.name ?? id
 const afterName = (a: Agent) => nameOf(afterOf(a.trigger))
-const sub = (a: Agent) => (a.builtin ? 'run by Herd, explained by ' + modelLabel(a.model) + ' · ' : modelLabel(a.model) + ' · ') + (isAuto(a) ? 'automatic after ' + afterName(a) : a.builtin ? 'not started' : 'manual')
+const sub = (a: Agent) => (a.builtin ? 'run by Derby, explained by ' + modelLabel(a.model) + ' · ' : modelLabel(a.model) + ' · ') + (isAuto(a) ? 'automatic after ' + afterName(a) : a.builtin ? 'not started' : 'manual')
 
 // "Starts after X" would loop when X (or what X waits for) starts after this agent.
 function loops(a: Agent, target: string) {
@@ -89,12 +89,12 @@ const idFor = (name: string) => {
   return id
 }
 function addAgent() {
-  const s = herd.settings
+  const s = derby.settings
   const name = newName.value.trim()
   if (!s || !name) return
   const id = idFor(name)
   s.agents.push({
-    id, name, command: `/herd:${id} {task} -- {guidance}`, model: 'sonnet', trigger: 'manual', writes: id.toUpperCase() + '-{n}.md',
+    id, name, command: `/derby:${id} {task} -- {guidance}`, model: 'sonnet', trigger: 'manual', writes: id.toUpperCase() + '-{n}.md',
     commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: false,
     ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], onFail: [], projects: [], effort: 'xhigh',
     instructions: 'Describe what this agent reads, what it does and what it writes.',
@@ -108,7 +108,7 @@ function addAgent() {
 // sits after the agent it follows.
 const index = computed(() => claudeAgents.value.findIndex((a) => a.id === A.value?.id))
 function move(delta: number) {
-  const s = herd.settings
+  const s = derby.settings
   const a = A.value
   if (!s || !a || a.builtin) return
   const list = s.agents.filter((x) => !x.builtin)
@@ -116,11 +116,11 @@ function move(delta: number) {
   const j = i + delta
   if (j < 0 || j >= list.length) return
   ;[list[i], list[j]] = [list[j], list[i]]
-  s.agents = [...list, ...s.agents.filter((x) => x.builtin)] // herd puts Copilot back after its agent
+  s.agents = [...list, ...s.agents.filter((x) => x.builtin)] // derby puts Copilot back after its agent
   changed()
 }
 function remove() {
-  const s = herd.settings
+  const s = derby.settings
   if (!s || !A.value || A.value.builtin) return
   if (!confirmDelete.value) {
     confirmDelete.value = true
@@ -191,7 +191,7 @@ function pick(id: string) {
     <div v-if="A" class="editor card">
       <template v-if="A.builtin">
         <p class="special">
-          Built in: Herd runs it, because it works with GitHub. It asks Copilot to review the PR, then waits for the review and the CI checks (checked every
+          Built in: Derby runs it, because it works with GitHub. It asks Copilot to review the PR, then waits for the review and the CI checks (checked every
           minute), and fails when there is something to fix; the PR tab shows both. When it passes, the task is done (green). Meanwhile Claude explains the
           PR's changes in {{ A.writes.replace('{n}', 'n') }}, with the model and instructions below.
         </p>
@@ -210,7 +210,7 @@ function pick(id: string) {
         <label class="field"
           >Instructions of the explanation
           <textarea class="area mono" rows="7" :value="A.instructions" @input="set('instructions', val($event))"></textarea>
-          <span class="hint flat">Placeholders: {{ '{pr} {base} {file}' }} (the file to write, which becomes {{ A.writes.replace('{n}', 'n') }}). Herd's Diagrams prompt follows them.</span>
+          <span class="hint flat">Placeholders: {{ '{pr} {base} {file}' }} (the file to write, which becomes {{ A.writes.replace('{n}', 'n') }}). Derby's Diagrams prompt follows them.</span>
         </label>
         <ContextPreview :agent="A" />
       </template>
@@ -243,13 +243,13 @@ function pick(id: string) {
         <span>Offered in</span>
         <div class="segs">
           <button class="seg" :class="{ on: !A.projects?.length }" @click="set('projects', [])">All projects</button>
-          <button v-for="p in herd.projects" :key="p.id" class="seg" :class="{ on: A.projects?.includes(p.id) }" @click="toggleProject(p.id)">{{ p.name }}</button>
+          <button v-for="p in derby.projects" :key="p.id" class="seg" :class="{ on: A.projects?.includes(p.id) }" @click="toggleProject(p.id)">{{ p.name }}</button>
         </div>
         <span class="hint flat">Tasks of the other projects never offer it or start it by itself.</span>
       </div>
       <template v-if="!A.builtin">
         <div class="field">
-          <span>When its step succeeds, Herd</span>
+          <span>When its step succeeds, Derby</span>
           <div class="checks">
             <label title="Its artifact's title line and body are the commit message"><input type="checkbox" :checked="A.commit" @change="setGit('commit', checked($event))" /> commits</label>
             <span class="muted" aria-hidden="true">→</span>

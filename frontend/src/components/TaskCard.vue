@@ -2,7 +2,7 @@
 // A task in the left panel: its reference and title, its status and its PR.
 // In a sister family it also names its project, and the big sister (the task
 // that started the others) wears a crown.
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 import StatusBadge from './ui/StatusBadge.vue'
@@ -11,7 +11,7 @@ import type { Task } from '../lib/types'
 defineProps<{ task: Task; family?: boolean; big?: boolean }>()
 
 const prTitle = (t: Task) => {
-  const b = herd.prBadge(t)!
+  const b = derby.prBadge(t)!
   const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'no CI checks yet', Conflict: 'conflicts with its base' }[b.label] ?? b.label.toLowerCase()
   return `PR #${t.pr}: ${what}` + (b.ready === 'draft' ? ', a draft' : b.ready === 'ready' ? ', ready for review' : '')
 }
@@ -21,7 +21,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
 </script>
 
 <template>
-  <button class="card" :class="{ on: task.id === herd.sel }" @click="herd.pickTask(task.id)">
+  <button class="card" :class="{ on: task.id === derby.sel }" @click="derby.pickTask(task.id)">
     <span class="row">
       <span v-if="big" class="crown" title="The big sister: it started the other tasks"><Icon name="crown" :size="12" /></span>
       <TaskRef :issue="task.issue" :task="task.id" />
@@ -30,8 +30,8 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
     </span>
     <span class="row">
       <StatusBadge :kind="task.status.kind" :label="task.status.label" />
-      <span v-if="herd.prBadge(task)" :class="['badge', 'pr', `s-${herd.prBadge(task)!.kind}`]" :title="prTitle(task)">
-        <Icon :name="prIcon(task)" :size="12" />#{{ task.pr }} · {{ herd.prBadge(task)!.label }}
+      <span v-if="derby.prBadge(task)" :class="['badge', 'pr', `s-${derby.prBadge(task)!.kind}`]" :title="prTitle(task)">
+        <Icon :name="prIcon(task)" :size="12" />#{{ task.pr }} · {{ derby.prBadge(task)!.label }}
       </span>
     </span>
   </button>

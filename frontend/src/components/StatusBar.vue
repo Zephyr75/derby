@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import { label } from '../lib/keymap'
 import Icon from './ui/Icon.vue'
 
 const counts = computed(() => {
   const c = { running: 0, waiting: 0, approval: 0 }
   const projects = new Set<string>()
-  for (const t of herd.tasks) {
+  for (const t of derby.tasks) {
     if (t.archived) continue
     const k = t.status.kind === 'failed' ? 'waiting' : t.status.kind // a failure waits for you
     if (k !== 'running' && k !== 'waiting' && k !== 'approval') continue
@@ -18,22 +18,22 @@ const counts = computed(() => {
 })
 const modelLabel = (m: string) => (m ? m[0].toUpperCase() + m.slice(1) : '')
 const right = computed(() => {
-  const t = herd.selTask
+  const t = derby.selTask
   if (!t) return ''
   const parts = [t.branch, t.projectName]
-  if (herd.selStep) parts.unshift(modelLabel(herd.selStep.model))
+  if (derby.selStep) parts.unshift(modelLabel(derby.selStep.model))
   return parts.filter(Boolean).join(' · ')
 })
-const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show' : 'Hide'} the ${what} (${label(herd.settings?.keymap[action]?.[0])})`
-const autoReview = computed(() => herd.settings?.agents.some((a) => a.trigger.startsWith('after:')) ?? false)
+const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show' : 'Hide'} the ${what} (${label(derby.settings?.keymap[action]?.[0])})`
+const autoReview = computed(() => derby.settings?.agents.some((a) => a.trigger.startsWith('after:')) ?? false)
 </script>
 
 <template>
   <footer>
-    <button class="dock" :class="{ off: herd.leftHidden }" :title="tip('task list', herd.leftHidden, 'toggleLeft')" @click="herd.togglePanel('left')">
-      <Icon :name="herd.leftHidden ? 'panel-left-off' : 'panel-left'" :size="19" />
+    <button class="dock" :class="{ off: derby.leftHidden }" :title="tip('task list', derby.leftHidden, 'toggleLeft')" @click="derby.togglePanel('left')">
+      <Icon :name="derby.leftHidden ? 'panel-left-off' : 'panel-left'" :size="19" />
     </button>
-    <button v-if="counts.running + counts.waiting + counts.approval" class="activity" :class="{ on: herd.overlay === 'activity' }" title="Show running tasks" @click="herd.openOverlay(herd.overlay === 'activity' ? 'none' : 'activity')">
+    <button v-if="counts.running + counts.waiting + counts.approval" class="activity" :class="{ on: derby.overlay === 'activity' }" title="Show running tasks" @click="derby.openOverlay(derby.overlay === 'activity' ? 'none' : 'activity')">
       <span v-if="counts.running" class="item"><span class="dot s-running"></span>{{ counts.running }} running</span>
       <span v-if="counts.waiting" class="item"><span class="dot s-waiting"></span>{{ counts.waiting }} waiting for input</span>
       <span v-if="counts.approval" class="item"><span class="dot s-approval"></span>{{ counts.approval }} needs approval</span>
@@ -42,8 +42,8 @@ const autoReview = computed(() => herd.settings?.agents.some((a) => a.trigger.st
     <span class="grow"></span>
     <span>{{ right }}</span>
     <span v-if="autoReview">auto-review on</span>
-    <button class="dock" :class="{ off: herd.rightHidden }" :title="tip('steps and preview', herd.rightHidden, 'toggleRight')" @click="herd.togglePanel('right')">
-      <Icon :name="herd.rightHidden ? 'panel-right-off' : 'panel-right'" :size="19" />
+    <button class="dock" :class="{ off: derby.rightHidden }" :title="tip('steps and preview', derby.rightHidden, 'toggleRight')" @click="derby.togglePanel('right')">
+      <Icon :name="derby.rightHidden ? 'panel-right-off' : 'panel-right'" :size="19" />
     </button>
   </footer>
 </template>

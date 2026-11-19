@@ -1,60 +1,60 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { herd, SISTERS } from '../lib/state'
+import { derby, SISTERS } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskCard from './TaskCard.vue'
 import NextStep from './NextStep.vue'
 import Splitter from './ui/Splitter.vue'
 
 const counts = computed(() => ({
-  active: herd.tasks.filter((t) => !t.archived).length,
-  archived: herd.tasks.filter((t) => t.archived).length,
+  active: derby.tasks.filter((t) => !t.archived).length,
+  archived: derby.tasks.filter((t) => t.archived).length,
 }))
-const groups = computed(() => herd.groups.map((p) => ({ p, tasks: herd.panelTasks(p.id) })).filter((g) => !g.p.gone || g.tasks.length))
+const groups = computed(() => derby.groups.map((p) => ({ p, tasks: derby.panelTasks(p.id) })).filter((g) => !g.p.gone || g.tasks.length))
 
 // Sister families first, under Sisters, each in a box; single tasks under their project.
-const families = computed(() => herd.panelFamilies())
+const families = computed(() => derby.panelFamilies())
 
 function addProject() {
-  herd.view = 'settings'
-  herd.settingsTab = 'projects'
+  derby.view = 'settings'
+  derby.settingsTab = 'projects'
 }
 </script>
 
 <template>
-  <aside :style="{ width: herd.leftWidth + 'px' }">
+  <aside :style="{ width: derby.leftWidth + 'px' }">
     <Splitter side="left" />
     <div class="head">
       <div class="pill" role="tablist">
-        <button role="tab" :aria-selected="herd.left === 'tasks'" :class="{ on: herd.left === 'tasks' }" @click="herd.left = 'tasks'">Tasks <span class="count">{{ counts.active }}</span></button>
-        <button role="tab" :aria-selected="herd.left === 'archive'" :class="{ on: herd.left === 'archive' }" @click="herd.left = 'archive'">Archive <span class="count">{{ counts.archived }}</span></button>
+        <button role="tab" :aria-selected="derby.left === 'tasks'" :class="{ on: derby.left === 'tasks' }" @click="derby.left = 'tasks'">Tasks <span class="count">{{ counts.active }}</span></button>
+        <button role="tab" :aria-selected="derby.left === 'archive'" :class="{ on: derby.left === 'archive' }" @click="derby.left = 'archive'">Archive <span class="count">{{ counts.archived }}</span></button>
       </div>
     </div>
 
     <div class="list">
       <template v-if="families.length">
-        <button class="group" :aria-expanded="!herd.isCollapsed(SISTERS)" @click="herd.toggleCollapsed(SISTERS)">
-          <Icon :name="herd.isCollapsed(SISTERS) ? 'chevron-right' : 'chevron'" :size="14" />
+        <button class="group" :aria-expanded="!derby.isCollapsed(SISTERS)" @click="derby.toggleCollapsed(SISTERS)">
+          <Icon :name="derby.isCollapsed(SISTERS) ? 'chevron-right' : 'chevron'" :size="14" />
           <Icon name="sisters" />
           <span class="name">Sisters</span>
           <span>{{ families.length }}</span>
         </button>
-        <template v-if="!herd.isCollapsed(SISTERS)">
+        <template v-if="!derby.isCollapsed(SISTERS)">
           <div v-for="f in families" :key="f[0].id" class="family" :title="'The same work in ' + f.map((t) => t.projectName).join(', ')">
             <TaskCard v-for="(t, i) in f" :key="t.id" :task="t" family :big="i === 0 && !t.sister" />
           </div>
         </template>
       </template>
       <template v-for="g in groups" :key="g.p.id">
-        <button class="group" :aria-expanded="!herd.isCollapsed(g.p.id)" @click="herd.toggleCollapsed(g.p.id)">
-          <Icon :name="herd.isCollapsed(g.p.id) ? 'chevron-right' : 'chevron'" :size="14" />
+        <button class="group" :aria-expanded="!derby.isCollapsed(g.p.id)" @click="derby.toggleCollapsed(g.p.id)">
+          <Icon :name="derby.isCollapsed(g.p.id) ? 'chevron-right' : 'chevron'" :size="14" />
           <Icon name="folder" />
           <span class="name">{{ g.p.name }}</span>
           <span v-if="g.p.gone" class="gone" title="This project was removed from Settings > Projects">removed</span>
           <span>{{ g.tasks.length }}</span>
         </button>
-        <template v-if="!herd.isCollapsed(g.p.id)">
-          <span v-if="!g.tasks.length" class="empty">{{ herd.left === 'archive' ? 'Nothing archived' : 'No open tasks' }}</span>
+        <template v-if="!derby.isCollapsed(g.p.id)">
+          <span v-if="!g.tasks.length" class="empty">{{ derby.left === 'archive' ? 'Nothing archived' : 'No open tasks' }}</span>
           <div v-for="t in g.tasks" :key="t.id" class="cardw"><TaskCard :task="t" /></div>
         </template>
       </template>

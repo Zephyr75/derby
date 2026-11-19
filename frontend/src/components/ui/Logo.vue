@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// herd's logo (the horse of horse.svg, without its background), in the
+// derby's logo (the horse of horse.svg, without its background), in the
 // current text colour: set `color` to theme it.
 withDefaults(defineProps<{ size?: number }>(), { size: 96 })
 </script>

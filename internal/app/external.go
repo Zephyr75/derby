@@ -1,7 +1,7 @@
 package app
 
 // Safety net for edits outside the task's worktree: an agent may write into
-// another repository, or the project's main checkout, by mistake. herd
+// another repository, or the project's main checkout, by mistake. derby
 // records the files its edit tools touched (PostToolUse) and warns before
 // Commit and push while they are still uncommitted.
 
@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"herd/internal/hooks"
-	"herd/internal/store"
+	"derby/internal/hooks"
+	"derby/internal/store"
 )
 
 // editTools are the Claude Code tools that write a file at a known path.

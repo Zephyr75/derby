@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"herd/internal/settings"
-	"herd/internal/store"
+	"derby/internal/settings"
+	"derby/internal/store"
 )
 
 // attachDir holds the files attached at task creation, in the run dir.
@@ -109,9 +109,9 @@ func (a *App) contextText(p settings.Project) string {
 	return a.settings.Render(settings.PromptContext, d)
 }
 
-var cmdName = regexp.MustCompile(`^/herd:([A-Za-z0-9_-]+)`)
+var cmdName = regexp.MustCompile(`^/derby:([A-Za-z0-9_-]+)`)
 
-// commandName returns "implement" for "/herd:implement {task} -- {guidance}".
+// commandName returns "implement" for "/derby:implement {task} -- {guidance}".
 func commandName(command string) string {
 	m := cmdName.FindStringSubmatch(strings.TrimSpace(command))
 	if m == nil {
@@ -120,7 +120,7 @@ func commandName(command string) string {
 	return m[1]
 }
 
-// writePlugin rebuilds the herd Claude Code plugin in ~/.herd/plugin: its
+// writePlugin rebuilds the derby Claude Code plugin in ~/.derby/plugin: its
 // manifest and one command per agent, built from the agent's instructions.
 func (a *App) writePlugin() error {
 	dir := a.pluginDir()
@@ -130,7 +130,7 @@ func (a *App) writePlugin() error {
 	if err := os.MkdirAll(filepath.Join(dir, ".claude-plugin"), 0o755); err != nil {
 		return err
 	}
-	manifest := `{"name": "herd", "version": "1.0.0", "description": "Agents run by herd: one command per agent in Settings > Agents"}` + "\n"
+	manifest := `{"name": "derby", "version": "1.0.0", "description": "Agents run by derby: one command per agent in Settings > Agents"}` + "\n"
 	if err := os.WriteFile(filepath.Join(dir, ".claude-plugin", "plugin.json"), []byte(manifest), 0o644); err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (a *App) writePlugin() error {
 	return nil
 }
 
-// CommandText is the command herd writes for an agent (/herd:<name>): just
+// CommandText is the command derby writes for an agent (/derby:<name>): just
 // its own instructions; what every agent shares is in the system prompt.
 func (a *App) CommandText(ag settings.Agent) string {
 	return a.settings.Render(settings.PromptCommand, struct{ Name, Instructions string }{ag.Name, strings.TrimSpace(ag.Instructions)})

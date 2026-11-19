@@ -5,30 +5,30 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import Icon from '../ui/Icon.vue'
 import Prompts from './Prompts.vue'
 import type { SystemMemory } from '../../lib/types'
 
 const selId = ref('general')
-const keys = computed(() => ['general', ...herd.projects.map((p) => p.id)])
-const proj = computed(() => herd.project(selId.value))
+const keys = computed(() => ['general', ...derby.projects.map((p) => p.id)])
+const proj = computed(() => derby.project(selId.value))
 const C = computed(
-  () => herd.settings?.context[selId.value] ?? { id: selId.value, text: '', claudeMd: selId.value !== 'general', knowledge: '' },
+  () => derby.settings?.context[selId.value] ?? { id: selId.value, text: '', claudeMd: selId.value !== 'general', knowledge: '' },
 )
 
 // Rules and context both go in each session's system prompt.
-const ignoring = computed(() => (herd.settings?.agents ?? []).filter((a) => a.ignoreRules).map((a) => a.name))
-const saveRules = debounce((r: string) => void herd.attempt('Could not save the rules', () => api.SetRules(r)), 500)
+const ignoring = computed(() => (derby.settings?.agents ?? []).filter((a) => a.ignoreRules).map((a) => a.name))
+const saveRules = debounce((r: string) => void derby.attempt('Could not save the rules', () => api.SetRules(r)), 500)
 function setRules(e: Event) {
-  const c = herd.settings?.config
+  const c = derby.settings?.config
   if (!c) return
   c.rules = (e.target as HTMLTextAreaElement).value
-  herd.edited()
+  derby.edited()
   saveRules(c.rules)
 }
 
-// Your own ~/.claude/CLAUDE.md is not loaded by herd's sessions; Override
+// Your own ~/.claude/CLAUDE.md is not loaded by derby's sessions; Override
 // copies General context + Rules into it to keep the two in sync.
 const sys = ref<SystemMemory | null>(null)
 const confirmOverride = ref(false)
@@ -36,26 +36,26 @@ const refreshSys = debounce(async () => {
   sys.value = await api.SystemClaudeMd().catch(() => null)
 }, 600)
 onMounted(refreshSys)
-watch(() => [herd.settings?.config.rules, JSON.stringify(herd.settings?.context)], refreshSys)
+watch(() => [derby.settings?.config.rules, JSON.stringify(derby.settings?.context)], refreshSys)
 async function override() {
   if (!confirmOverride.value) {
     confirmOverride.value = true
     return
   }
   confirmOverride.value = false
-  const backup = await herd.attempt('Could not write ' + (sys.value?.path ?? 'CLAUDE.md'), () => api.OverrideSystemClaudeMd())
+  const backup = await derby.attempt('Could not write ' + (sys.value?.path ?? 'CLAUDE.md'), () => api.OverrideSystemClaudeMd())
   if (backup === undefined) return
-  herd.toast('Updated ' + (sys.value?.path ?? 'CLAUDE.md'), backup ? 'The previous file is at ' + backup : '')
+  derby.toast('Updated ' + (sys.value?.path ?? 'CLAUDE.md'), backup ? 'The previous file is at ' + backup : '')
   refreshSys()
 }
 
 const save = debounce((id: string) => {
-  const c = herd.settings?.context[id]
-  if (c) void herd.attempt('Could not save the context', () => api.SaveContext(JSON.parse(JSON.stringify(c))))
+  const c = derby.settings?.context[id]
+  if (c) void derby.attempt('Could not save the context', () => api.SaveContext(JSON.parse(JSON.stringify(c))))
 }, 500)
 
 function ensure() {
-  const s = herd.settings
+  const s = derby.settings
   if (!s) return null
   if (!s.context[selId.value]) s.context[selId.value] = { ...C.value, id: selId.value }
   return s.context[selId.value]
@@ -64,13 +64,13 @@ function update(fn: (c: NonNullable<ReturnType<typeof ensure>>) => void) {
   const c = ensure()
   if (!c) return
   fn(c)
-  herd.edited()
+  derby.edited()
   save(selId.value)
 }
 const setText = (e: Event) => update((c) => (c.text = (e.target as HTMLTextAreaElement).value))
 const toggleMd = () => update((c) => (c.claudeMd = !c.claudeMd))
 async function pickKnowledge() {
-  const dir = await herd.attempt('Could not open the folder picker', () => api.ChooseFolder('Knowledge base folder'))
+  const dir = await derby.attempt('Could not open the folder picker', () => api.ChooseFolder('Knowledge base folder'))
   if (dir) update((c) => (c.knowledge = dir))
 }
 const clearKnowledge = () => update((c) => (c.knowledge = ''))
@@ -90,11 +90,11 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
       </button>
       <button class="list-btn" :class="{ on: selId === 'prompts' }" @click="selId = 'prompts'">
         <span class="name">Prompts</span>
-        <span class="sub">what Herd adds to agents</span>
+        <span class="sub">what Derby adds to agents</span>
       </button>
       <button v-for="k in keys" :key="k" class="list-btn" :class="{ on: selId === k }" @click="selId = k">
-        <span class="name">{{ herd.project(k)?.name ?? 'General' }}</span>
-        <span class="sub">{{ herd.project(k) ? 'project context' : 'every project' }}</span>
+        <span class="name">{{ derby.project(k)?.name ?? 'General' }}</span>
+        <span class="sub">{{ derby.project(k) ? 'project context' : 'every project' }}</span>
       </button>
     </div>
     <div class="col">
@@ -107,7 +107,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
           </span>
         </div>
         <label for="rulestext" class="sr-only">Rules</label>
-        <textarea id="rulestext" class="area mono" rows="12" :value="herd.settings?.config.rules ?? ''" placeholder="e.g. Never run git commit or git push&#10;Never touch migrations/" @input="setRules"></textarea>
+        <textarea id="rulestext" class="area mono" rows="12" :value="derby.settings?.config.rules ?? ''" placeholder="e.g. Never run git commit or git push&#10;Never touch migrations/" @input="setRules"></textarea>
       </div>
       <Prompts v-else-if="selId === 'prompts'" />
       <div v-else class="editor card">
@@ -135,7 +135,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
         <span class="grow">
           <span class="mono">{{ sys.path }}</span>
           <span :class="['state', sys.synced ? 'c-done' : 'c-waiting']">{{ sys.synced ? 'in sync' : sys.exists ? 'differs' : 'missing' }}</span>
-          <span class="muted small">Herd's sessions skip it; Override writes General context, Rules and the knowledge base folders into it for your other Claude sessions</span>
+          <span class="muted small">Derby's sessions skip it; Override writes General context, Rules and the knowledge base folders into it for your other Claude sessions</span>
         </span>
         <button class="btn" :class="confirmOverride ? 'danger' : ''" :disabled="sys.synced" @click="override" @blur="confirmOverride = false">
           {{ confirmOverride ? 'Replace it? (a backup is kept)' : 'Override' }}

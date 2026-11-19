@@ -10,14 +10,14 @@ import (
 	"slices"
 	"strings"
 
-	"herd/internal/artifacts"
-	"herd/internal/settings"
-	"herd/internal/store"
+	"derby/internal/artifacts"
+	"derby/internal/settings"
+	"derby/internal/store"
 )
 
 // A Copilot step's files, in the run directory:
 //   - COPILOT-n.md: an explanation of the PR's changes, written by a Claude
-//     run herd starts with the step (its model and instructions: Settings >
+//     run derby starts with the step (its model and instructions: Settings >
 //     Agents > Copilot);
 //   - FEEDBACK-n.md: the step's state (front matter: status, pr, comments,
 //     ci), Copilot's review and the CI checks, for the steps that fix them
@@ -91,14 +91,14 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin[0], args...)
 	cmd.Dir = wt
-	// No HERD_TASK: herd's hooks do nothing for this run.
+	// No DERBY_TASK: derby's hooks do nothing for this run.
 	cmd.Env = append(slices.DeleteFunc(os.Environ(), func(kv string) bool {
 		name, _, _ := strings.Cut(kv, "=")
-		return slices.Contains(inheritedSessionVars, name) || strings.HasPrefix(name, "HERD_")
-	}), "HERD_RUN_DIR="+runDir, "HERD_ARTIFACT="+file)
+		return slices.Contains(inheritedSessionVars, name) || strings.HasPrefix(name, "DERBY_")
+	}), "DERBY_RUN_DIR="+runDir, "DERBY_ARTIFACT="+file)
 	out, err := cmd.CombinedOutput()
 	if a.ctx.Err() != nil {
-		return // herd is quitting
+		return // derby is quitting
 	}
 	if b, _ := os.ReadFile(file); strings.TrimSpace(string(b)) == "" || string(b) == explaining { // what it wrote counts, whatever its exit
 		why := strings.TrimSpace(string(out))
@@ -110,7 +110,7 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 		if err != nil {
 			why = strings.TrimSpace(err.Error() + ": " + lastLines(why, 3))
 		}
-		_ = os.WriteFile(file, []byte(fmt.Sprintf("_Herd could not write an explanation of the changes (%s)._\n", strings.ReplaceAll(why, "\n", " "))), 0o644)
+		_ = os.WriteFile(file, []byte(fmt.Sprintf("_Derby could not write an explanation of the changes (%s)._\n", strings.ReplaceAll(why, "\n", " "))), 0o644)
 	}
 	a.emit(EvArtifact, map[string]string{"taskId": t.ID, "file": filepath.Base(file)})
 }
@@ -130,7 +130,7 @@ func (a *App) explainSystemPrompt(t store.Task, p settings.Project) string {
 
 // renameArtifacts gives a run directory's artifacts their current names:
 // PR.md became PUSH.md, and PR-REVIEW-n.md FEEDBACK-n.md. (A FEEDBACK.md,
-// without a number, is from much older herd: nothing reads it.)
+// without a number, is from much older derby: nothing reads it.)
 func renameArtifacts(runDir string) {
 	rename := func(from, to string) {
 		if _, err := os.Stat(filepath.Join(runDir, to)); err != nil {
@@ -147,7 +147,7 @@ func renameArtifacts(runDir string) {
 }
 
 // migrateCopilotFiles moves a run directory's Copilot files to their
-// current names. Older herd wrote COPILOT-n.md (state, explanation and a
+// current names. Older derby wrote COPILOT-n.md (state, explanation and a
 // footer), COPILOT-n-review.md (the review) and .COPILOT-n-explain.md (the
 // explanation as Claude wrote it); before that, COPILOT-n.md held the state
 // and the review.

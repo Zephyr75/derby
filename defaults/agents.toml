@@ -1,7 +1,7 @@
 [[agent]]
 id = "plan"
 name = "Plan"
-command = "/herd:plan {task} -- {guidance}"
+command = "/derby:plan {task} -- {guidance}"
 model = "opus"
 effort = "xhigh"
 trigger = "manual"
@@ -11,7 +11,7 @@ sisters = true
 next = ["impl", "discuss"]
 on_fail = ["plan"]
 instructions = '''
-Read ISSUE.md too when the task has a GitHub issue (Herd copied it there, comments included). Explore the repo and decide an approach. Do not edit code.
+Read ISSUE.md too when the task has a GitHub issue (Derby copied it there, comments included). Explore the repo and decide an approach. Do not edit code.
 When an earlier PLAN exists (planning again after a failed plan, a discussion or a failed step), start from it and from what showed it wrong (the step this one follows, your guidance): keep what still holds, and say right after the TLDR what changed from it and why.
 PLAN-{n}.md sections, after the TLDR:
 1. Goal: what is wrong or missing today and what will be true once it is done.
@@ -26,7 +26,7 @@ Fail when the task cannot be done as described.'''
 [[agent]]
 id = "impl"
 name = "Implement"
-command = "/herd:implement {task} -- {guidance}"
+command = "/derby:implement {task} -- {guidance}"
 model = "opus"
 effort = "medium"
 trigger = "manual"
@@ -36,7 +36,7 @@ show_diff = true
 sisters = true
 on_fail = ["impl", "discuss", "plan"]
 instructions = '''
-The newest PLAN is the target: its New flow, Files and the option picked. What to do now depends on the step this one follows (Herd step block):
+The newest PLAN is the target: its New flow, Files and the option picked. What to do now depends on the step this one follows (Derby step block):
 - after Plan: build the plan's New flow and Files.
 - after a failed Review: fix each finding of that REVIEW-n.md that holds.
 - after a failed Test: its failing tests show bugs; fix the code, never the tests (TEST-n.md explains each).
@@ -54,7 +54,7 @@ Fail when you could not implement it (say what blocks).'''
 [[agent]]
 id = "discuss"
 name = "Discuss"
-command = "/herd:discuss {task} -- {guidance}"
+command = "/derby:discuss {task} -- {guidance}"
 model = "opus"
 effort = "medium"
 trigger = "manual"
@@ -74,7 +74,7 @@ Fail when the user stops the work.'''
 [[agent]]
 id = "review"
 name = "Review"
-command = "/herd:review {task}"
+command = "/derby:review {task}"
 model = "opus"
 effort = "medium"
 trigger = "after:impl"
@@ -83,14 +83,14 @@ rerun = true
 next = ["test", "impl", "discuss"]
 on_fail = ["impl", "discuss"]
 instructions = '''
-Review the uncommitted changes (git status, git diff HEAD): what changed since Herd's last commit. Check them against the newest PLAN (its New flow and Files) and the newest IMPLEMENT or DISCUSS file (what it says it changed, and the feedback it says it fixed or rejected). When an earlier REVIEW failed, check that each of its findings is fixed or rightly rejected. Never edit code, and do not ask for tests: Test adds them.
+Review the uncommitted changes (git status, git diff HEAD): what changed since Derby's last commit. Check them against the newest PLAN (its New flow and Files) and the newest IMPLEMENT or DISCUSS file (what it says it changed, and the feedback it says it fixed or rejected). When an earlier REVIEW failed, check that each of its findings is fixed or rightly rejected. Never edit code, and do not ask for tests: Test adds them.
 REVIEW-{n}.md: the findings, most important first, each with its file and line and what to change.
 Done when the changes are ready, failed when they need changes.'''
 
 [[agent]]
 id = "test"
 name = "Test"
-command = "/herd:test {task} -- {guidance}"
+command = "/derby:test {task} -- {guidance}"
 model = "sonnet"
 effort = "xhigh"
 trigger = "manual"
@@ -111,7 +111,7 @@ Done when the tests pass, failed when one shows a bug.'''
 [[agent]]
 id = "regress"
 name = "Regression"
-command = "/herd:regress {task} -- {guidance}"
+command = "/derby:regress {task} -- {guidance}"
 model = "haiku"
 effort = "medium"
 trigger = "manual"
@@ -134,7 +134,7 @@ Done when every suite passed, failed when one failed (say which and why).'''
 [[agent]]
 id = "push"
 name = "Commit and push"
-command = "/herd:push {task}"
+command = "/derby:push {task}"
 model = "sonnet"
 effort = "high"
 trigger = "manual"
@@ -152,7 +152,7 @@ PUSH.md is the commit message and the PR, so no TLDR or ELI5 in it:
 - a short body: what changed and why, from the newest PLAN's Goal and the What changed of the IMPLEMENT and DISCUSS files, ending with "Closes #{issue}" ("Part of" for a sister task; no issue references for a LOCAL task);
 - "## Choices", when the newest PLAN lists Options: for each choice, the option taken, the ones set aside in a few words, and why;
 - "## Flow": the flow before and after as two mermaid flowcharts (GitHub renders mermaid, not archify), from the newest PLAN's flow diagrams, updated with what was built. About 10 nodes each; mark what changed in the node text, e.g. "(new)" or "(changed)", with no colors, fills, classDef or style lines (unreadable in GitHub's themes). Leave it out when there is no flow to show (docs, config, a one-line fix).
-Herd then commits with PUSH.md's title line and body, pushes, and opens or updates the draft PR; Copilot reviews it.'''
+Derby then commits with PUSH.md's title line and body, pushes, and opens or updates the draft PR; Copilot reviews it.'''
 
 [[agent]]
 id = "copilot"

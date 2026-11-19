@@ -13,7 +13,7 @@ function read(key: string): string | null {
 }
 
 export function useSidebar(name: string, def: number) {
-  const key = 'herd.popup.' + name
+  const key = 'derby.popup.' + name
   const w = Number(read(key + '.width'))
   const width = ref(w >= SIDEBAR.min && w <= SIDEBAR.max ? w : def)
   const hidden = ref(read(key + '.hidden') === '1')

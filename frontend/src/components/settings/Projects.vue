@@ -3,7 +3,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import Icon from '../ui/Icon.vue'
 import type { Check, Project } from '../../lib/types'
 
@@ -14,52 +14,52 @@ const manualPath = ref('')
 
 async function runChecks() {
   checking.value = true
-  checks.value = (await herd.attempt('Checks failed', () => api.CheckPrerequisites())) ?? []
+  checks.value = (await derby.attempt('Checks failed', () => api.CheckPrerequisites())) ?? []
   checking.value = false
 }
 onMounted(runChecks)
 
 const global = computed(() => checks.value.filter((c) => !c.project))
 const failing = (id: string) => checks.value.filter((c) => c.project === id && !c.ok)
-const open = (id: string) => herd.tasks.filter((t) => t.project === id && !t.archived).length
+const open = (id: string) => derby.tasks.filter((t) => t.project === id && !t.archived).length
 
 const save = debounce((p: Project) => {
-  void herd.attempt('Could not save the project', () => api.SaveProject(JSON.parse(JSON.stringify(p))))
+  void derby.attempt('Could not save the project', () => api.SaveProject(JSON.parse(JSON.stringify(p))))
 }, 600)
 function set(p: Project, k: 'name' | 'path' | 'repo' | 'baseBranch' | 'worktreesDir', e: Event) {
   let v = (e.target as HTMLInputElement).value
   if (k === 'worktreesDir') v = v.replace(/\/+$/, '')
   p[k] = v
-  herd.edited()
+  derby.edited()
   save(p)
 }
 function setCommon(p: Project, e: Event) {
   p.commonIssues = (e.target as HTMLInputElement).checked
-  herd.edited()
+  derby.edited()
   save(p)
 }
-const issuesRepo = computed(() => herd.settings?.config.issuesRepo ?? '')
+const issuesRepo = computed(() => derby.settings?.config.issuesRepo ?? '')
 function setIssuesRepo(e: Event) {
   const v = (e.target as HTMLInputElement).value.trim()
-  if (!herd.settings) return
-  herd.settings.config.issuesRepo = v
-  void herd.attempt('Could not save the issues repository', () => api.SetIssuesRepo(v))
+  if (!derby.settings) return
+  derby.settings.config.issuesRepo = v
+  void derby.attempt('Could not save the issues repository', () => api.SetIssuesRepo(v))
 }
 
 async function add() {
-  const p = await herd.attempt('Could not add the project', () => api.AddProject())
+  const p = await derby.attempt('Could not add the project', () => api.AddProject())
   if (p) {
-    herd.toast('Added ' + p.name, p.path)
+    derby.toast('Added ' + p.name, p.path)
     void runChecks()
   }
 }
 async function addPath() {
   const dir = manualPath.value.trim()
   if (!dir) return
-  const p = await herd.attempt('Could not add the project', () => api.AddProjectPath(dir))
+  const p = await derby.attempt('Could not add the project', () => api.AddProjectPath(dir))
   if (p) {
     manualPath.value = ''
-    herd.toast('Added ' + p.name, p.path)
+    derby.toast('Added ' + p.name, p.path)
     void runChecks()
   }
 }
@@ -69,22 +69,22 @@ async function remove(p: Project) {
     return
   }
   confirmRemove.value = ''
-  await herd.attempt('Could not remove the project', () => api.RemoveProject(p.id))
+  await derby.attempt('Could not remove the project', () => api.RemoveProject(p.id))
 }
 function setPrefix(e: Event) {
   const v = (e.target as HTMLInputElement).value.trim()
-  if (!v || !herd.settings) return
-  herd.settings.config.branchPrefix = v
-  void herd.attempt('Could not save the branch prefix', () => api.SetBranchPrefix(v))
+  if (!v || !derby.settings) return
+  derby.settings.config.branchPrefix = v
+  void derby.attempt('Could not save the branch prefix', () => api.SetBranchPrefix(v))
 }
-const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.OpenProjectInZed(id))
+const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.OpenProjectInZed(id))
 </script>
 
 <template>
   <div class="top">
     <div class="intro grow">
       <h1>Projects</h1>
-      <p>Repositories Herd can run tasks in. Tasks from every project run in parallel, each in its own worktree.</p>
+      <p>Repositories Derby can run tasks in. Tasks from every project run in parallel, each in its own worktree.</p>
     </div>
     <button class="btn primary" @click="add">+ Add project</button>
   </div>
@@ -98,7 +98,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
     <label class="check">
       <span class="label">Branch prefix</span>
       <span class="detail grow">every new task's branch starts with it</span>
-      <input class="input mono prefix" :value="herd.settings?.config.branchPrefix" placeholder="ar-" spellcheck="false" @change="setPrefix" />
+      <input class="input mono prefix" :value="derby.settings?.config.branchPrefix" placeholder="ar-" spellcheck="false" @change="setPrefix" />
     </label>
     <label class="check">
       <span class="label">Issues repository</span>
@@ -111,7 +111,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
     </div>
   </div>
 
-  <div v-for="p in herd.projects" :key="p.id" class="proj card">
+  <div v-for="p in derby.projects" :key="p.id" class="proj card">
     <div class="row">
       <Icon name="folder" :size="15" />
       <span class="name">{{ p.name }}</span>
@@ -119,7 +119,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
       <span class="grow"></span>
       <span class="muted small">{{ open(p.id) }} open task{{ open(p.id) === 1 ? '' : 's' }}</span>
       <button class="btn ghost" @click="openInZed(p.id)">Open in Zed</button>
-      <button class="btn" :class="confirmRemove === p.id ? 'danger' : 'ghost'" @click="remove(p)">{{ confirmRemove === p.id ? 'Remove from Herd?' : 'Remove' }}</button>
+      <button class="btn" :class="confirmRemove === p.id ? 'danger' : 'ghost'" @click="remove(p)">{{ confirmRemove === p.id ? 'Remove from Derby?' : 'Remove' }}</button>
     </div>
     <div class="grid4">
       <label class="field">GitHub repo<input class="input mono" :value="p.repo" placeholder="owner/name" @input="set(p, 'repo', $event)" /></label>

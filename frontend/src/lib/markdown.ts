@@ -30,7 +30,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
   )
 }
 
-/** diagramURL is where herd serves a task's diagram page to the webview. */
+/** diagramURL is where derby serves a task's diagram page to the webview. */
 export function diagramURL(task: string, file: string, dark: boolean, embed = false) {
   return `/run/${encodeURIComponent(task)}/${encodeURIComponent(file)}?theme=${dark ? 'dark' : 'light'}${embed ? '&embed=1' : ''}`
 }

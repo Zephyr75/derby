@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"herd/internal/settings"
-	"herd/internal/store"
+	"derby/internal/settings"
+	"derby/internal/store"
 )
 
 func TestDiagrams(t *testing.T) {
@@ -77,14 +77,14 @@ func TestSisterOffersFromAllowedAgents(t *testing.T) {
 	}
 }
 
-// An agent can ask the user in a form (the step waits for them), then herd
+// An agent can ask the user in a form (the step waits for them), then derby
 // commits with its artifact's title and body and pushes, in that order; a
 // push that fails stops there and Next step offers to run it again.
 func TestFormThenCommitAndPush(t *testing.T) {
 	a, repo := newTestApp(t)
 	origin := filepath.Join(filepath.Dir(repo), "origin.git")
 	run(t, filepath.Dir(repo), "git", "init", "-q", "--bare", origin)
-	ags := append(a.settings.Agents(), settings.Agent{ID: "form", Name: "Form", Command: "/herd:form {task}", Trigger: "manual", Writes: "FORM.md", Commit: true, Push: true})
+	ags := append(a.settings.Agents(), settings.Agent{ID: "form", Name: "Form", Command: "/derby:form {task}", Trigger: "manual", Writes: "FORM.md", Commit: true, Push: true})
 	if err := a.SaveAgents(ags); err != nil {
 		t.Fatal(err)
 	}

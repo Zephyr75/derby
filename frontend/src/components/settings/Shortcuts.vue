@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import { actions, label } from '../../lib/keymap'
 
-const km = computed(() => herd.settings?.keymap ?? {})
+const km = computed(() => derby.settings?.keymap ?? {})
 const rows = computed(() =>
   actions
     .map((a) => {
@@ -20,7 +20,7 @@ const unbound = computed(() => actions.filter((a) => !km.value[a.id]?.length))
 <template>
   <div class="intro">
     <h1>Shortcuts</h1>
-    <p>Ctrl replaces ⌘ on Linux and Windows. Change them in the <code>[keymap]</code> section of {{ herd.settings?.dir ?? '~/.herd' }}/config.toml, where “Mod” means ⌘ or Ctrl.</p>
+    <p>Ctrl replaces ⌘ on Linux and Windows. Change them in the <code>[keymap]</code> section of {{ derby.settings?.dir ?? '~/.derby' }}/config.toml, where “Mod” means ⌘ or Ctrl.</p>
   </div>
 
   <div class="table card">

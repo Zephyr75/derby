@@ -7,17 +7,17 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"herd/defaults"
+	"derby/defaults"
 )
 
-// Prompt is a text Herd adds to what agents get, beside their own
+// Prompt is a text Derby adds to what agents get, beside their own
 // instructions. prompts.toml lists every one; Settings > Context > Prompts
 // edits it there.
 type Prompt struct {
 	ID      string `toml:"id" json:"id"`
 	Name    string `toml:"name" json:"name"`
-	Where   string `toml:"where" json:"where"`         // where Herd uses it
-	Vars    string `toml:"vars,omitempty" json:"vars"` // what Herd replaces in it
+	Where   string `toml:"where" json:"where"`         // where Derby uses it
+	Vars    string `toml:"vars,omitempty" json:"vars"` // what Derby replaces in it
 	Default string `toml:"-" json:"default"`
 	Text    string `toml:"text" json:"text"` // the text in use: the user's, else Default
 }
@@ -39,7 +39,7 @@ const (
 	PromptFeedback  = "fixFeedback"
 	PromptNotes     = "diffNotes"
 	PromptTodo      = "todo"
-	// Herd's own texts around the agents' prompts.
+	// Derby's own texts around the agents' prompts.
 	PromptBlock    = "stepBlock"
 	PromptContext  = "context"
 	PromptRules    = "rules"
@@ -53,7 +53,7 @@ const (
 // DefaultPrompts lists every prompt (defaults/prompts.toml), in the order
 // Settings shows them. The first six are the shared parts of every agent's
 // system prompt, in that order; each agent's own instructions only say what
-// is special to it. The last ones are Herd's own texts around them.
+// is special to it. The last ones are Derby's own texts around them.
 func DefaultPrompts() []Prompt {
 	var pf promptsFile
 	if _, err := toml.Decode(string(defaults.Prompts), &pf); err != nil {

@@ -1,4 +1,4 @@
-// Package app is herd's service: it owns all state and every Claude Code
+// Package app is derby's service: it owns all state and every Claude Code
 // process, and its exported methods are bound to the frontend by Wails.
 package app
 
@@ -21,15 +21,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"herd/internal/artifacts"
-	"herd/internal/github"
-	"herd/internal/gitops"
-	"herd/internal/hooks"
-	"herd/internal/runner"
-	"herd/internal/settings"
-	"herd/internal/store"
-	"herd/internal/termws"
-	"herd/internal/zed"
+	"derby/internal/artifacts"
+	"derby/internal/github"
+	"derby/internal/gitops"
+	"derby/internal/hooks"
+	"derby/internal/runner"
+	"derby/internal/settings"
+	"derby/internal/store"
+	"derby/internal/termws"
+	"derby/internal/zed"
 )
 
 // Platform is what the app needs from the desktop shell.
@@ -39,7 +39,7 @@ type Platform interface {
 	// PickFiles opens a native picker for several files; nil when cancelled.
 	PickFiles(title string) ([]string, error)
 	// Notify shows a desktop notification; a click on it should focus
-	// taskID in herd.
+	// taskID in derby.
 	Notify(title, body, taskID string)
 }
 
@@ -55,9 +55,9 @@ const (
 
 // App is the bound service.
 type App struct {
-	Home string // ~/.herd
-	// HoldCmd runs a session holder (herd's own path and "hold"), so
-	// sessions outlive herd. Empty: sessions end when herd quits.
+	Home string // ~/.derby
+	// HoldCmd runs a session holder (derby's own path and "hold"), so
+	// sessions outlive derby. Empty: sessions end when derby quits.
 	HoldCmd []string
 
 	settings *settings.Store
@@ -71,7 +71,7 @@ type App struct {
 	port  int
 	srv   *http.Server
 
-	focused atomic.Bool // the herd window has focus (no notifications then)
+	focused atomic.Bool // the derby window has focus (no notifications then)
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -106,13 +106,13 @@ func New(home string) *App {
 	return &App{Home: home, checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}, status: map[string]SessionStatus{}}
 }
 
-// DefaultHome returns ~/.herd, or $HERD_HOME when set.
+// DefaultHome returns ~/.derby, or $DERBY_HOME when set.
 func DefaultHome() string {
-	if h := os.Getenv("HERD_HOME"); h != "" {
+	if h := os.Getenv("DERBY_HOME"); h != "" {
 		return h
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".herd")
+	return filepath.Join(home, ".derby")
 }
 
 // Start opens the stores, starts the local server and background loops.
@@ -151,9 +151,9 @@ func Start(a *App, ctx context.Context, plat Platform) error {
 		return err
 	}
 	a.port = ln.Addr().(*net.TCPAddr).Port
-	// Hooks of sessions started by an earlier herd read the current address
+	// Hooks of sessions started by an earlier derby read the current address
 	// and token from here.
-	endpoint := fmt.Sprintf("HERD_URL=%s\nHERD_TOKEN=%s\n", a.baseURL(), a.token)
+	endpoint := fmt.Sprintf("DERBY_URL=%s\nDERBY_TOKEN=%s\n", a.baseURL(), a.token)
 	if err := os.WriteFile(a.endpointPath(), []byte(endpoint), 0o600); err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func Stop(a *App) {
 	}
 	a.explaining.Wait() // their Claude runs end with the context
 	if a.run != nil {
-		// Steps still working keep running in their holders; the next herd
+		// Steps still working keep running in their holders; the next derby
 		// reattaches them. Finished and paused ones end.
 		a.run.Shutdown(func(stepID string) bool {
 			s, err := a.db.Step(stepID)
@@ -211,8 +211,8 @@ func Stop(a *App) {
 	}
 }
 
-// userStatusLine is the statusline of the user's Claude Code settings: herd
-// sessions run it after handing the status to herd (hooks.StatusCommand).
+// userStatusLine is the statusline of the user's Claude Code settings: derby
+// sessions run it after handing the status to derby (hooks.StatusCommand).
 func userStatusLine() hooks.StatusLine {
 	var s struct {
 		StatusLine hooks.StatusLine `json:"statusLine"`
@@ -222,15 +222,15 @@ func userStatusLine() hooks.StatusLine {
 	return s.StatusLine
 }
 
-// userMemory is the user's own CLAUDE.md and rules: herd sessions skip them,
-// so agents follow only herd's Rules, context and the repo's CLAUDE.md.
+// userMemory is the user's own CLAUDE.md and rules: derby sessions skip them,
+// so agents follow only derby's Rules, context and the repo's CLAUDE.md.
 func userMemory() []string {
 	d := claudeDir()
 	return []string{filepath.Join(d, "CLAUDE.md"), filepath.Join(d, "rules", "**")}
 }
 
 // SystemMemory is the state of the user's own ~/.claude/CLAUDE.md compared
-// with herd's General context and Rules (Settings > Context).
+// with derby's General context and Rules (Settings > Context).
 type SystemMemory struct {
 	Path   string `json:"path"`
 	Exists bool   `json:"exists"`
@@ -267,7 +267,7 @@ func isDir(p string) bool {
 	return err == nil && fi.IsDir()
 }
 
-// SystemClaudeMd reports whether ~/.claude/CLAUDE.md matches herd's context.
+// SystemClaudeMd reports whether ~/.claude/CLAUDE.md matches derby's context.
 func (a *App) SystemClaudeMd() SystemMemory {
 	m := SystemMemory{Path: filepath.Join(claudeDir(), "CLAUDE.md")}
 	if b, err := os.ReadFile(m.Path); err == nil {
@@ -298,7 +298,7 @@ func (a *App) OverrideSystemClaudeMd() (string, error) {
 	if err := os.MkdirAll(filepath.Dir(m.Path), 0o755); err != nil {
 		return backup, err
 	}
-	tmp := m.Path + ".herd-tmp"
+	tmp := m.Path + ".derby-tmp"
 	if err := os.WriteFile(tmp, []byte(a.systemClaudeMd()), 0o644); err != nil {
 		return backup, err
 	}
@@ -547,7 +547,7 @@ func (a *App) SetRules(rules string) error {
 	return a.updateConfig(func(c *settings.Config) { c.Rules = rules })
 }
 
-// SetPrompt saves one of the prompts herd adds to agents (Settings >
+// SetPrompt saves one of the prompts derby adds to agents (Settings >
 // Context > Prompts); an empty text restores the default.
 func (a *App) SetPrompt(id, text string) error {
 	if err := a.settings.SetPrompt(id, text); err != nil {
@@ -581,7 +581,7 @@ func (a *App) AgentContext(ag settings.Agent, projectID string) []ContextPart {
 		l := launch{task: t, proj: p, agent: ag, step: store.Step{Agent: ag.ID, N: 1}}
 		out = append(out, ContextPart{"System prompt", "Appended to Claude Code's own system prompt: it stays for the whole conversation", a.stepBlock(l, a.runDir(p, t), worktreePath(p, t))})
 	}
-	// Your own ~/.claude/CLAUDE.md is left out (herd's settings exclude it);
+	// Your own ~/.claude/CLAUDE.md is left out (derby's settings exclude it);
 	// the repository's is not.
 	if b, err := os.ReadFile(filepath.Join(p.Path, "CLAUDE.md")); err == nil && strings.TrimSpace(string(b)) != "" {
 		out = append(out, ContextPart{"CLAUDE.md of " + p.Name, "Claude Code loads the repository's CLAUDE.md in every session", string(b)})
@@ -593,7 +593,7 @@ func (a *App) AgentContext(ag settings.Agent, projectID string) []ContextPart {
 			"\n\n" + settings.Fill(a.settings.Prompt(settings.PromptDiagrams), map[string]string{"stem": stem, "artifact": filepath.Base(file)})
 		return append(out, ContextPart{"Prompt", "The prompt of the run (claude -p), for an example PR #42", prompt})
 	}
-	return append(out, ContextPart{"Command /herd:" + ag.ID, "The step's first message: " + strings.TrimSpace(ag.Command), a.CommandText(ag)})
+	return append(out, ContextPart{"Command /derby:" + ag.ID, "The step's first message: " + strings.TrimSpace(ag.Command), a.CommandText(ag)})
 }
 
 // ChooseFolder opens the native folder picker; "" when cancelled.
@@ -607,7 +607,7 @@ func (a *App) ChooseFiles(title string) ([]string, error) {
 }
 
 // SetFocused is called by the frontend when the window gains or loses
-// focus: notifications are only shown while herd is in the background.
+// focus: notifications are only shown while derby is in the background.
 func (a *App) SetFocused(on bool) { a.focused.Store(on) }
 
 // notify tells the user, through the desktop, that a step needs them or ended.

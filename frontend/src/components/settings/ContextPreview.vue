@@ -4,7 +4,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import type { Agent, ContextPart } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 
@@ -13,10 +13,10 @@ const props = defineProps<{ agent: Agent }>()
 const parts = ref<ContextPart[] | null>(null) // null: closed
 const project = ref('')
 const box = ref<HTMLElement | null>(null)
-const projects = computed(() => herd.settings?.config.projects ?? [])
+const projects = computed(() => derby.settings?.config.projects ?? [])
 const load = debounce(async () => {
   if (parts.value === null) return
-  parts.value = (await herd.attempt('Could not build the context', () => api.AgentContext(JSON.parse(JSON.stringify(props.agent)), project.value))) ?? []
+  parts.value = (await derby.attempt('Could not build the context', () => api.AgentContext(JSON.parse(JSON.stringify(props.agent)), project.value))) ?? []
 }, 300)
 async function open() {
   parts.value = []
@@ -31,7 +31,7 @@ function key(e: KeyboardEvent) {
     close()
   }
 }
-watch(() => [JSON.stringify(props.agent), JSON.stringify(herd.settings?.prompts), JSON.stringify(herd.settings?.config), project.value], load)
+watch(() => [JSON.stringify(props.agent), JSON.stringify(derby.settings?.prompts), JSON.stringify(derby.settings?.config), project.value], load)
 </script>
 
 <template>

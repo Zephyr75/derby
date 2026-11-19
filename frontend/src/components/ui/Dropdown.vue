@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// herd's dropdown: a dashed chip that opens a small menu. The chip shows the
+// derby's dropdown: a dashed chip that opens a small menu. The chip shows the
 // picked item, or the slot's content (e.g. "+ Add").
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Icon from './Icon.vue'

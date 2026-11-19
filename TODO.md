@@ -7,4 +7,3 @@
 - the cluade askuserquestion needs to be integrated to the UI, no going back to the terminal
 - the tab of each center windows still has a line separating if from the part with the copy claude --resume button
 - add another archify diagram to the plan to explain exactly which services, databases, firebase functions, pub subs or anything this issue is related to, kind of like a higher level view of the two diagrams following to explain the current vs future flows, the idea is to understand where this flow is taking place and between what
-- add a loading animation like the orange balls on claude desktop while the agent waits (the chat view has a dots spinner, the terminal view nothing)

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { api } from '../../lib/api'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import Logo from '../ui/Logo.vue'
 
-const repo = 'https://github.com/Zephyr75/herd'
-const open = () => herd.attempt('Could not open the link', () => api.OpenURL(repo))
+const repo = 'https://github.com/Zephyr75/derby'
+const open = () => derby.attempt('Could not open the link', () => api.OpenURL(repo))
 </script>
 
 <template>
   <div class="hero card">
-    <Logo :size="44" :class="herd.dark ? 'on-dark' : 'on-light'" />
+    <Logo :size="44" :class="derby.dark ? 'on-dark' : 'on-light'" />
     <div class="id">
-      <h1>Herd</h1>
+      <h1>Derby</h1>
       <p class="muted">Runs Claude Code through a pipeline of agents you define, each task in its own git worktree.</p>
     </div>
   </div>
@@ -19,11 +19,11 @@ const open = () => herd.attempt('Could not open the link', () => api.OpenURL(rep
   <div class="table card">
     <div class="r">
       <span class="grow">Source code</span>
-      <button class="link" @click="open">github.com/Zephyr75/herd</button>
+      <button class="link" @click="open">github.com/Zephyr75/derby</button>
     </div>
     <div class="r">
       <span class="grow">Settings, tasks and runs</span>
-      <code class="muted">{{ herd.settings?.dir ?? '~/.herd' }}</code>
+      <code class="muted">{{ derby.settings?.dir ?? '~/.derby' }}</code>
     </div>
     <div class="r">
       <span class="grow">License</span>

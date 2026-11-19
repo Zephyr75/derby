@@ -11,7 +11,7 @@ import './themes/one-dark.css'
 import './themes/base.css'
 import { createApp } from 'vue'
 import App from './App.vue'
-import { herd } from './lib/state'
+import { derby } from './lib/state'
 
-void herd.init()
+void derby.init()
 createApp(App).mount('#app')

@@ -1,6 +1,6 @@
-# herd: look and feel
+# derby: look and feel
 
-herd is a dense, Zed-like desktop app (13px UI, thin borders, small radii). This design system ships **no components**: build with plain React and HTML, styled with herd's tokens and its small class set. Everything comes with `styles.css`.
+derby is a dense, Zed-like desktop app (13px UI, thin borders, small radii). This design system ships **no components**: build with plain React and HTML, styled with derby's tokens and its small class set. Everything comes with `styles.css`.
 
 ## Setup
 
@@ -40,7 +40,7 @@ Layout glue (flex, gaps, padding) is yours: inline styles or your own classes, w
 
 ## Where the truth lives
 
-`_ds_bundle.css` (imported by `styles.css`) is herd's whole stylesheet: the `[data-theme=…]` token blocks, then the classes above. Read it before styling.
+`_ds_bundle.css` (imported by `styles.css`) is derby's whole stylesheet: the `[data-theme=…]` token blocks, then the classes above. Read it before styling.
 
 ## Example
 

@@ -3,22 +3,22 @@
 // issue shows in full (description, comments, images) before the task starts.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errorText } from '../../lib/api'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import { isMac } from '../../lib/keymap'
 import Icon from '../ui/Icon.vue'
 import Dropdown from '../ui/Dropdown.vue'
 import ArtifactView from '../ArtifactView.vue'
 import type { Artifact, Issue } from '../../lib/types'
 
-// herd.previewNew pre-fills the preview's artboards 4 to 6 in the browser mock.
+// derby.previewNew pre-fills the preview's artboards 4 to 6 in the browser mock.
 const presets: Record<string, { p: string; i: string; d: string }> = {
   issue: { p: 'core', i: '1190', d: '' },
   both: { p: 'core', i: '1190', d: 'Start with the API flag only; the app change is a separate task.' },
   local: { p: 'rider', i: '', d: 'Add haptic feedback when a ride starts and ends.' },
 }
-const pre = presets[herd.previewNew]
+const pre = presets[derby.previewNew]
 
-const project = ref(pre?.p ?? herd.selTask?.project ?? herd.projects[0]?.id ?? '')
+const project = ref(pre?.p ?? derby.selTask?.project ?? derby.projects[0]?.id ?? '')
 const issue = ref(pre?.i ?? '')
 const desc = ref(pre?.d ?? '')
 const files = ref<string[]>([])
@@ -55,7 +55,7 @@ const previewMeta = computed(() =>
   [front('author') && 'by ' + front('author'), front('created'), front('labels'), comments.value ? `${comments.value} comment${comments.value > 1 ? 's' : ''}` : 'no comments'].filter(Boolean).join(' · '),
 )
 
-const p = computed(() => herd.project(project.value))
+const p = computed(() => derby.project(project.value))
 const nIssue = computed(() => issue.value.trim())
 const nDesc = computed(() => desc.value.trim())
 const mode = computed(() => (nIssue.value && nDesc.value ? 'both' : nIssue.value ? 'issue' : nDesc.value ? 'local' : 'none'))
@@ -66,7 +66,7 @@ const slug = computed(() => {
 })
 // The branch: the prefix from Settings, then words from the issue title or
 // the description, until the user edits it.
-const prefix = computed(() => herd.settings?.config.branchPrefix ?? 'ar-')
+const prefix = computed(() => derby.settings?.config.branchPrefix ?? 'ar-')
 const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 7).join('-')
 const branchEdited = ref(false)
 const branchInput = ref('')
@@ -89,7 +89,7 @@ const info = computed(
       none: { label: 'Missing', text: 'Add a GitHub issue number, a description, or both.', cls: 's-idle' },
     })[mode.value],
 )
-const first = computed(() => herd.settings?.agents.find((a) => !a.builtin)?.name ?? 'Plan')
+const first = computed(() => derby.settings?.agents.find((a) => !a.builtin)?.name ?? 'Plan')
 const valid = computed(() => mode.value !== 'none' && !!p.value && !busy.value && branchOk.value)
 
 function onIssue(e: Event) {
@@ -116,7 +116,7 @@ async function fetchTitle() {
 }
 
 // Where the project's issues live: the common issues repository when it uses it.
-const issuesRepo = computed(() => (p.value?.commonIssues && herd.settings?.config.issuesRepo) || p.value?.repo || '')
+const issuesRepo = computed(() => (p.value?.commonIssues && derby.settings?.config.issuesRepo) || p.value?.repo || '')
 // Open issues assigned to you; the # field takes any other issue.
 const mine = ref<Issue[] | null>(null)
 const mineError = ref('')
@@ -139,7 +139,7 @@ watch(
 )
 // The issue's Priority field, coloured with the status colours of the theme.
 const priorityClass: Record<string, string> = { urgent: 's-failed', high: 's-waiting', medium: 's-running', low: 's-idle' }
-const hasTask = (n: number) => herd.tasks.some((t) => t.project === project.value && t.issue === String(n))
+const hasTask = (n: number) => derby.tasks.some((t) => t.project === project.value && t.issue === String(n))
 const mineItems = computed(() =>
   (mine.value ?? []).map((is) => ({
     value: String(is.number),
@@ -161,18 +161,18 @@ function pickMine(v: string) {
   void loadPreview()
 }
 
-// Files attached to the task: herd copies them to the run folder and TASK.md lists them.
+// Files attached to the task: derby copies them to the run folder and TASK.md lists them.
 const baseName = (f: string) => f.split(/[\\/]/).pop() ?? f
 async function addFiles() {
-  const picked = await herd.attempt('Could not open the file picker', () => api.ChooseFiles('Attach files to the task'))
+  const picked = await derby.attempt('Could not open the file picker', () => api.ChooseFiles('Attach files to the task'))
   for (const f of picked ?? []) if (!files.value.includes(f)) files.value.push(f)
 }
 
 // Adds a project without leaving the pop-up, then selects it.
 async function addProject() {
-  const pr = await herd.attempt('Could not add the project', () => api.AddProject())
+  const pr = await derby.attempt('Could not add the project', () => api.AddProject())
   if (!pr) return
-  herd.toast('Added ' + pr.name, pr.path)
+  derby.toast('Added ' + pr.name, pr.path)
   pickProject(pr.id)
 }
 
@@ -189,10 +189,10 @@ async function create(run: boolean) {
   error.value = ''
   try {
     const t = await api.CreateTask(project.value, nIssue.value, nDesc.value, branch.value, run, files.value)
-    herd.overlay = 'none'
+    derby.overlay = 'none'
     // The task:changed event may arrive after the call returns.
-    if (!herd.task(t.id)) herd.tasks.push(t)
-    herd.pickTask(t.id)
+    if (!derby.task(t.id)) derby.tasks.push(t)
+    derby.pickTask(t.id)
   } catch (e) {
     error.value = errorText(e)
   } finally {
@@ -210,7 +210,7 @@ function key(e: KeyboardEvent) {
 </script>
 
 <template>
-  <button class="scrim dim" aria-label="Cancel new task" @click="herd.overlay = 'none'"></button>
+  <button class="scrim dim" aria-label="Cancel new task" @click="derby.overlay = 'none'"></button>
   <div class="box popup" role="dialog" aria-label="New task" tabindex="-1" @keydown="key">
     <div class="head">
       <span class="title">New task</span>
@@ -219,7 +219,7 @@ function key(e: KeyboardEvent) {
       <div class="group">
         <span class="lbl">Project</span>
         <div class="chips">
-          <button v-for="pr in herd.projects" :key="pr.id" class="seg" :class="{ on: pr.id === project }" @click="pickProject(pr.id)">{{ pr.name }}</button>
+          <button v-for="pr in derby.projects" :key="pr.id" class="seg" :class="{ on: pr.id === project }" @click="pickProject(pr.id)">{{ pr.name }}</button>
           <button class="seg add" title="Pick a git repository to add as a project" @click="addProject"><Icon name="plus" :size="12" />Add project</button>
         </div>
       </div>
@@ -283,7 +283,7 @@ function key(e: KeyboardEvent) {
     <div class="foot">
       <span class="muted small">Starts with the {{ first }} agent</span>
       <span class="grow"></span>
-      <button class="btn ghost" @click="herd.overlay = 'none'">Cancel</button>
+      <button class="btn ghost" @click="derby.overlay = 'none'">Cancel</button>
       <button class="btn" :disabled="!valid" @click="create(false)">Create</button>
       <button class="btn primary run" :disabled="!valid" @click="create(true)">
         <Icon name="play" :size="13" />Create and run {{ first }}

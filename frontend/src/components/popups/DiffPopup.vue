@@ -3,7 +3,7 @@
 // Changes tab), the selected file's read-only diff on the right.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errorText } from '../../lib/api'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import type { Changes, FileDiff, Note, Step } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import DiffView from '../Diff.vue'
@@ -14,8 +14,8 @@ import Dropdown from '../ui/Dropdown.vue'
 import { SIDEBAR, useSidebar } from '../../lib/sidebar'
 
 // Unified or split, as Zed's diff toggle; remembered per viewer.
-const splitView = ref(read('herd.diff.split') === '1')
-watch(splitView, (v) => write('herd.diff.split', v ? '1' : '0'))
+const splitView = ref(read('derby.diff.split') === '1')
+watch(splitView, (v) => write('derby.diff.split', v ? '1' : '0'))
 function read(k: string) {
   try {
     return localStorage.getItem(k)
@@ -31,17 +31,17 @@ function write(k: string, v: string) {
   }
 }
 
-const stepId = computed(() => herd.diffOf?.step ?? '')
-const task = computed(() => herd.tasks.find((t) => t.steps.some((s) => s.id === stepId.value)))
+const stepId = computed(() => derby.diffOf?.step ?? '')
+const task = computed(() => derby.tasks.find((t) => t.steps.some((s) => s.id === stepId.value)))
 const step = computed(() => task.value?.steps.find((s) => s.id === stepId.value))
-const pickStep = (id: string) => herd.diffOf && (herd.diffOf = { step: id, path: '' })
+const pickStep = (id: string) => derby.diffOf && (derby.diffOf = { step: id, path: '' })
 // Only steps of agents with a Diff (Implement and Test by default) make
 // changes. Full, last, is the whole branch: a Copilot step's changes, the
 // same for every one of them.
 const changers = computed(() => {
   const steps = task.value?.steps ?? []
   const full = step.value?.external ? step.value : steps.filter((s) => s.external).pop()
-  return [...steps.filter((s) => !s.external && herd.settings?.agents.find((a) => a.id === s.agent)?.showDiff), ...(full ? [full] : [])]
+  return [...steps.filter((s) => !s.external && derby.settings?.agents.find((a) => a.id === s.agent)?.showDiff), ...(full ? [full] : [])]
 })
 const label = (s: Step) => (s.external ? 'Full' : s.name)
 const stepItems = computed(() => changers.value.map((s) => ({ value: s.id, label: label(s) })))
@@ -49,7 +49,7 @@ const chooseStep = (id: string) => id !== stepId.value && pickStep(id)
 const changes = ref<Changes | null>(null)
 const diff = ref<FileDiff | null>(null)
 const error = ref('')
-const sel = computed(() => herd.diffOf?.path ?? '')
+const sel = computed(() => derby.diffOf?.path ?? '')
 const file = computed(() => changes.value?.files.find((f) => f.path === sel.value))
 
 let cseq = 0
@@ -59,8 +59,8 @@ async function loadChanges() {
   if (mine !== cseq) return
   // Opened from the artifact pop-up on a step without changes (Plan, an
   // earlier Review…): show the newest step that has some instead.
-  if (herd.diffOf?.auto) {
-    herd.diffOf.auto = false
+  if (derby.diffOf?.auto) {
+    derby.diffOf.auto = false
     if (!c?.files.length) {
       for (const s of changers.value.filter((x) => !x.external).reverse()) { // a step's own changes, not the (full) branch
         if (s.id === stepId.value) continue
@@ -72,7 +72,7 @@ async function loadChanges() {
   }
   changes.value = c
   // The file left the changes (e.g. reverted): show the first one instead.
-  if (c && c.files.length && !c.files.some((f) => f.path === sel.value) && herd.diffOf) herd.diffOf.path = c.files[0].path
+  if (c && c.files.length && !c.files.some((f) => f.path === sel.value) && derby.diffOf) derby.diffOf.path = c.files[0].path
 }
 let dseq = 0
 async function loadDiff() {
@@ -94,39 +94,39 @@ watch(sel, () => {
 // Uncommitted changes keep moving while the agent works.
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(
-  () => [step.value?.sha, step.value?.state, herd.selTask?.steps.length] as const,
+  () => [step.value?.sha, step.value?.state, derby.selTask?.steps.length] as const,
   () => {
     clearTimeout(timer)
     timer = setTimeout(() => void loadChanges().then(loadDiff), 800)
   },
 )
 
-const pick = (path: string) => herd.diffOf && (herd.diffOf.path = path)
+const pick = (path: string) => derby.diffOf && (derby.diffOf.path = path)
 
 // Comments on the diff, kept with the task until sent to a step.
 const fileNotes = computed(() => (task.value?.notes ?? []).filter((n) => n.path === sel.value))
 function addNote(n: Omit<Note, 'id' | 'path'>) {
   const t = task.value
-  if (t) void herd.setNotes(t, [...t.notes, { ...n, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), path: sel.value }])
+  if (t) void derby.setNotes(t, [...t.notes, { ...n, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), path: sel.value }])
 }
 function updateNote(id: string, text: string) {
   const t = task.value
-  if (t) void herd.setNotes(t, t.notes.map((n) => (n.id === id ? { ...n, text } : n)))
+  if (t) void derby.setNotes(t, t.notes.map((n) => (n.id === id ? { ...n, text } : n)))
 }
 function removeNote(id: string) {
   const t = task.value
-  if (t) void herd.setNotes(t, t.notes.filter((n) => n.id !== id))
+  if (t) void derby.setNotes(t, t.notes.filter((n) => n.id !== id))
 }
 const sb = useSidebar('diff', 300)
-const close = () => herd.closeDiffPopup()
+const close = () => derby.closeDiffPopup()
 
 // Zed shows this step's own diff: its commit (an Implement's is its
 // Review's), in the task's worktree; uncommitted work opens the worktree.
 async function openInZed() {
   const s = step.value
   if (!s) return
-  const lines = await herd.attempt('Could not open Zed', () => api.OpenInZed(s.taskId, s.id))
-  if (lines) herd.toast('Opening the diff in Zed', lines.join('\n'))
+  const lines = await derby.attempt('Could not open Zed', () => api.OpenInZed(s.taskId, s.id))
+  if (lines) derby.toast('Opening the diff in Zed', lines.join('\n'))
 }
 
 const box = ref<HTMLDivElement>()
@@ -151,7 +151,7 @@ function key(e: KeyboardEvent) {
       <Dropdown class="picker" :items="stepItems" :value="stepId" :placeholder="step ? label(step) : 'Step'" strong title="Show the changes of another step" @pick="chooseStep" />
       <span class="title">changes</span>
       <span class="grow"></span>
-      <button v-if="!herd.artifactOf" class="other" title="Open this step's artifact beside the changes" @click="herd.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
+      <button v-if="!derby.artifactOf" class="other" title="Open this step's artifact beside the changes" @click="derby.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
       <button class="x" aria-label="Close" title="Close (Esc closes both)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">

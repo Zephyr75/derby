@@ -91,7 +91,7 @@ func (g GH) IssueTitle(ctx context.Context, repo, issue string) (string, error) 
 	return g.run(ctx, "", "issue", "view", issue, "--repo", repo, "--json", "title", "-q", ".title")
 }
 
-// IssueDoc is an issue with its comments, as herd copies it to ISSUE.md.
+// IssueDoc is an issue with its comments, as derby copies it to ISSUE.md.
 type IssueDoc struct {
 	Number    int       `json:"number"`
 	Title     string    `json:"title"`
@@ -259,7 +259,7 @@ func (g GH) CreatePR(ctx context.Context, worktree, repo, base, head, title, bod
 	return n, url, nil
 }
 
-// PR is what herd polls of an open pull request.
+// PR is what derby polls of an open pull request.
 type PR struct {
 	State  string    // open, merged or closed
 	At     time.Time // when it was merged or closed

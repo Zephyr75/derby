@@ -1,5 +1,5 @@
 // Package hooks receives Claude Code hook events (POST /hook) and writes the
-// hooks settings file that makes every herd session post them.
+// hooks settings file that makes every derby session post them.
 package hooks
 
 import (
@@ -46,7 +46,7 @@ func (h *Receiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Herd-Token")), []byte(h.Token)) != 1 {
+	if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Derby-Token")), []byte(h.Token)) != 1 {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
@@ -55,7 +55,7 @@ func (h *Receiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad body", http.StatusBadRequest)
 		return
 	}
-	ev, ok := decode(r.URL.Query().Get("event"), r.Header.Get("X-Herd-Step"), r.Header.Get("X-Herd-Pid"), body)
+	ev, ok := decode(r.URL.Query().Get("event"), r.Header.Get("X-Derby-Step"), r.Header.Get("X-Derby-Pid"), body)
 	if !ok {
 		http.Error(w, "missing event or step", http.StatusBadRequest)
 		return
@@ -73,7 +73,7 @@ func decode(name, step, pid string, body []byte) (Event, bool) {
 	return ev, ev.Name != "" && ev.StepID != "" && ev.StepID != "/"
 }
 
-// Replay hands on the events hooks spooled in dir while no herd answered,
+// Replay hands on the events hooks spooled in dir while no derby answered,
 // oldest first, and removes them. A spooled event is its name, step and pid
 // on a line each, then its JSON payload.
 func Replay(dir string, on func(Event)) {
@@ -95,31 +95,31 @@ func Replay(dir string, on func(Event)) {
 	}
 }
 
-// Events herd listens to.
+// Events derby listens to.
 var Events = []string{"SessionStart", "UserPromptSubmit", "Notification", "PreToolUse", "PostToolUse", "Stop"}
 
 // AskTool is Claude Code's question form: while it is open, the step waits
 // for the user. PreToolUse is only sent for it.
 const AskTool = "AskUserQuestion"
 
-// Command is the shell command a hook runs: it does nothing outside herd
-// sessions and never fails the hook. $HERD_ENDPOINT holds the current herd's
-// address and token, so sessions that outlived a herd restart still report.
-// When no herd answers (it is restarting), the event waits in spool/ next to
-// it for the next herd to Replay.
+// Command is the shell command a hook runs: it does nothing outside derby
+// sessions and never fails the hook. $DERBY_ENDPOINT holds the current derby's
+// address and token, so sessions that outlived a derby restart still report.
+// When no derby answers (it is restarting), the event waits in spool/ next to
+// it for the next derby to Replay.
 func Command(event string) string {
-	return `[ -n "$HERD_TASK" ] && [ -n "$HERD_ENDPOINT" ] || exit 0; b=$(cat); [ -r "$HERD_ENDPOINT" ] && . "$HERD_ENDPOINT"; ` +
-		`printf '%s' "$b" | curl -sf -m 3 -X POST "$HERD_URL/hook?event=` + event + `" -H "X-Herd-Token: $HERD_TOKEN" -H "X-Herd-Step: $HERD_TASK/$HERD_STEP" -H "X-Herd-Pid: $PPID" -H "Content-Type: application/json" --data-binary @- >/dev/null 2>&1 || ` +
-		`{ d="${HERD_ENDPOINT%/*}/spool"; mkdir -p "$d" && printf '%s\n%s\n%s\n%s' ` + event + ` "$HERD_TASK/$HERD_STEP" "$PPID" "$b" > "$d/.$$" && mv "$d/.$$" "$d/$(date +%s%N)-$$"; }; exit 0`
+	return `[ -n "$DERBY_TASK" ] && [ -n "$DERBY_ENDPOINT" ] || exit 0; b=$(cat); [ -r "$DERBY_ENDPOINT" ] && . "$DERBY_ENDPOINT"; ` +
+		`printf '%s' "$b" | curl -sf -m 3 -X POST "$DERBY_URL/hook?event=` + event + `" -H "X-Derby-Token: $DERBY_TOKEN" -H "X-Derby-Step: $DERBY_TASK/$DERBY_STEP" -H "X-Derby-Pid: $PPID" -H "Content-Type: application/json" --data-binary @- >/dev/null 2>&1 || ` +
+		`{ d="${DERBY_ENDPOINT%/*}/spool"; mkdir -p "$d" && printf '%s\n%s\n%s\n%s' ` + event + ` "$DERBY_TASK/$DERBY_STEP" "$PPID" "$b" > "$d/.$$" && mv "$d/.$$" "$d/$(date +%s%N)-$$"; }; exit 0`
 }
 
-// StatusCommand is the statusline every herd session runs: it hands Claude
-// Code's status (context window, plan usage, model, effort) to herd, in the
+// StatusCommand is the statusline every derby session runs: it hands Claude
+// Code's status (context window, plan usage, model, effort) to derby, in the
 // background so the line never waits, then runs the user's own statusline
 // (user, from their Claude Code settings), so the terminal looks the same.
 func StatusCommand(user string) string {
-	post := `b=$(cat); if [ -n "$HERD_TASK" ] && [ -r "$HERD_ENDPOINT" ]; then . "$HERD_ENDPOINT"; ` +
-		`( printf '%s' "$b" | curl -sf -m 2 -X POST "$HERD_URL/hook?event=` + StatusEvent + `" -H "X-Herd-Token: $HERD_TOKEN" -H "X-Herd-Step: $HERD_TASK/$HERD_STEP" -H "Content-Type: application/json" --data-binary @- ) >/dev/null 2>&1 & fi`
+	post := `b=$(cat); if [ -n "$DERBY_TASK" ] && [ -r "$DERBY_ENDPOINT" ]; then . "$DERBY_ENDPOINT"; ` +
+		`( printf '%s' "$b" | curl -sf -m 2 -X POST "$DERBY_URL/hook?event=` + StatusEvent + `" -H "X-Derby-Token: $DERBY_TOKEN" -H "X-Derby-Step: $DERBY_TASK/$DERBY_STEP" -H "Content-Type: application/json" --data-binary @- ) >/dev/null 2>&1 & fi`
 	if strings.TrimSpace(user) == "" {
 		return post
 	}
@@ -136,7 +136,7 @@ type StatusLine struct {
 	Padding *int   `json:"padding,omitempty"`
 }
 
-// Settings returns the Claude Code settings every herd session gets: herd's
+// Settings returns the Claude Code settings every derby session gets: derby's
 // hooks, its statusline (around the user's, if any), and claudeMdExcludes
 // (CLAUDE.md files the sessions must not load).
 func Settings(excludes []string, user StatusLine) ([]byte, error) {
@@ -160,7 +160,7 @@ func Settings(excludes []string, user StatusLine) ([]byte, error) {
 	return json.MarshalIndent(map[string]any{"hooks": all, "claudeMdExcludes": excludes, "statusLine": status}, "", "  ")
 }
 
-// WriteSettings writes the settings file (~/.herd/hooks.json).
+// WriteSettings writes the settings file (~/.derby/hooks.json).
 func WriteSettings(path string, excludes []string, user StatusLine) error {
 	b, err := Settings(excludes, user)
 	if err != nil {

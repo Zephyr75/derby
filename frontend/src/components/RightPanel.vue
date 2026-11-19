@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { api } from '../lib/api'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 import Preview from './Preview.vue'
 import Splitter from './ui/Splitter.vue'
 import { unsuccessful, type Step } from '../lib/types'
 
-const t = computed(() => herd.selTask)
+const t = computed(() => derby.selTask)
 // Agents set to "Show a Diff button" (Implement and Test by default) get one.
-const diffs = (s: Step) => !!herd.settings?.agents.find((a) => a.id === s.agent)?.showDiff
+const diffs = (s: Step) => !!derby.settings?.agents.find((a) => a.id === s.agent)?.showDiff
 const refreshIssue = async () => {
   const task = t.value
-  if (task && (await herd.attempt('Could not refresh the issue', () => api.RefreshIssue(task.id).then(() => true)))) herd.toast('Issue #' + task.issue + ' copied again', 'ISSUE.md is up to date.')
+  if (task && (await derby.attempt('Could not refresh the issue', () => api.RefreshIssue(task.id).then(() => true)))) derby.toast('Issue #' + task.issue + ' copied again', 'ISSUE.md is up to date.')
 }
-const openIssue = () => t.value && herd.attempt('Could not open the issue', () => api.OpenURL(`https://github.com/${t.value!.issueRepo || t.value!.repo}/issues/${t.value!.issue}`))
+const openIssue = () => t.value && derby.attempt('Could not open the issue', () => api.OpenURL(`https://github.com/${t.value!.issueRepo || t.value!.repo}/issues/${t.value!.issue}`))
 
 function meta(s: Step): { text: string; cls: string } {
   if (s.paused && s.state !== 'done' && s.state !== 'failed') return { text: 'paused', cls: '' }
@@ -25,12 +25,12 @@ function meta(s: Step): { text: string; cls: string } {
   if (s.state === 'failed') return { text: 'ended early', cls: 'c-approval' }
   if (unsuccessful(s)) return { text: 'failed', cls: 'c-approval' }
   const task = t.value
-  if (task && s.state === 'done' && task.pr && herd.settings?.agents.find((a) => a.id === s.agent)?.openPR) return { text: 'PR #' + task.pr, cls: '' }
+  if (task && s.state === 'done' && task.pr && derby.settings?.agents.find((a) => a.id === s.agent)?.openPR) return { text: 'PR #' + task.pr, cls: '' }
   return { text: '', cls: '' }
 }
 const dotCls = (s: Step) => (unsuccessful(s) ? 'd-failed' : s.state === 'done' ? 'd-done' : s.paused ? 'd-paused' : s.state === 'running' ? 'd-running' : s.state === 'failed' ? 'd-failed' : 'd-waiting')
 
-// Rerun (set by herd): the latest step when it commits, and the cycle's
+// Rerun (set by derby): the latest step when it commits, and the cycle's
 // Review once you changed the worktree by hand (Edit opens it in Zed).
 
 // Drag the line above the preview to give it more or less room.
@@ -47,7 +47,7 @@ function dragSplit(e: PointerEvent) {
   } catch {
     /* synthetic event */
   }
-  const move = (m: PointerEvent) => herd.setTimelineHeight(Math.min(max, Math.max(36, startH + m.clientY - startY)))
+  const move = (m: PointerEvent) => derby.setTimelineHeight(Math.min(max, Math.max(36, startH + m.clientY - startY)))
   const up = () => {
     handle.removeEventListener('pointermove', move)
     handle.removeEventListener('pointerup', up)
@@ -58,19 +58,19 @@ function dragSplit(e: PointerEvent) {
 
 async function openRunDir() {
   const task = t.value
-  if (task) await herd.attempt('Could not open the run folder', () => api.OpenRunDir(task.id))
+  if (task) await derby.attempt('Could not open the run folder', () => api.OpenRunDir(task.id))
 }
 
-const rebase = () => t.value && herd.fixWith(t.value, herd.prompt('rebase', { pr: String(t.value.pr), base: t.value.baseBranch, behind: String(t.value.behind) }))
+const rebase = () => t.value && derby.fixWith(t.value, derby.prompt('rebase', { pr: String(t.value.pr), base: t.value.baseBranch, behind: String(t.value.behind) }))
 
 async function archive() {
   const task = t.value
-  if (task) await herd.attempt('Could not archive', () => api.ArchiveTask(task.id))
+  if (task) await derby.attempt('Could not archive', () => api.ArchiveTask(task.id))
 }
 </script>
 
 <template>
-  <aside :style="{ width: herd.rightWidth + 'px' }">
+  <aside :style="{ width: derby.rightWidth + 'px' }">
     <Splitter side="right" />
     <template v-if="t">
       <div class="head">
@@ -78,15 +78,15 @@ async function archive() {
           <TaskRef :issue="t.issue" :task="t.id" />
           <span class="title">{{ t.title }}</span>
           <button v-if="t.issue && (t.issueRepo || t.repo)" class="act" :title="`Open issue #${t.issue} on GitHub`" @click="openIssue"><Icon name="external" :size="12" />Open issue</button>
-          <button v-if="t.issue && !t.archived" class="act" :title="`Copy issue #${t.issue} and its comments to ISSUE.md again (Herd also does it before each run of the first agent)`" @click="refreshIssue"><Icon name="rerun" :size="12" />Issue</button>
-          <button v-if="!t.archived && !t.worktreeRemoved" class="act" title="Open the task's worktree in Zed to edit it by hand" @click="herd.openWorktree()"><Icon name="pencil" :size="12" />Edit</button>
+          <button v-if="t.issue && !t.archived" class="act" :title="`Copy issue #${t.issue} and its comments to ISSUE.md again (Derby also does it before each run of the first agent)`" @click="refreshIssue"><Icon name="rerun" :size="12" />Issue</button>
+          <button v-if="!t.archived && !t.worktreeRemoved" class="act" title="Open the task's worktree in Zed to edit it by hand" @click="derby.openWorktree()"><Icon name="pencil" :size="12" />Edit</button>
           <button v-if="!t.archived" class="icon-btn" aria-label="Archive task" title="Archive task" @click="archive"><Icon name="archive" :size="16" /></button>
         </div>
         <div class="src">
           <span class="muted small">{{ t.source }}{{ t.pr ? ` · PR #${t.pr}` : '' }}</span>
           <template v-if="t.behind && !t.archived">
-            <span class="behind small" :title="`origin/${t.baseBranch} has ${t.behind} commits this branch lacks (Herd fetches it every 5 minutes)`">{{ t.behind }} behind {{ t.baseBranch }}</span>
-            <button v-if="herd.canFix(t)" class="act" :title="`Start a ${herd.fixers(t)[0]?.name} step that rebases the branch on origin/${t.baseBranch}`" @click="rebase"><Icon name="rebase" :size="12" />Rebase</button>
+            <span class="behind small" :title="`origin/${t.baseBranch} has ${t.behind} commits this branch lacks (Derby fetches it every 5 minutes)`">{{ t.behind }} behind {{ t.baseBranch }}</span>
+            <button v-if="derby.canFix(t)" class="act" :title="`Start a ${derby.fixers(t)[0]?.name} step that rebases the branch on origin/${t.baseBranch}`" @click="rebase"><Icon name="rebase" :size="12" />Rebase</button>
           </template>
         </div>
         <p v-if="t.description" class="desc">{{ t.description }}</p>
@@ -98,32 +98,32 @@ async function archive() {
         <button class="icon-btn run-dir" :title="`Open the folder with this task's markdown files (${t.runDir})`" aria-label="Open the run folder" @click="openRunDir"><Icon name="folder" :size="16" /></button>
       </div>
 
-      <div ref="timeline" class="timeline" :class="{ sized: herd.timelineHeight > 0 }" :style="herd.timelineHeight > 0 ? { height: herd.timelineHeight + 'px' } : {}">
+      <div ref="timeline" class="timeline" :class="{ sized: derby.timelineHeight > 0 }" :style="derby.timelineHeight > 0 ? { height: derby.timelineHeight + 'px' } : {}">
         <p v-if="!t.steps.length" class="none">No steps yet.</p>
-        <div v-for="(s, i) in t.steps" :key="s.id" class="row" :class="{ on: herd.selStep?.id === s.id }">
+        <div v-for="(s, i) in t.steps" :key="s.id" class="row" :class="{ on: derby.selStep?.id === s.id }">
           <span class="rail">
             <span :class="['sdot', dotCls(s)]"></span>
             <span v-if="i < t.steps.length - 1 || t.next.ghost" class="line"></span>
           </span>
-          <button class="step" @click="herd.openStep(t.id, s.id)">
+          <button class="step" @click="derby.openStep(t.id, s.id)">
             <span class="name-row">
               <span class="name">{{ s.name }}</span>
               <span v-if="meta(s).text" :class="['meta', meta(s).cls]">{{ meta(s).text }}</span>
-              <span v-if="s.skipped || (s.external && s.verdict === 'skipped')" class="meta skipped" :title="s.skipped ? 'Ended with the check or cross button' : 'Herd stopped waiting for Copilot: you moved on'">skipped</span>
+              <span v-if="s.skipped || (s.external && s.verdict === 'skipped')" class="meta skipped" :title="s.skipped ? 'Ended with the check or cross button' : 'Derby stopped waiting for Copilot: you moved on'">skipped</span>
             </span>
-            <span class="sub">{{ s.external ? 'run by Herd · PR #' + t.pr : s.sha ? 'commit ' + s.sha : 'session ' + s.session.slice(0, 8) }}{{ s.auto ? ' · auto' : '' }}</span>
+            <span class="sub">{{ s.external ? 'run by Derby · PR #' + t.pr : s.sha ? 'commit ' + s.sha : 'session ' + s.session.slice(0, 8) }}{{ s.auto ? ' · auto' : '' }}</span>
           </button>
           <span class="acts">
-            <button v-if="s.revert" class="act" :class="{ danger: herd.confirmRevert === s.id }" :title="`Put the worktree back to how it was when ${s.name} started, and remove it and the steps after it`" @click="herd.revertStep(s)">
-              <Icon name="revert" :size="12" />{{ herd.confirmRevert === s.id ? 'Discard its changes?' : 'Revert' }}
+            <button v-if="s.revert" class="act" :class="{ danger: derby.confirmRevert === s.id }" :title="`Put the worktree back to how it was when ${s.name} started, and remove it and the steps after it`" @click="derby.revertStep(s)">
+              <Icon name="revert" :size="12" />{{ derby.confirmRevert === s.id ? 'Discard its changes?' : 'Revert' }}
             </button>
             <template v-if="s.skip">
-              <button v-if="!(s.state === 'done' && !unsuccessful(s))" class="act icon" :aria-label="`Skip ${s.name} as succeeded`" :title="`Skip ${s.name} as succeeded: end it now and move on (Herd does not commit or push for it)`" @click="herd.skipStep(s, true)"><Icon name="check" :size="13" /></button>
-              <button v-if="!unsuccessful(s)" class="act icon" :aria-label="`Skip ${s.name} as failed`" :title="`Skip ${s.name} as failed: end it now and get the options for a failure`" @click="herd.skipStep(s, false)"><Icon name="close" :size="13" /></button>
+              <button v-if="!(s.state === 'done' && !unsuccessful(s))" class="act icon" :aria-label="`Skip ${s.name} as succeeded`" :title="`Skip ${s.name} as succeeded: end it now and move on (Derby does not commit or push for it)`" @click="derby.skipStep(s, true)"><Icon name="check" :size="13" /></button>
+              <button v-if="!unsuccessful(s)" class="act icon" :aria-label="`Skip ${s.name} as failed`" :title="`Skip ${s.name} as failed: end it now and get the options for a failure`" @click="derby.skipStep(s, false)"><Icon name="close" :size="13" /></button>
             </template>
-            <button v-if="s.rerun" class="act" :title="`Run ${s.name} again in its own session, on the current worktree`" @click="herd.rerunStep(s)"><Icon name="rerun" :size="12" />Rerun</button>
-            <button v-if="s.external" class="act" :title="`Every change of the branch against ${t.baseBranch}, as PR #${t.pr} shows it`" @click="herd.openDiffPopup(s.id, '')"><Icon name="diff" :size="13" />Full diff</button>
-            <button v-else-if="s.diff && diffs(s)" class="act" aria-label="Open this step's changes in Zed" title="Open this step's changes in Zed: the commit it belongs to, or the uncommitted work" @click="herd.openDiff(s)"><Icon name="diff" :size="13" />Diff</button>
+            <button v-if="s.rerun" class="act" :title="`Run ${s.name} again in its own session, on the current worktree`" @click="derby.rerunStep(s)"><Icon name="rerun" :size="12" />Rerun</button>
+            <button v-if="s.external" class="act" :title="`Every change of the branch against ${t.baseBranch}, as PR #${t.pr} shows it`" @click="derby.openDiffPopup(s.id, '')"><Icon name="diff" :size="13" />Full diff</button>
+            <button v-else-if="s.diff && diffs(s)" class="act" aria-label="Open this step's changes in Zed" title="Open this step's changes in Zed: the commit it belongs to, or the uncommitted work" @click="derby.openDiff(s)"><Icon name="diff" :size="13" />Diff</button>
           </span>
         </div>
         <div v-if="t.next.ghost" class="row ghost">
@@ -135,7 +135,7 @@ async function archive() {
         </div>
       </div>
 
-      <div class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to resize; double-click to reset" @pointerdown.prevent="dragSplit" @dblclick="herd.setTimelineHeight(0)"></div>
+      <div class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to resize; double-click to reset" @pointerdown.prevent="dragSplit" @dblclick="derby.setTimelineHeight(0)"></div>
       <Preview />
     </template>
   </aside>

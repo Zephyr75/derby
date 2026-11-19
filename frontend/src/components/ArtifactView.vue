@@ -3,7 +3,7 @@
 // diagram pages (the front matter is left out: the step list already shows
 // it). Used by the Preview tab and the artifact pop-up.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import { render, renderMermaid } from '../lib/markdown'
 import type { Artifact } from '../lib/types'
 
@@ -12,11 +12,11 @@ import type { Artifact } from '../lib/types'
 const props = withDefaults(defineProps<{ art: Artifact; task: string; zoom?: number }>(), { zoom: 1.3 })
 const body = ref<HTMLDivElement>()
 
-const html = computed(() => render(props.art.body, { task: props.task, dark: herd.dark, rev: herd.diagramRev }))
+const html = computed(() => render(props.art.body, { task: props.task, dark: derby.dark, rev: derby.diagramRev }))
 // An embedded diagram page reports its size (see embedFit in diagrams.go):
 // its iframe takes the diagram's shape, with no empty band under it.
 function fit(e: MessageEvent) {
-  const d = (e.data as { herdDiagram?: { ratio?: number; height?: number } })?.herdDiagram
+  const d = (e.data as { derbyDiagram?: { ratio?: number; height?: number } })?.derbyDiagram
   const frame = d && [...(body.value?.querySelectorAll('iframe') ?? [])].find((f) => f.contentWindow === e.source)
   if (!frame) return
   if (d.ratio && d.ratio > 0) frame.style.aspectRatio = String(d.ratio)
@@ -28,17 +28,17 @@ onBeforeUnmount(() => window.removeEventListener('message', fit))
 // "Open full size" on an embedded diagram page.
 function click(e: MouseEvent) {
   const file = (e.target as HTMLElement).closest<HTMLElement>('[data-diagram]')?.dataset.diagram
-  if (file) herd.openDiagram(props.task, file)
+  if (file) derby.openDiagram(props.task, file)
 }
 watch(
-  () => [html.value, herd.theme, body.value] as const,
+  () => [html.value, derby.theme, body.value] as const,
   async () => {
     await nextTick()
     if (!body.value) return
     // v-html leaves rendered diagrams in place; reset them so a theme change redraws.
     body.value.innerHTML = html.value
     const el = body.value
-    await renderMermaid(el, herd.dark)
+    await renderMermaid(el, derby.dark)
     el.querySelectorAll<SVGSVGElement>('pre.mermaid svg').forEach((svg) => {
       const w = svg.viewBox?.baseVal?.width
       if (!w) return

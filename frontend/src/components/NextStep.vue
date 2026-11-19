@@ -1,32 +1,32 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { api } from '../lib/api'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 
-const t = computed(() => herd.selTask)
+const t = computed(() => derby.selTask)
 const nx = computed(() => t.value?.next)
 
 async function restore() {
   const task = t.value
-  if (task) await herd.restoreTask(task)
+  if (task) await derby.restoreTask(task)
 }
-// Deleting is for good: herd forgets the task and removes its worktree, local
+// Deleting is for good: derby forgets the task and removes its worktree, local
 // branch and run files. Two clicks.
 async function deleteTask() {
   const task = t.value
   if (!task) return
-  if (herd.confirmDelete !== task.id) {
-    herd.confirmDelete = task.id
+  if (derby.confirmDelete !== task.id) {
+    derby.confirmDelete = task.id
     return
   }
-  herd.confirmDelete = ''
-  const lines = await herd.attempt('Could not delete the task', () => api.DeleteTask(task.id))
-  if (lines) herd.toast('Deleted ' + (task.issue ? '#' + task.issue : task.title), lines.join('\n'))
+  derby.confirmDelete = ''
+  const lines = await derby.attempt('Could not delete the task', () => api.DeleteTask(task.id))
+  if (lines) derby.toast('Deleted ' + (task.issue ? '#' + task.issue : task.title), lines.join('\n'))
 }
-const allow = (id: string) => herd.attempt('Allow once failed', () => api.AllowOnce(id))
-const markDone = (id: string) => herd.attempt('Mark done failed', () => api.MarkDone(id))
+const allow = (id: string) => derby.attempt('Allow once failed', () => api.AllowOnce(id))
+const markDone = (id: string) => derby.attempt('Mark done failed', () => api.MarkDone(id))
 </script>
 
 <template>
@@ -42,31 +42,31 @@ const markDone = (id: string) => herd.attempt('Mark done failed', () => api.Mark
       <label for="guide" class="sr-only">Guidance for Claude</label>
       <p v-if="nx.warning" class="warn"><Icon name="warn" :size="14" />{{ nx.warning }}</p>
       <p v-if="nx.elsewhere.length" class="warn">
-        <Icon name="warn" :size="14" />Steps also edited files outside the worktree, in {{ nx.elsewhere.join(', ') }}. Herd only commits {{ t.branch }}: check those edits yourself.
+        <Icon name="warn" :size="14" />Steps also edited files outside the worktree, in {{ nx.elsewhere.join(', ') }}. Derby only commits {{ t.branch }}: check those edits yourself.
       </p>
-      <textarea id="guide" v-model="herd.guidance" rows="3" :class="{ need: nx.warning && !herd.guidance.trim() }" :placeholder="nx.warning ? 'Which option? e.g. take option B, because…' : 'Guidance for Claude (optional)'"></textarea>
+      <textarea id="guide" v-model="derby.guidance" rows="3" :class="{ need: nx.warning && !derby.guidance.trim() }" :placeholder="nx.warning ? 'Which option? e.g. take option B, because…' : 'Guidance for Claude (optional)'"></textarea>
       <div class="opts">
-        <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" @click="herd.run(o)"><Icon name="play" :size="13" />{{ o.label }}</button>
+        <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" @click="derby.run(o)"><Icon name="play" :size="13" />{{ o.label }}</button>
       </div>
     </template>
 
     <p v-if="nx.text">{{ nx.text }}</p>
-    <button v-if="herd.prReady(t) === 'draft' && herd.copilotClean(t)" class="btn" title="Turn the draft PR into one ready for review and add the ready label" @click="herd.markReady(t)"><Icon name="check" :size="13" />Mark PR #{{ t.pr }} ready for review</button>
-    <p v-else-if="herd.prReady(t) === 'ready'" class="muted small">PR #{{ t.pr }} is ready for review.</p>
+    <button v-if="derby.prReady(t) === 'draft' && derby.copilotClean(t)" class="btn" title="Turn the draft PR into one ready for review and add the ready label" @click="derby.markReady(t)"><Icon name="check" :size="13" />Mark PR #{{ t.pr }} ready for review</button>
+    <p v-else-if="derby.prReady(t) === 'ready'" class="muted small">PR #{{ t.pr }} is ready for review.</p>
 
     <button v-if="nx.approval" class="btn allow" @click="allow(nx.approval)">Allow once</button>
     <button v-if="nx.markDone" class="btn ghost-border" @click="markDone(nx.markDone)">Mark done</button>
 
-    <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so Herd cannot restore this task or touch its repository. Delete task only removes it from herd.</p>
+    <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so Derby cannot restore this task or touch its repository. Delete task only removes it from derby.</p>
     <div v-if="t.archived" class="row">
       <button v-if="!t.worktreeRemoved && !t.projectGone" class="btn" @click="restore">Restore to Tasks</button>
       <button
         class="btn"
-        :class="herd.confirmDelete === t.id ? 'danger' : 'transparent'"
-        title="Forget the task in Herd, and remove its worktree, local branch and run files (the pushed branch and the PR stay on GitHub)"
+        :class="derby.confirmDelete === t.id ? 'danger' : 'transparent'"
+        title="Forget the task in Derby, and remove its worktree, local branch and run files (the pushed branch and the PR stay on GitHub)"
         @click="deleteTask"
       >
-        {{ herd.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}
+        {{ derby.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}
       </button>
     </div>
   </div>

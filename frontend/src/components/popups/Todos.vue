@@ -3,7 +3,7 @@
 // archived ones that still have open todos, then Others, for the todos of
 // no task. A task's name opens it.
 import { computed } from 'vue'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import type { Task, Todo } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import TaskRef from '../ui/TaskRef.vue'
@@ -11,28 +11,28 @@ import TodoList from '../TodoList.vue'
 
 const open = (ts: Todo[]) => ts.filter((x) => !x.done).length
 const tasks = computed(() => {
-  const shown = herd.tasks.filter((t) => t.id === herd.sel || (t.archived ? open(t.todos) > 0 : t.todos.length > 0))
+  const shown = derby.tasks.filter((t) => t.id === derby.sel || (t.archived ? open(t.todos) > 0 : t.todos.length > 0))
   return shown.sort((a, b) => Number(a.archived) - Number(b.archived) || a.projectName.localeCompare(b.projectName) || a.id.localeCompare(b.id))
 })
-const total = computed(() => open(herd.todos) + herd.tasks.reduce((n, t) => n + open(t.todos), 0))
+const total = computed(() => open(derby.todos) + derby.tasks.reduce((n, t) => n + open(t.todos), 0))
 
 function go(t: Task) {
-  herd.overlay = 'none'
-  herd.left = t.archived ? 'archive' : 'tasks'
-  herd.pickTask(t.id)
+  derby.overlay = 'none'
+  derby.left = t.archived ? 'archive' : 'tasks'
+  derby.pickTask(t.id)
 }
 </script>
 
 <template>
-  <button class="scrim dim" aria-label="Close the todo lists" @click="herd.overlay = 'none'"></button>
+  <button class="scrim dim" aria-label="Close the todo lists" @click="derby.overlay = 'none'"></button>
   <div class="box popup" role="dialog" aria-label="Todo lists">
     <div class="head">
       <Icon name="todo" :size="15" />
       <span class="title">Todos</span>
       <span class="muted small">{{ total }} open</span>
       <span class="grow"></span>
-      <label class="hide small"><input v-model="herd.hideDone" type="checkbox" />Hide done</label>
-      <button class="x" aria-label="Close" @click="herd.overlay = 'none'"><Icon name="close" :size="14" /></button>
+      <label class="hide small"><input v-model="derby.hideDone" type="checkbox" />Hide done</label>
+      <button class="x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <section v-for="t in tasks" :key="t.id">
@@ -41,11 +41,11 @@ function go(t: Task) {
           <span class="name">{{ t.title }}</span>
           <span class="muted small">{{ t.projectName }}{{ t.archived ? ' · archived' : '' }}</span>
         </button>
-        <TodoList :todos="t.todos" :hide-done="herd.hideDone" @change="herd.setTodos(t, $event)" :run="herd.todoAgent(t)?.name ?? 'Implement'" :blocked="herd.todoBlocked(t)" @run="herd.runTodo(t, $event)" />
+        <TodoList :todos="t.todos" :hide-done="derby.hideDone" @change="derby.setTodos(t, $event)" :run="derby.todoAgent(t)?.name ?? 'Implement'" :blocked="derby.todoBlocked(t)" @run="derby.runTodo(t, $event)" />
       </section>
       <section>
         <span class="task static"><span class="name">Others</span><span class="muted small">not related to a task</span></span>
-        <TodoList :todos="herd.todos" :hide-done="herd.hideDone" @change="herd.setTodos(null, $event)" />
+        <TodoList :todos="derby.todos" :hide-done="derby.hideDone" @change="derby.setTodos(null, $event)" />
       </section>
     </div>
   </div>

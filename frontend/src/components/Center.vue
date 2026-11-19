@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { herd, resumeCommand } from '../lib/state'
+import { derby, resumeCommand } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import Terminal from './Terminal.vue'
 import ChatView from './ChatView.vue'
@@ -9,18 +9,18 @@ import SisterOverview from './SisterOverview.vue'
 import Toasts from './Toasts.vue'
 
 const tabs = computed(() =>
-  herd.tabs.map((tb, i) => {
-    const t = herd.task(tb.task)
+  derby.tabs.map((tb, i) => {
+    const t = derby.task(tb.task)
     const s = t?.steps.find((x) => x.id === tb.step)
     const kind = !s || s.state === 'done' || s.state === 'failed' ? 'off' : s.state === 'approval' ? 'approval' : 'live'
-    return { i, id: tb.step, kind, label: `${t?.issue ? '#' + t.issue : 'LOCAL'} · ${s?.name ?? ''}`, project: t?.projectName ?? '', on: i === herd.active && !!herd.activeTab }
+    return { i, id: tb.step, kind, label: `${t?.issue ? '#' + t.issue : 'LOCAL'} · ${s?.name ?? ''}`, project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
   }),
 )
-const step = computed(() => herd.selStep)
+const step = computed(() => derby.selStep)
 // The sister tasks' overview: under the step's toolbar, which joins its tab.
-const sisters = computed(() => !!herd.selTask && (herd.selTask.sisters.length > 0 || herd.selTask.next.sisters.length > 0))
-const t = computed(() => herd.selTask)
-const agent = computed(() => (step.value ? herd.settings?.agents.find((a) => a.id === step.value!.agent) : undefined))
+const sisters = computed(() => !!derby.selTask && (derby.selTask.sisters.length > 0 || derby.selTask.next.sisters.length > 0))
+const t = computed(() => derby.selTask)
+const agent = computed(() => (step.value ? derby.settings?.agents.find((a) => a.id === step.value!.agent) : undefined))
 const model = (m: string) => (m ? m[0].toUpperCase() + m.slice(1) : '')
 const chip = computed(() => {
   const s = step.value
@@ -29,7 +29,7 @@ const chip = computed(() => {
   if (s.state === 'approval') return { cls: 's-approval', text: 'Live · waiting for approval' }
   if (s.state === 'running' || s.state === 'idle') return { cls: 's-running', text: s.state === 'idle' ? 'Live · waiting for you' : 'Live' }
   if (s.state === 'failed') return { cls: 's-waiting', text: s.live ? 'Resumed · step ended early' : 'Ended early' }
-  if (!s.live && herd.sessionView === 'chat') return { cls: 's-idle', text: 'Ended' } // the chat reads it without resuming it
+  if (!s.live && derby.sessionView === 'chat') return { cls: 's-idle', text: 'Ended' } // the chat reads it without resuming it
   return { cls: 's-idle', text: s.live ? 'Resumed' : 'Resumed on click' }
 })
 
@@ -39,12 +39,12 @@ const chip = computed(() => {
   <section>
     <div class="tabs" role="tablist">
       <div v-for="tb in tabs" :key="tb.id" class="tab" :class="{ on: tb.on }">
-        <button class="open" role="tab" :aria-selected="tb.on" @click="herd.focusTab(tb.i)">
+        <button class="open" role="tab" :aria-selected="tb.on" @click="derby.focusTab(tb.i)">
           <span :class="['dot', `k-${tb.kind}`]"></span>
           <span>{{ tb.label }}</span>
           <span class="proj">{{ tb.project }}</span>
         </button>
-        <button class="x" aria-label="Close tab" @click="herd.closeTab(tb.i)"><Icon name="close" :size="14" /></button>
+        <button class="x" aria-label="Close tab" @click="derby.closeTab(tb.i)"><Icon name="close" :size="14" /></button>
       </div>
       <span class="grow"></span>
     </div>
@@ -54,27 +54,27 @@ const chip = computed(() => {
     <template v-else-if="step && t">
       <div class="toolbar">
         <span v-if="chip" :class="['chip', 'badge', chip.cls]"><span class="dot"></span>{{ chip.text }}</span>
-        <span v-if="herd.sessionView === 'chat' && herd.chatTitles[step.id]" class="small ttl" :title="herd.chatTitles[step.id]">{{ herd.chatTitles[step.id] }}</span>
+        <span v-if="derby.sessionView === 'chat' && derby.chatTitles[step.id]" class="small ttl" :title="derby.chatTitles[step.id]">{{ derby.chatTitles[step.id] }}</span>
         <span v-else class="muted small">{{ agent?.name ?? step.agent }} agent · {{ model(step.model) }}</span>
         <span class="pill views" role="radiogroup" aria-label="Session view">
-          <button role="radio" :aria-checked="herd.sessionView === 'terminal'" :class="{ on: herd.sessionView === 'terminal' }" title="Show the session as Claude Code's terminal" @click="herd.setSessionView('terminal')"><Icon name="terminal" :size="13" /></button>
-          <button role="radio" :aria-checked="herd.sessionView === 'chat'" :class="{ on: herd.sessionView === 'chat' }" title="Show the session as a chat" @click="herd.setSessionView('chat')"><Icon name="chat" :size="13" /></button>
+          <button role="radio" :aria-checked="derby.sessionView === 'terminal'" :class="{ on: derby.sessionView === 'terminal' }" title="Show the session as Claude Code's terminal" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" /></button>
+          <button role="radio" :aria-checked="derby.sessionView === 'chat'" :class="{ on: derby.sessionView === 'chat' }" title="Show the session as a chat" @click="derby.setSessionView('chat')"><Icon name="chat" :size="13" /></button>
         </span>
         <span class="tbs">
-          <button v-if="step.live" class="tb" :title="'Stop Claude in Herd and copy ' + resumeCommand(step) + ', e.g. to continue in Zed'" @click="herd.stopAndCopy(step)">
+          <button v-if="step.live" class="tb" :title="'Stop Claude in Derby and copy ' + resumeCommand(step) + ', e.g. to continue in Zed'" @click="derby.stopAndCopy(step)">
             <Icon name="stop" :size="14" />Stop and copy <span class="mono-s">claude --resume {{ step.session.slice(0, 8) }}</span>
           </button>
           <template v-else>
-            <button class="tb" :title="'Copy ' + resumeCommand(step)" @click="herd.copyResume(step)">
+            <button class="tb" :title="'Copy ' + resumeCommand(step)" @click="derby.copyResume(step)">
               <Icon name="copy" :size="14" />Copy <span class="mono-s">claude --resume {{ step.session.slice(0, 8) }}</span>
             </button>
-            <button v-if="step.paused" class="tb" title="Resume this session in Herd" @click="herd.resumeStep(step)"><Icon name="play" :size="13" />Resume</button>
+            <button v-if="step.paused" class="tb" title="Resume this session in Derby" @click="derby.resumeStep(step)"><Icon name="play" :size="13" />Resume</button>
           </template>
         </span>
       </div>
       <SisterOverview v-if="sisters" :task="t" />
-      <ChatView v-if="herd.sessionView === 'chat'" :step="step" />
-      <Terminal v-else :key="step.id + ':' + herd.termRev" :step="step" />
+      <ChatView v-if="derby.sessionView === 'chat'" :step="step" />
+      <Terminal v-else :key="step.id + ':' + derby.termRev" :step="step" />
     </template>
     <div v-else-if="t" class="empty">
       <span class="ico"><Icon name="terminal" :size="26" /></span>

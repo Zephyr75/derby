@@ -2,9 +2,9 @@
 # Stands in for claude in tests: posts hooks like Claude Code would, writes
 # the step's artifact, then waits for input like an interactive session.
 post() {
-  [ -r "$HERD_ENDPOINT" ] && . "$HERD_ENDPOINT" # the current herd, as in the real hook
-  printf '%s' "$2" | curl -s -m 3 -X POST "$HERD_URL/hook?event=$1" \
-    -H "X-Herd-Token: $HERD_TOKEN" -H "X-Herd-Step: $HERD_TASK/$HERD_STEP" --data-binary @- >/dev/null
+  [ -r "$DERBY_ENDPOINT" ] && . "$DERBY_ENDPOINT" # the current derby, as in the real hook
+  printf '%s' "$2" | curl -s -m 3 -X POST "$DERBY_URL/hook?event=$1" \
+    -H "X-Derby-Token: $DERBY_TOKEN" -H "X-Derby-Step: $DERBY_TASK/$DERBY_STEP" --data-binary @- >/dev/null
 }
 resume=""
 for a in "$@"; do [ "$prev" = "--resume" ] && resume="$a"; [ "$a" = "--" ] && prompted=1; prev="$a"; done
@@ -18,19 +18,19 @@ if [ -n "$CLAUDE_CODE_CHILD_SESSION$CLAUDECODE" ]; then echo "inherited Claude C
 post SessionStart '{"source":"startup"}'
 post UserPromptSubmit '{}'
 echo "fake claude: ${@: -1}"
-case "$HERD_STEP" in
-  impl-*) echo "change $HERD_N" >> "file-$HERD_N.txt"
-          printf -- '---\nstatus: done\n---\n# Changes\n- edited\n' > "$HERD_ARTIFACT" ;;
-  review-*) printf -- "---\nstatus: ${FAKE_REVIEW:-done}\n---\n# Findings\n- one\n" > "$HERD_ARTIFACT" ;;
+case "$DERBY_STEP" in
+  impl-*) echo "change $DERBY_N" >> "file-$DERBY_N.txt"
+          printf -- '---\nstatus: done\n---\n# Changes\n- edited\n' > "$DERBY_ARTIFACT" ;;
+  review-*) printf -- "---\nstatus: ${FAKE_REVIEW:-done}\n---\n# Findings\n- one\n" > "$DERBY_ARTIFACT" ;;
   form-*) post PreToolUse '{"tool_name":"AskUserQuestion"}'
           read -r answer; post PostToolUse '{"tool_name":"AskUserQuestion"}'
-          printf -- '---\nstatus: done\n---\nfeat(x): the title #1\n\nThe body.\n' > "$HERD_ARTIFACT" ;;
+          printf -- '---\nstatus: done\n---\nfeat(x): the title #1\n\nThe body.\n' > "$DERBY_ARTIFACT" ;;
   ask-*) post Notification '{"notification_type":"permission_prompt","message":"Claude needs your permission to use Bash"}'
          read -r answer; post PostToolUse '{}'
-         printf -- '---\nstatus: done\n---\n' > "$HERD_ARTIFACT" ;;
-  *) printf -- "---\nstatus: ${FAKE_STATUS:-done}\n---\n# Goal\nx\n" > "$HERD_ARTIFACT"
-     [ -n "$FAKE_OPTIONS" ] && printf -- '## Options\n- A\n- B\n' >> "$HERD_ARTIFACT"
-     [ -n "$FAKE_SISTER" ] && printf -- '## Other repositories\n- %s: echo the pause id\n' "$FAKE_SISTER" >> "$HERD_ARTIFACT" ;;
+         printf -- '---\nstatus: done\n---\n' > "$DERBY_ARTIFACT" ;;
+  *) printf -- "---\nstatus: ${FAKE_STATUS:-done}\n---\n# Goal\nx\n" > "$DERBY_ARTIFACT"
+     [ -n "$FAKE_OPTIONS" ] && printf -- '## Options\n- A\n- B\n' >> "$DERBY_ARTIFACT"
+     [ -n "$FAKE_SISTER" ] && printf -- '## Other repositories\n- %s: echo the pause id\n' "$FAKE_SISTER" >> "$DERBY_ARTIFACT" ;;
 esac
 post Stop '{}'
 read -r line

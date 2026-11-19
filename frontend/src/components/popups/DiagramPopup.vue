@@ -5,7 +5,7 @@
 // each Implement built. Sandboxed: a page cannot reach the app.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import { diagramURL } from '../../lib/markdown'
 import type { Diagram } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
@@ -13,18 +13,18 @@ import Splitter from '../ui/Splitter.vue'
 import { SIDEBAR, useSidebar } from '../../lib/sidebar'
 
 const list = ref<Diagram[]>([])
-const cur = computed(() => list.value.find((d) => d.file === herd.diagramOf?.file))
+const cur = computed(() => list.value.find((d) => d.file === derby.diagramOf?.file))
 watch(
-  () => [herd.diagramOf?.task, herd.diagramRev] as const,
+  () => [derby.diagramOf?.task, derby.diagramRev] as const,
   async ([task]) => {
     if (task) list.value = await api.Diagrams(task).catch(() => [])
   },
   { immediate: true },
 )
 // The page reloads when its agent rewrites it.
-const src = computed(() => (herd.diagramOf ? diagramURL(herd.diagramOf.task, herd.diagramOf.file, herd.dark) + '&v=' + (cur.value?.mod ?? '') : ''))
+const src = computed(() => (derby.diagramOf ? diagramURL(derby.diagramOf.task, derby.diagramOf.file, derby.dark) + '&v=' + (cur.value?.mod ?? '') : ''))
 
-const pick = (file: string) => herd.diagramOf && (herd.diagramOf = { ...herd.diagramOf, file })
+const pick = (file: string) => derby.diagramOf && (derby.diagramOf = { ...derby.diagramOf, file })
 const sb = useSidebar('diagram', 220)
 const box = ref<HTMLDivElement>()
 onMounted(() => box.value?.focus())
@@ -32,7 +32,7 @@ onMounted(() => box.value?.focus())
 // Up and down move through the diagrams (while the list has focus: inside the
 // page, keys belong to archify's viewer).
 function key(e: KeyboardEvent) {
-  const i = list.value.findIndex((d) => d.file === herd.diagramOf?.file)
+  const i = list.value.findIndex((d) => d.file === derby.diagramOf?.file)
   if (e.key === 'ArrowDown' && i < list.value.length - 1) pick(list.value[i + 1].file)
   else if (e.key === 'ArrowUp' && i > 0) pick(list.value[i - 1].file)
   else return
@@ -45,22 +45,22 @@ function key(e: KeyboardEvent) {
     <div class="head">
       <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
       <Icon name="eye" />
-      <span class="title">{{ cur?.title || herd.diagramOf?.file }}</span>
-      <span class="muted small">{{ cur?.step }}{{ cur?.step ? ' · ' : '' }}<span class="mono">{{ herd.diagramOf?.file }}</span></span>
+      <span class="title">{{ cur?.title || derby.diagramOf?.file }}</span>
+      <span class="muted small">{{ cur?.step }}{{ cur?.step ? ' · ' : '' }}<span class="mono">{{ derby.diagramOf?.file }}</span></span>
       <span class="grow"></span>
-      <button class="x" aria-label="Close" title="Close (Esc)" @click="herd.closeDiagram()"><Icon name="close" :size="14" /></button>
+      <button class="x" aria-label="Close" title="Close (Esc)" @click="derby.closeDiagram()"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div v-if="!sb.hidden.value" class="side-wrap" :style="{ width: sb.width.value + 'px' }">
         <div class="side">
-          <button v-for="d in list" :key="d.file" class="item" :class="{ on: d.file === herd.diagramOf?.file }" @click="pick(d.file)">
+          <button v-for="d in list" :key="d.file" class="item" :class="{ on: d.file === derby.diagramOf?.file }" @click="pick(d.file)">
             <span class="name">{{ d.title }}</span>
             <span class="file mono">{{ d.step ? d.step + ' · ' : '' }}{{ d.file }}</span>
           </button>
         </div>
         <Splitter side="left" :width="sb.width.value" :min="SIDEBAR.min" :max="SIDEBAR.max" :def="sb.def" label="Resize the side bar" @resize="(w) => (sb.width.value = w)" />
       </div>
-      <iframe v-if="src" :key="src" class="page" :src="src" :title="cur?.title || herd.diagramOf?.file" sandbox="allow-scripts allow-downloads"></iframe>
+      <iframe v-if="src" :key="src" class="page" :src="src" :title="cur?.title || derby.diagramOf?.file" sandbox="allow-scripts allow-downloads"></iframe>
     </div>
   </div>
 </template>

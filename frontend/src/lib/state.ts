@@ -30,7 +30,7 @@ export type PanelSide = keyof typeof PANELS
 
 function savedWidth(side: PanelSide): number {
   try {
-    const v = Number(localStorage.getItem('herd.panel.' + side))
+    const v = Number(localStorage.getItem('derby.panel.' + side))
     if (v >= PANELS[side].min && v <= PANELS[side].max) return v
   } catch {
     /* storage unavailable */
@@ -46,7 +46,7 @@ function savedNumber(key: string): number {
   }
 }
 
-class Herd {
+class Derby {
   ready = false
   failed = ''
   os = 'linux'
@@ -77,10 +77,10 @@ class Herd {
   leftWidth = savedWidth('left')
   rightWidth = savedWidth('right')
   /** Hidden side panels (the toggles in the status bar). */
-  leftHidden = savedNumber('herd.panel.left.hidden') === 1
-  rightHidden = savedNumber('herd.panel.right.hidden') === 1
+  leftHidden = savedNumber('derby.panel.left.hidden') === 1
+  rightHidden = savedNumber('derby.panel.right.hidden') === 1
   /** Height of the steps list in the right panel; 0 lets it size itself. */
-  timelineHeight = savedNumber('herd.panel.timeline')
+  timelineHeight = savedNumber('derby.panel.timeline')
   /** Bumped to reconnect the terminal, e.g. after a rerun. */
   termRev = 0
 
@@ -177,7 +177,7 @@ class Herd {
     on('toast', (d: { title: string; body: string; error: boolean }) => this.toast(d.title, d.body, d.error))
     on('menu', (what: string) => this.command(what))
     if (isDesktop) {
-      // Desktop notifications are only shown while herd is in the background.
+      // Desktop notifications are only shown while derby is in the background.
       const report = () => void api.SetFocused(document.hasFocus() && !document.hidden)
       window.addEventListener('focus', report)
       window.addEventListener('blur', report)
@@ -289,7 +289,7 @@ class Herd {
     if (side === 'left') this.leftWidth = v
     else this.rightWidth = v
     try {
-      localStorage.setItem('herd.panel.' + side, String(v))
+      localStorage.setItem('derby.panel.' + side, String(v))
     } catch {
       /* storage unavailable */
     }
@@ -298,7 +298,7 @@ class Herd {
   togglePanel(side: PanelSide) {
     const hidden = side === 'left' ? (this.leftHidden = !this.leftHidden) : (this.rightHidden = !this.rightHidden)
     try {
-      localStorage.setItem(`herd.panel.${side}.hidden`, hidden ? '1' : '0')
+      localStorage.setItem(`derby.panel.${side}.hidden`, hidden ? '1' : '0')
     } catch {
       /* storage unavailable */
     }
@@ -307,7 +307,7 @@ class Herd {
   setTimelineHeight(h: number) {
     this.timelineHeight = Math.max(0, Math.round(h))
     try {
-      localStorage.setItem('herd.panel.timeline', String(this.timelineHeight))
+      localStorage.setItem('derby.panel.timeline', String(this.timelineHeight))
     } catch {
       /* storage unavailable */
     }
@@ -594,7 +594,7 @@ class Herd {
     if (t && opt && !t.archived) void this.run(opt)
   }
 
-  /** prReady: '' without an open PR, 'draft' while herd's draft PR waits
+  /** prReady: '' without an open PR, 'draft' while derby's draft PR waits
    *  for the Mark ready button, 'ready' once it is ready for review. */
   prReady(t: Task | null): '' | 'draft' | 'ready' {
     if (!t || t.archived || !t.pr || t.prState !== 'open') return ''
@@ -638,7 +638,7 @@ class Herd {
     return t.steps.some((s) => !s.external && (s.state === 'running' || s.state === 'idle' || s.state === 'approval'))
   }
 
-  /** canFix: herd can start a fix step on the task now. */
+  /** canFix: derby can start a fix step on the task now. */
   canFix(t: Task): boolean {
     return !t.archived && !t.worktreeRemoved && !!this.fixers(t).length && !this.busy(t)
   }
@@ -684,7 +684,7 @@ class Herd {
     await this.attempt('Could not save the todos', () => api.SetTodos(t?.id ?? '', JSON.parse(JSON.stringify(todos))))
   }
 
-  /** prompt is one of herd's prompts (Settings > Context > Prompts), filled with vars. */
+  /** prompt is one of derby's prompts (Settings > Context > Prompts), filled with vars. */
   prompt(id: string, vars: Record<string, string>): string {
     return fill(this.settings?.prompts.find((p) => p.id === id)?.text ?? '', vars)
   }
@@ -725,7 +725,7 @@ class Herd {
     return this.attempt('Could not stop Claude', () => api.StopStep(step.id))
   }
 
-  /** Stop Claude in herd and copy the command to continue it elsewhere. */
+  /** Stop Claude in derby and copy the command to continue it elsewhere. */
   async stopAndCopy(step: Step) {
     await this.copyResume(step)
     await this.stopStep(step)
@@ -834,7 +834,7 @@ class Herd {
   private onKey(e: KeyboardEvent) {
     if (!this.settings) return
     // Ctrl+<letter> in a terminal is the terminal's (Ctrl+F moves the cursor,
-    // Ctrl+N recalls history): herd's shortcuts take it everywhere else.
+    // Ctrl+N recalls history): derby's shortcuts take it everywhere else.
     const inTerm = (e.target as HTMLElement | null)?.closest?.('.xterm')
     if (inTerm && e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && /^[a-z]$/i.test(e.key)) return
     const action = actionFor(this.settings.keymap, e)
@@ -857,4 +857,4 @@ export const resumeCommand = (step: Step) => `claude --resume ${step.session}`
 /** The left panel's Sisters group, collapsed like a project. */
 export const SISTERS = ':sisters' // no project id has a colon
 
-export const herd = reactive(new Herd())
+export const derby = reactive(new Derby())

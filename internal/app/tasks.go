@@ -17,12 +17,12 @@ import (
 	"sync"
 	"time"
 
-	"herd/internal/artifacts"
-	"herd/internal/github"
-	"herd/internal/gitops"
-	"herd/internal/settings"
-	"herd/internal/store"
-	"herd/internal/zed"
+	"derby/internal/artifacts"
+	"derby/internal/github"
+	"derby/internal/gitops"
+	"derby/internal/settings"
+	"derby/internal/store"
+	"derby/internal/zed"
 )
 
 // ListTasks returns every task with its steps, active and archived.
@@ -318,9 +318,9 @@ func (a *App) removeWorktree(id string) ([]string, error) {
 		return nil, err
 	}
 	if _, ok := a.settings.Project(t.Project); !ok {
-		// Without the project, herd no longer knows the repository: git
-		// would run in whatever directory herd started in.
-		return nil, fmt.Errorf("the project %s is no longer in Settings > Projects, so Herd cannot find its repository", t.Project)
+		// Without the project, derby no longer knows the repository: git
+		// would run in whatever directory derby started in.
+		return nil, fmt.Errorf("the project %s is no longer in Settings > Projects, so Derby cannot find its repository", t.Project)
 	}
 	a.stopTaskSessions(id)
 	p := a.projectOf(t)
@@ -341,7 +341,7 @@ func (a *App) removeWorktree(id string) ([]string, error) {
 
 // DeleteTask removes an archived task for good: its worktree and local
 // branch (the pushed branch and the PR stay on GitHub), its run files
-// (artifacts) and its steps in herd.
+// (artifacts) and its steps in derby.
 func (a *App) DeleteTask(id string) ([]string, error) {
 	t, err := a.db.Task(id)
 	if err != nil {
@@ -507,7 +507,7 @@ func (a *App) collectChecks(t store.Task) {
 // rerunGap is how long a failed check missing from its PR still counts as
 // running. Rerunning a job takes it off the PR a moment before its new run
 // appears: seen in that gap, CI looked passed and a failed Copilot step
-// passed (task 9848: the new job came a second after herd refreshed).
+// passed (task 9848: the new job came a second after derby refreshed).
 const rerunGap = 2 * time.Minute
 
 // keepRerun returns cs plus, as pending, each check old had failed (or kept
@@ -619,7 +619,7 @@ func (a *App) feedbackOf(taskID string) []github.Feedback {
 var driftMu sync.Mutex
 
 // pollDrift counts, for each active task, the commits of origin/<base> its
-// branch lacks: herd fetches each project's base branch first.
+// branch lacks: derby fetches each project's base branch first.
 func (a *App) pollDrift() {
 	if !driftMu.TryLock() {
 		return

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { herd, type SettingsTab } from '../../lib/state'
+import { derby, type SettingsTab } from '../../lib/state'
 import Toasts from '../Toasts.vue'
 import Agents from './Agents.vue'
 import ContextPane from './Context.vue'
@@ -11,26 +11,26 @@ import About from './About.vue'
 
 const nav: [SettingsTab, string][] = [['about', 'About'], ['context', 'Context'], ['agents', 'Agents'], ['projects', 'Projects'], ['appearance', 'Appearance'], ['shortcuts', 'Shortcuts']]
 const file = computed(
-  () => ({ agents: 'agents.toml', context: 'context/ and prompts.toml', projects: 'config.toml', appearance: 'config.toml', shortcuts: 'config.toml', about: '' })[herd.settingsTab],
+  () => ({ agents: 'agents.toml', context: 'context/ and prompts.toml', projects: 'config.toml', appearance: 'config.toml', shortcuts: 'config.toml', about: '' })[derby.settingsTab],
 )
 </script>
 
 <template>
   <aside>
     <span class="head">Settings</span>
-    <button v-for="[id, label] in nav" :key="id" class="item" :class="{ on: herd.settingsTab === id }" @click="herd.settingsTab = id">{{ label }}</button>
+    <button v-for="[id, label] in nav" :key="id" class="item" :class="{ on: derby.settingsTab === id }" @click="derby.settingsTab = id">{{ label }}</button>
     <span class="grow"></span>
-    <span v-if="file" class="path">{{ herd.settings?.dir ?? '~/.herd' }}/{{ file }}</span>
-    <button class="back" @click="herd.view = 'board'">Back to board</button>
+    <span v-if="file" class="path">{{ derby.settings?.dir ?? '~/.derby' }}/{{ file }}</span>
+    <button class="back" @click="derby.view = 'board'">Back to board</button>
   </aside>
 
   <section>
     <div class="col">
-      <Agents v-if="herd.settingsTab === 'agents'" />
-      <ContextPane v-else-if="herd.settingsTab === 'context'" />
-      <Projects v-else-if="herd.settingsTab === 'projects'" />
-      <Appearance v-else-if="herd.settingsTab === 'appearance'" />
-      <Shortcuts v-else-if="herd.settingsTab === 'shortcuts'" />
+      <Agents v-if="derby.settingsTab === 'agents'" />
+      <ContextPane v-else-if="derby.settingsTab === 'context'" />
+      <Projects v-else-if="derby.settingsTab === 'projects'" />
+      <Appearance v-else-if="derby.settingsTab === 'appearance'" />
+      <Shortcuts v-else-if="derby.settingsTab === 'shortcuts'" />
       <About v-else />
     </div>
     <Toasts />

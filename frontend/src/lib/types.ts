@@ -20,13 +20,13 @@ export interface Agent {
   model: string
   trigger: string // manual | after:<id> (when that step succeeds)
   writes: string
-  commit: boolean // herd commits when it succeeds: its artifact's title line and body are the message
+  commit: boolean // derby commits when it succeeds: its artifact's title line and body are the message
   push: boolean // then pushes the branch (needs commit)
   openPR: boolean // then opens or updates the draft PR from its artifact (needs push)
   revert: boolean // its latest step can be reverted while nothing is committed after it
   rerun: boolean // its step can be run again while it is the latest
   choose: boolean // when its artifact lists Options, Next step asks which one to take
-  builtin: boolean // run by herd itself, not Claude: Copilot
+  builtin: boolean // run by derby itself, not Claude: Copilot
   ignoreRules: boolean // the common rules are not given to this agent
   showDiff: boolean // its steps have a Diff button (open their changes in Zed)
   sisters: boolean // its artifact can ask for sister tasks in other repositories
@@ -124,7 +124,7 @@ export interface FileDiff {
   truncated: boolean
 }
 
-/** A process outside herd running a session. */
+/** A process outside derby running a session. */
 export interface Proc {
   pid: number
   cmd: string
@@ -150,15 +150,15 @@ export interface Settings {
   agents: Agent[]
   context: Record<string, Context>
   keymap: Keymap
-  prompts: Prompt[] // what herd adds to agents and fix steps (Settings > Context > Prompts)
+  prompts: Prompt[] // what derby adds to agents and fix steps (Settings > Context > Prompts)
   dir: string
 }
 
 export interface Prompt {
   id: string
   name: string
-  where: string // where herd uses it
-  vars: string // what herd replaces in it
+  where: string // where derby uses it
+  vars: string // what derby replaces in it
   default: string
   text: string // the text in use
 }
@@ -197,8 +197,8 @@ export interface Step {
   paused: boolean // stopped by the user until Resume
   rerun: boolean // Rerun applies: the latest step, of an agent that can be rerun
   skip: boolean // the check and cross buttons apply: the latest step, or one not finished
-  gitError: string // why herd's commit, push or PR after it failed
-  external: boolean // run by herd, not Claude: the Copilot review step
+  gitError: string // why derby's commit, push or PR after it failed
+  external: boolean // run by derby, not Claude: the Copilot review step
 }
 
 export interface Option {
@@ -207,7 +207,7 @@ export interface Option {
   label: string
 }
 
-/** A repository the plan also needs; project is '' until it is a herd project. */
+/** A repository the plan also needs; project is '' until it is a derby project. */
 export interface SisterOffer {
   repo: string
   scope: string
@@ -258,7 +258,7 @@ export interface Task {
   projectGone: boolean // its project was removed from Settings > Projects
   checks: CICheck[] // CI checks of the open PR
   labels: string[] // labels of the open PR
-  draft: boolean // the open PR is a draft (herd opens them so)
+  draft: boolean // the open PR is a draft (derby opens them so)
   conflicting: boolean // the open PR conflicts with its base: GitHub runs no checks
   feedback: Feedback[] // what reviewers still ask for on the open PR
   rejected: Record<string, { step: string; name: string }> // open threads a step found wrong or unnecessary, by thread id

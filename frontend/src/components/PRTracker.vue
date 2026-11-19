@@ -5,7 +5,7 @@
 // the Copilot step's FEEDBACK-n.md.
 import { computed, ref } from 'vue'
 import { api } from '../lib/api'
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import { type CICheck, type Feedback, type Step, type Task } from '../lib/types'
 import Icon from './ui/Icon.vue'
 
@@ -31,27 +31,27 @@ const cls = (b: string) => (b === 'fail' || b === 'cancel' ? 'd-failed' : b === 
 const word = (b: string) => ({ fail: 'failed', cancel: 'cancelled', pending: 'running', pass: 'passed', skipping: 'skipped' })[b] ?? b
 
 const waiting = computed(() => cop.value?.state === 'running')
-const open = (link: string) => link && herd.attempt('Could not open the link', () => api.OpenURL(link))
-const stop = () => cop.value && herd.attempt('Could not stop waiting', () => api.MarkDone(cop.value!.id))
-const askCopilot = () => herd.attempt('Could not ask Copilot for a review', () => api.RequestCopilotReview(props.task.id))
+const open = (link: string) => link && derby.attempt('Could not open the link', () => api.OpenURL(link))
+const stop = () => cop.value && derby.attempt('Could not stop waiting', () => api.MarkDone(cop.value!.id))
+const askCopilot = () => derby.attempt('Could not ask Copilot for a review', () => api.RequestCopilotReview(props.task.id))
 
-// Only GitHub Actions jobs can be rerun from herd; a workflow row reruns its whole run.
+// Only GitHub Actions jobs can be rerun from derby; a workflow row reruns its whole run.
 const actions = (link: string) => /\/actions\/runs\/\d+/.test(link)
 const runOf = (link: string) => link.replace(/\/job\/.*$/, '')
 const rerunning = ref('')
 async function rerun(link: string, what: string) {
   rerunning.value = link || 'all'
-  await herd.attempt('Could not rerun ' + what, () => api.RerunChecks(props.task.id, link))
+  await derby.attempt('Could not rerun ' + what, () => api.RerunChecks(props.task.id, link))
   rerunning.value = ''
 }
 const anyActions = computed(() => props.task.checks.some((c) => actions(c.link)))
 
 // Fixes go to the agent Copilot offers first when there is something to fix
 // (Implement by default), as a new step with guidance.
-const fixer = computed(() => herd.fixers(props.task)[0])
+const fixer = computed(() => derby.fixers(props.task)[0])
 const failing = computed(() => props.task.checks.filter((c) => c.bucket === 'fail' || c.bucket === 'cancel'))
-const canFix = computed(() => live.value && herd.canFix(props.task))
-const fix = (guidance: string) => herd.fixWith(props.task, guidance)
+const canFix = computed(() => live.value && derby.canFix(props.task))
+const fix = (guidance: string) => derby.fixWith(props.task, guidance)
 
 // Review comments: every one is sent unless unticked.
 // Ticked by default unless outdated (the code it points at changed since);
@@ -75,7 +75,7 @@ const picked = computed(() => openFb.value.filter(ticked))
 const resolving = ref('')
 async function resolve(f: Feedback) {
   resolving.value = f.id
-  await herd.attempt('Could not resolve the comment', () => api.ResolveThread(props.task.id, f.id))
+  await derby.attempt('Could not resolve the comment', () => api.ResolveThread(props.task.id, f.id))
   resolving.value = ''
 }
 const where = (f: Feedback) => (f.path ? `${f.path}:${f.line}` : 'on the PR')
@@ -88,12 +88,12 @@ function fixFeedback() {
       return `### ${where(f)}${id}${was ? ` (${was})` : ''}, by ${f.author}\n${f.body}${replies ? '\n\n' + replies : ''}`
     })
     .join('\n\n')
-  fix(herd.prompt('fixFeedback', { pr: String(props.task.pr), comments }))
+  fix(derby.prompt('fixFeedback', { pr: String(props.task.pr), comments }))
 }
-const rebase = () => fix(herd.prompt('rebase', { pr: String(props.task.pr), base: props.task.baseBranch, behind: String(props.task.behind || 'some') }))
+const rebase = () => fix(derby.prompt('rebase', { pr: String(props.task.pr), base: props.task.baseBranch, behind: String(props.task.behind || 'some') }))
 const fixChecks = () =>
   fix(
-    herd.prompt('fixChecks', {
+    derby.prompt('fixChecks', {
       pr: String(props.task.pr),
       checks: failing.value.map((c) => (c.workflow ? `${c.workflow} / ${c.name}` : c.name)).join(', '),
       links: failing.value.map((c) => c.link).filter(Boolean).join(' '),
@@ -102,7 +102,7 @@ const fixChecks = () =>
 const refreshing = ref(false)
 async function refresh() {
   refreshing.value = true
-  await herd.attempt('Could not refresh PR #' + props.task.pr, () => api.RefreshPR(props.task.id))
+  await derby.attempt('Could not refresh PR #' + props.task.pr, () => api.RefreshPR(props.task.id))
   refreshing.value = false
 }
 </script>
@@ -111,12 +111,12 @@ async function refresh() {
   <div class="tracker">
     <div class="head">
       <span class="title">PR #{{ task.pr }}</span>
-      <span v-if="herd.prReady(task)" :class="['state', herd.prReady(task)]" :title="herd.prReady(task) === 'ready' ? 'Ready for review' : 'A draft: reviewers and repo bots leave it alone until it is marked ready'">{{ herd.prReady(task) === 'ready' ? 'Ready' : 'Draft' }}</span>
+      <span v-if="derby.prReady(task)" :class="['state', derby.prReady(task)]" :title="derby.prReady(task) === 'ready' ? 'Ready for review' : 'A draft: reviewers and repo bots leave it alone until it is marked ready'">{{ derby.prReady(task) === 'ready' ? 'Ready' : 'Draft' }}</span>
       <span class="muted small">{{ task.branch }} → {{ task.baseBranch }}</span>
       <span class="grow"></span>
-      <button v-if="herd.prReady(task) === 'draft'" class="act" title="Turn the draft PR into one ready for review and add the ready label" @click="herd.markReady(task)"><Icon name="check" :size="13" />Mark ready</button>
+      <button v-if="derby.prReady(task) === 'draft'" class="act" title="Turn the draft PR into one ready for review and add the ready label" @click="derby.markReady(task)"><Icon name="check" :size="13" />Mark ready</button>
       <button v-if="task.prState === 'open' && !task.archived" class="act" :disabled="refreshing" title="Check Copilot's review and the CI checks now instead of waiting for the next minute" @click="refresh"><Icon name="rerun" :size="13" />{{ refreshing ? 'Refreshing…' : 'Refresh' }}</button>
-      <button v-if="task.prUrl" class="act" :title="`Copy the link to PR #${task.pr}, e.g. to send it to someone`" @click="herd.copy(task.prUrl)"><Icon name="copy" :size="13" />Copy link</button>
+      <button v-if="task.prUrl" class="act" :title="`Copy the link to PR #${task.pr}, e.g. to send it to someone`" @click="derby.copy(task.prUrl)"><Icon name="copy" :size="13" />Copy link</button>
       <button v-if="task.prUrl" class="act" :title="`Open PR #${task.pr} on GitHub`" @click="open(task.prUrl)"><Icon name="external" :size="13" />Open PR</button>
     </div>
 
@@ -144,7 +144,7 @@ async function refresh() {
               <span class="mono muted">{{ where(f) }}</span>
               <span v-if="f.resolvedBy" class="muted">resolved by {{ f.resolvedBy }}</span>
               <span v-else-if="f.outdated" class="muted">outdated</span>
-              <button v-if="!f.resolvedBy && rejected(f)" class="tag rejected" :title="`${rejected(f)!.name} found it wrong or unnecessary and left the code as it is: open its artifact to see why`" @click="herd.openStep(task.id, rejected(f)!.step)">rejected</button>
+              <button v-if="!f.resolvedBy && rejected(f)" class="tag rejected" :title="`${rejected(f)!.name} found it wrong or unnecessary and left the code as it is: open its artifact to see why`" @click="derby.openStep(task.id, rejected(f)!.step)">rejected</button>
               <span v-if="f.replies.length" class="muted">· {{ f.replies.length }} {{ f.replies.length > 1 ? 'replies' : 'reply' }}</span>
               <span class="grow"></span>
               <button v-if="live && f.path && !f.resolvedBy" class="icon" :disabled="resolving === f.id" title="Mark resolved on GitHub" aria-label="Mark resolved on GitHub" @click="resolve(f)"><Icon name="check" :size="15" /></button>

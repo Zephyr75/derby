@@ -4,15 +4,15 @@
 import { computed } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { herd } from '../../lib/state'
+import { derby } from '../../lib/state'
 import Icon from '../ui/Icon.vue'
 
 type Mode = 'dark' | 'light' | 'system' | 'zed'
-const ap = computed(() => herd.settings?.config.appearance)
+const ap = computed(() => derby.settings?.config.appearance)
 const cards = computed<{ id: Mode; name: string; note: string; panes: string[] }[]>(() => [
   { id: 'dark', name: 'Dark', note: 'Fleet Dark', panes: ['fleet-dark'] },
   { id: 'light', name: 'Light', note: 'Flatwhite', panes: ['flatwhite'] },
-  { id: 'system', name: 'System', note: `now ${herd.systemLight ? 'Light' : 'Dark'}, follows the OS`, panes: ['fleet-dark', 'flatwhite'] },
+  { id: 'system', name: 'System', note: `now ${derby.systemLight ? 'Light' : 'Dark'}, follows the OS`, panes: ['fleet-dark', 'flatwhite'] },
   { id: 'zed', name: 'Zed', note: "One Dark, Zed's default", panes: ['one-dark'] },
 ])
 
@@ -22,21 +22,21 @@ const views = [
 ] as const
 
 async function pick(id: Mode) {
-  if (!herd.settings) return
-  herd.settings.config.appearance.theme = id
-  herd.edited()
-  await herd.attempt('Could not save the theme', () => api.SetTheme(id))
+  if (!derby.settings) return
+  derby.settings.config.appearance.theme = id
+  derby.edited()
+  await derby.attempt('Could not save the theme', () => api.SetTheme(id))
 }
 
 const save = debounce(() => {
-  const s = herd.settings
+  const s = derby.settings
   if (!s) return
   const c = JSON.parse(JSON.stringify(s.config))
-  void herd.attempt('Could not save appearance', () => api.SaveAppearance(c.appearance, c.zedCommand))
+  void derby.attempt('Could not save appearance', () => api.SaveAppearance(c.appearance, c.zedCommand))
 }, 600)
 
 function setFont(kind: 'ui' | 'term', e: Event) {
-  const a = herd.settings?.config.appearance
+  const a = derby.settings?.config.appearance
   if (!a) return
   const v = (e.target as HTMLInputElement).value.trim()
   const m = /^(.*?)\s+([\d.]+)$/.exec(v)
@@ -50,27 +50,27 @@ function setFont(kind: 'ui' | 'term', e: Event) {
     a.termFont = name
     a.termFontSize = size
   }
-  herd.edited()
+  derby.edited()
   save()
 }
 function setNotify(e: Event) {
   const on = (e.target as HTMLInputElement).checked
-  if (herd.settings) herd.settings.config.notifications = on
-  void herd.attempt('Could not save notifications', () => api.SetNotifications(on))
+  if (derby.settings) derby.settings.config.notifications = on
+  void derby.attempt('Could not save notifications', () => api.SetNotifications(on))
 }
 
 function setMaxTabs(e: Event) {
   const n = Math.round(Number((e.target as HTMLInputElement).value))
-  if (!herd.settings || !(n >= 1)) return
-  herd.settings.config.maxTabs = n
-  herd.trimTabs()
-  void herd.attempt('Could not save the tab limit', () => api.SetMaxTabs(n))
+  if (!derby.settings || !(n >= 1)) return
+  derby.settings.config.maxTabs = n
+  derby.trimTabs()
+  void derby.attempt('Could not save the tab limit', () => api.SetMaxTabs(n))
 }
 
 function setZed(e: Event) {
-  if (!herd.settings) return
-  herd.settings.config.zedCommand = (e.target as HTMLInputElement).value
-  herd.edited()
+  if (!derby.settings) return
+  derby.settings.config.zedCommand = (e.target as HTMLInputElement).value
+  derby.edited()
   save()
 }
 </script>
@@ -82,7 +82,7 @@ function setZed(e: Event) {
   </div>
 
   <div class="cards">
-    <button v-for="c in cards" :key="c.id" class="tcard" :class="{ on: herd.themeMode === c.id }" @click="pick(c.id)">
+    <button v-for="c in cards" :key="c.id" class="tcard" :class="{ on: derby.themeMode === c.id }" @click="pick(c.id)">
       <span class="shot">
         <span v-for="th in c.panes" :key="th" class="pane" :data-theme="th">
           <span class="pchrome"></span>
@@ -103,7 +103,7 @@ function setZed(e: Event) {
         </span>
       </span>
       <span class="label">
-        <span class="radio" :class="{ on: herd.themeMode === c.id }"></span>
+        <span class="radio" :class="{ on: derby.themeMode === c.id }"></span>
         <span class="name">{{ c.name }}</span>
         <span class="muted small">{{ c.note }}</span>
       </span>
@@ -122,20 +122,20 @@ function setZed(e: Event) {
     <div class="r">
       <span class="grow">Session view <span class="muted small">how the center shows a step's Claude Code session; the toolbar switches it too</span></span>
       <span class="pill views" role="radiogroup" aria-label="Session view">
-        <button v-for="v in views" :key="v.id" role="radio" :aria-checked="herd.sessionView === v.id" :class="{ on: herd.sessionView === v.id }" @click="herd.setSessionView(v.id)"><Icon :name="v.id === 'chat' ? 'chat' : 'terminal'" :size="13" />{{ v.name }}</button>
+        <button v-for="v in views" :key="v.id" role="radio" :aria-checked="derby.sessionView === v.id" :class="{ on: derby.sessionView === v.id }" @click="derby.setSessionView(v.id)"><Icon :name="v.id === 'chat' ? 'chat' : 'terminal'" :size="13" />{{ v.name }}</button>
       </span>
     </div>
     <label class="r">
       <span class="grow">Zed command</span>
-      <input class="val" :value="herd.settings?.config.zedCommand" @change="setZed" />
+      <input class="val" :value="derby.settings?.config.zedCommand" @change="setZed" />
     </label>
     <label class="r">
       <span class="grow">Open tabs <span class="muted small">at most; opening one more closes the oldest</span></span>
-      <input class="val num" type="number" min="1" max="30" :value="herd.settings?.config.maxTabs" @change="setMaxTabs" />
+      <input class="val num" type="number" min="1" max="30" :value="derby.settings?.config.maxTabs" @change="setMaxTabs" />
     </label>
     <label class="r">
-      <span class="grow">Desktop notifications <span class="muted small">when a step needs you or ends, while Herd is in the background</span></span>
-      <input type="checkbox" :checked="herd.settings?.config.notifications" @change="setNotify" />
+      <span class="grow">Desktop notifications <span class="muted small">when a step needs you or ends, while Derby is in the background</span></span>
+      <input type="checkbox" :checked="derby.settings?.config.notifications" @change="setNotify" />
     </label>
   </div>
 </template>

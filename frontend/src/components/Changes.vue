@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Files a step changed: its commit, or the uncommitted work while it is the
 // task's latest step. A click opens the diff pop-up on that file.
-import { herd } from '../lib/state'
+import { derby } from '../lib/state'
 import type { Changes } from '../lib/types'
 import ChangedFiles from './ChangedFiles.vue'
 import NotesBar from './NotesBar.vue'
@@ -9,7 +9,7 @@ import NotesBar from './NotesBar.vue'
 defineProps<{ changes: Changes | null }>()
 
 function pick(path: string) {
-  if (herd.selStep) herd.openDiffPopup(herd.selStep.id, path)
+  if (derby.selStep) derby.openDiffPopup(derby.selStep.id, path)
 }
 </script>
 
@@ -18,7 +18,7 @@ function pick(path: string) {
   <p v-else-if="!changes.source" class="empty">This step did not change code: it only wrote its artifact.</p>
   <p v-else-if="!changes.files.length" class="empty">{{ changes.source === 'branch' ? `The branch changes nothing against ${changes.base}.` : changes.source === 'worktree' ? 'No uncommitted changes in the worktree.' : 'The commit changed no files.' }}</p>
   <template v-else>
-    <NotesBar v-if="herd.selTask?.notes.length" class="notes" :task="herd.selTask" />
+    <NotesBar v-if="derby.selTask?.notes.length" class="notes" :task="derby.selTask" />
     <ChangedFiles :changes="changes" @pick="pick" />
     <p class="hint">Open a file and click the + that shows on a line to comment on it (drag it for several lines).</p>
   </template>
