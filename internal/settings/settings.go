@@ -56,7 +56,7 @@ type Config struct {
 	BranchPrefix    string                 `toml:"branch_prefix" json:"branchPrefix"`       // every new task's branch starts with it
 	IssuesRepo      string                 `toml:"issues_repo,omitempty" json:"issuesRepo"` // the common issues repository (owner/name) of projects set to use it
 	Keymap          Keymap                 `toml:"keymap,omitempty" json:"-"`               // shortcuts that differ from DefaultKeymap
-	Prompts         map[string]string      `toml:"prompts,omitempty" json:"-"`              // prompts that differ from DefaultPrompts, by id
+	Prompts         map[string]string      `toml:"prompts,omitempty" json:"-"`              // before prompts.toml: the prompts that differed from the defaults (moved there on launch)
 	Projects        []Project              `toml:"project" json:"projects"`
 	Context         map[string]ContextMeta `toml:"context" json:"contextMeta"`
 }
@@ -133,6 +133,7 @@ type Store struct {
 	ags []Agent
 	ctx map[string]Context
 	km  Keymap
+	pr  map[string]string // prompts.toml: each prompt's text, by id
 }
 
 // Open loads (and creates with defaults where missing) the settings in dir.
@@ -176,7 +177,7 @@ func (s *Store) Reload() error {
 		}
 	} else if errors.Is(err, os.ErrNotExist) {
 		af.Agent = DefaultAgents()
-		if err := writeTOML(s.path("agents.toml"), af); err != nil {
+		if err := writeTables(s.path("agents.toml"), af); err != nil {
 			return err
 		}
 	} else {
@@ -186,6 +187,11 @@ func (s *Store) Reload() error {
 		af.Agent = DefaultAgents()
 	}
 	af.Agent = normalize(af.Agent)
+
+	pr, err := s.loadPrompts(&cfg)
+	if err != nil {
+		return err
+	}
 
 	if err := migrateKeymap(s.path("keymap.json"), &cfg, s.path("config.toml")); err != nil {
 		return err
@@ -216,7 +222,7 @@ func (s *Store) Reload() error {
 	}
 
 	s.mu.Lock()
-	s.cfg, s.ags, s.ctx, s.km = cfg, af.Agent, ctx, km
+	s.cfg, s.ags, s.ctx, s.km, s.pr = cfg, af.Agent, ctx, km, pr
 	s.mu.Unlock()
 	return nil
 }
@@ -323,55 +329,112 @@ func (s *Store) Snapshot() Snapshot {
 	}
 	cfg := s.cfg
 	cfg.Projects = append([]Project(nil), s.cfg.Projects...)
-	ps := DefaultPrompts()
-	for i := range ps {
-		ps[i].Text = ps[i].Default
-		if t, ok := s.cfg.Prompts[ps[i].ID]; ok {
-			ps[i].Text = t
-		}
-	}
+	ps := s.prompts()
 	return Snapshot{Config: cfg, Agents: append([]Agent(nil), s.ags...), Context: ctx, Keymap: km, Prompts: ps, Dir: s.Dir}
 }
 
-// Prompt returns the text of a prompt in use (see DefaultPrompts).
+// Prompt returns the text of a prompt in use (prompts.toml).
 func (s *Store) Prompt(id string) string {
 	s.mu.RLock()
-	t, ok := s.cfg.Prompts[id]
+	t, ok := s.pr[id]
 	s.mu.RUnlock()
 	if ok {
 		return t
 	}
-	for _, p := range DefaultPrompts() {
-		if p.ID == id {
-			return p.Default
-		}
-	}
-	return ""
+	return defaultPrompt(id)
 }
 
-// SetPrompt saves a prompt; an empty text or the default goes back to the default.
-func (s *Store) SetPrompt(id, text string) error {
-	var def *Prompt
-	for _, p := range DefaultPrompts() {
-		if p.ID == id {
-			def = &p
+// prompts is every prompt, in the defaults' order, with the text in use.
+// Callers hold s.mu.
+func (s *Store) prompts() []Prompt {
+	ps := DefaultPrompts()
+	for i := range ps {
+		if t, ok := s.pr[ps[i].ID]; ok {
+			ps[i].Text = t
 		}
 	}
-	if def == nil {
+	return ps
+}
+
+// loadPrompts reads prompts.toml, creating it from the defaults (and the
+// prompts config.toml held before it) when missing. Prompts added to the
+// defaults since are appended to it, so the file always lists every prompt.
+func (s *Store) loadPrompts(cfg *Config) (map[string]string, error) {
+	pr := map[string]string{}
+	path := s.path("prompts.toml")
+	b, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		var pf promptsFile
+		if _, err := toml.Decode(string(b), &pf); err != nil {
+			return nil, fmt.Errorf("prompts.toml: %w", err)
+		}
+		for _, p := range pf.Prompt {
+			pr[p.ID] = p.Text
+		}
+	case errors.Is(err, os.ErrNotExist):
+		for id, t := range cfg.Prompts {
+			pr[id] = t
+		}
+	default:
+		return nil, err
+	}
+	missing := len(cfg.Prompts) > 0
+	for _, p := range DefaultPrompts() {
+		if _, ok := pr[p.ID]; !ok {
+			pr[p.ID], missing = p.Default, true
+		}
+	}
+	if !missing {
+		return pr, nil
+	}
+	if err := writePrompts(path, pr); err != nil {
+		return nil, err
+	}
+	if len(cfg.Prompts) > 0 { // now in prompts.toml
+		cfg.Prompts = nil
+		if err := writeTOML(s.path("config.toml"), *cfg); err != nil {
+			return nil, err
+		}
+	}
+	return pr, nil
+}
+
+// writePrompts writes prompts.toml: every prompt in the defaults' order,
+// with its name and notes from the defaults and its text from pr.
+func writePrompts(path string, pr map[string]string) error {
+	ps := DefaultPrompts()
+	for i := range ps {
+		ps[i].Text = pr[ps[i].ID]
+	}
+	return writeTables(path, promptsFile{Prompt: ps})
+}
+
+// SetPrompt saves a prompt in prompts.toml; an empty text puts the default back.
+func (s *Store) SetPrompt(id, text string) error {
+	def := defaultPrompt(id)
+	if def == "" {
 		return fmt.Errorf("no prompt %q", id)
 	}
-	return s.UpdateConfig(func(c *Config) {
-		m := map[string]string{}
-		for k, v := range c.Prompts {
-			m[k] = v
-		}
-		if strings.TrimSpace(text) == "" || strings.TrimSpace(text) == strings.TrimSpace(def.Default) {
-			delete(m, id)
-		} else {
-			m[id] = text
-		}
-		c.Prompts = m
-	})
+	if strings.TrimSpace(text) == "" {
+		text = def
+	}
+	s.io.Lock()
+	defer s.io.Unlock()
+	s.mu.Lock()
+	pr := make(map[string]string, len(s.pr))
+	for k, v := range s.pr {
+		pr[k] = v
+	}
+	pr[id] = text
+	s.mu.Unlock()
+	if err := writePrompts(s.path("prompts.toml"), pr); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.pr = pr
+	s.mu.Unlock()
+	return nil
 }
 
 // Config returns a copy of config.toml.
@@ -445,7 +508,7 @@ func (s *Store) SaveAgents(agents []Agent) error {
 		}
 	}
 	agents = normalize(agents)
-	if err := writeTOML(s.path("agents.toml"), agentsFile{Agent: agents}); err != nil {
+	if err := writeTables(s.path("agents.toml"), agentsFile{Agent: agents}); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -458,21 +521,17 @@ func (s *Store) SaveAgents(agents []Agent) error {
 // review of the PR, then waits for the review and the CI checks.
 const CopilotID = "copilot"
 
-// Copilot is the built-in agent with its fixed parts; the user sets its
-// trigger and its next steps.
+// Copilot is the built-in agent with its fixed parts (from
+// defaults/agents.toml); the user sets its trigger and its next steps.
 func Copilot() Agent {
-	return Agent{ID: CopilotID, Name: "Copilot", Trigger: "manual", Writes: "COPILOT-{n}.md", Builtin: true, Model: "opus", Instructions: CopilotInstructions}
+	for _, a := range DefaultAgents() {
+		if a.ID == CopilotID {
+			a.Trigger, a.Next, a.OnFail = "manual", nil, nil
+			return a
+		}
+	}
+	return Agent{ID: CopilotID, Name: "Copilot", Trigger: "manual", Writes: "COPILOT-{n}.md", Builtin: true}
 }
-
-// CopilotInstructions is what the Claude run of a Copilot step does: explain
-// the PR's changes in COPILOT-n.md. {pr}: the PR number, {base}: the base
-// branch, {file}: the file to write.
-const CopilotInstructions = `Explain the changes of PR #{pr} to someone who has not read the code. Read TASK.md and the newest PLAN-n.md in the run directory, then the diff: git diff origin/{base}...HEAD.
-Write {file} in markdown, without front matter:
-- ## TL;DR: the idea behind the change (what was wrong, how it is fixed), as you would tell a colleague.
-- ## How it works: each change in the order the reader needs it, what it does and why, with the files it touches; an everyday analogy for what is hard to picture.
-- a diagram of the flow before and after, when the change alters a flow.
-Write only {file}: never change the code, commit or push.`
 
 // normalize makes agents consistent: lists are never nil (the UI always
 // gets lists), Push needs Commit and Open the PR needs Push, and Copilot is
@@ -486,6 +545,9 @@ func normalize(agents []Agent) []Agent {
 			c.Trigger, c.Next, c.OnFail = a.Trigger, a.Next, a.OnFail
 			if a.Model != "" {
 				c.Model = a.Model
+			}
+			if a.Effort != "" {
+				c.Effort = a.Effort
 			}
 			if strings.TrimSpace(a.Instructions) != "" {
 				c.Instructions = a.Instructions
@@ -681,6 +743,15 @@ func writeTOML(path string, v any) error {
 		return err
 	}
 	return writeAtomic(path, buf.Bytes())
+}
+
+// writeTables writes agents.toml or prompts.toml (see encodeTables).
+func writeTables(path string, v any) error {
+	b, err := encodeTables(v)
+	if err != nil {
+		return err
+	}
+	return writeAtomic(path, b)
 }
 
 func writeAtomic(path string, b []byte) error {

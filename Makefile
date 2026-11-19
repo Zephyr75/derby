@@ -5,7 +5,7 @@ TAGS := $(if $(filter Linux,$(shell uname -s)),-tags webkit2_41,)
 GOBIN_WAILS := $(shell go env GOPATH)/bin/wails
 WAILS := $(or $(wildcard $(GOBIN_WAILS)),$(shell command -v wails 2>/dev/null),$(GOBIN_WAILS))
 
-.PHONY: dev build test ui check
+.PHONY: dev build test ui check defaults-diff
 
 dev:           ## desktop app with hot reload
 	$(WAILS) dev $(TAGS)
@@ -21,3 +21,6 @@ test:
 
 check:
 	go vet ./internal/... && cd frontend && npm run check
+
+defaults-diff: ## what your ~/.herd agents and prompts change from defaults/ (empty: in sync)
+	@diff -u defaults/agents.toml $(HOME)/.herd/agents.toml; diff -u defaults/prompts.toml $(HOME)/.herd/prompts.toml; true

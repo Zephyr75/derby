@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Settings > Context > Prompts: the texts herd adds to agents (around their
-// instructions) and to the fix steps it starts from the PR tab.
+// Settings > Context > Prompts: every text Herd gives agents besides their
+// instructions (prompts.toml): around them, and the fix steps' guidance.
 import { reactive } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
@@ -26,7 +26,7 @@ const rows = (text: string) => Math.max(8, Math.min(30, text.split('\n').reduce(
 
 <template>
   <div class="prompts">
-    <p class="muted small">What Herd adds to every agent's command, around its instructions (Preview full context in Settings › Agents shows the result), and the guidance of the steps the PR tab starts. Words in braces are replaced by Herd; an emptied prompt goes back to its default.</p>
+    <p class="muted small">Every text Herd gives agents besides their instructions, saved in {{ herd.settings?.dir ?? '~/.herd' }}/prompts.toml: around each agent's command (Preview full context in Settings › Agents shows the result), the files it writes for them, and the guidance of the steps the PR tab starts. Words in braces are replaced by Herd; prompts marked “Go template” use <code v-pre>{{.Field}}</code>, and fall back to their default if they no longer work. An emptied prompt goes back to its default.</p>
     <div v-for="p in herd.settings?.prompts ?? []" :key="p.id" class="editor card">
       <div class="title">
         <span class="name">{{ p.name }}</span>

@@ -66,67 +66,47 @@ func (a *App) writeTaskFile(p settings.Project, t store.Task) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	source := "local"
+	d := struct {
+		Source, Issue, Repo, Project, Branch, Worktree, Base, Title, IssueFile, Description string
+		Copied                                                                              bool
+		Attachments                                                                         []string
+	}{Source: "local", Issue: t.Issue, Project: p.Name, Branch: branchName(t), Worktree: worktreePath(p, t), Base: p.BaseBranch, Title: t.Title, IssueFile: issueFile, Description: strings.TrimSpace(t.Description)}
 	switch {
 	case t.Issue != "" && t.Description != "":
-		source = "issue+description"
+		d.Source = "issue+description"
 	case t.Issue != "":
-		source = "issue"
+		d.Source = "issue"
 	}
-	var b strings.Builder
-	b.WriteString("---\n")
-	fmt.Fprintf(&b, "source: %s\n", source)
 	if t.Issue != "" {
-		fmt.Fprintf(&b, "issue: %s\nrepo: %s\n", t.Issue, a.issueRepo(t))
+		d.Repo = a.issueRepo(t)
+		_, err := os.Stat(filepath.Join(dir, issueFile))
+		d.Copied = err == nil
 	}
-	fmt.Fprintf(&b, "project: %s\nbranch: %s\nworktree: %s\nbase: %s\n", p.Name, branchName(t), worktreePath(p, t), p.BaseBranch)
-	b.WriteString("---\n\n")
-	fmt.Fprintf(&b, "# %s\n\n", t.Title)
-	if t.Issue != "" {
-		if _, err := os.Stat(filepath.Join(dir, issueFile)); err == nil {
-			fmt.Fprintf(&b, "GitHub issue #%s in %s: Herd copied it, comments included, to %s in this folder.\n\n", t.Issue, a.issueRepo(t), issueFile)
-		} else {
-			fmt.Fprintf(&b, "GitHub issue #%s in %s: Herd could not copy it, so read it with `gh issue view %s --repo %s --comments`.\n\n", t.Issue, a.issueRepo(t), t.Issue, a.issueRepo(t))
-		}
-	} else {
-		b.WriteString("LOCAL task: there is no GitHub issue. Work from the description only and make no GitHub calls.\n\n")
+	for _, n := range attachments(dir) {
+		d.Attachments = append(d.Attachments, filepath.Join(dir, attachDir, n))
 	}
-	if t.Description != "" {
-		b.WriteString("## Description\n\n")
-		b.WriteString(strings.TrimSpace(t.Description))
-		b.WriteString("\n")
-	}
-	if names := attachments(dir); len(names) > 0 {
-		b.WriteString("\n## Attachments\n\nFiles the user attached to the task: read each one (images too) before planning.\n\n")
-		for _, n := range names {
-			fmt.Fprintf(&b, "- %s\n", filepath.Join(dir, attachDir, n))
-		}
-	}
-	return os.WriteFile(filepath.Join(dir, "TASK.md"), []byte(b.String()), 0o644)
+	return os.WriteFile(filepath.Join(dir, "TASK.md"), []byte(a.settings.Render(settings.PromptTaskFile, d)), 0o644)
 }
 
 // contextText is the Context part of a step's system prompt: the general
 // context, then the project's, then the knowledge base folders.
 func (a *App) contextText(p settings.Project) string {
-	var b strings.Builder
-	if c, ok := a.settings.Context("general"); ok && strings.TrimSpace(c.Text) != "" {
-		b.WriteString(strings.TrimSpace(c.Text) + "\n\n")
+	var d struct {
+		General, Project string
+		ClaudeMd         bool
+		Knowledge        []string
+	}
+	if c, ok := a.settings.Context("general"); ok {
+		d.General = strings.TrimSpace(c.Text)
 	}
 	if c, ok := a.settings.Context(p.ID); ok {
-		if strings.TrimSpace(c.Text) != "" {
-			b.WriteString(strings.TrimSpace(c.Text) + "\n\n")
-		}
-		if c.ClaudeMd {
-			b.WriteString("The repository's CLAUDE.md applies to this task; follow it.\n\n")
-		}
+		d.Project, d.ClaudeMd = strings.TrimSpace(c.Text), c.ClaudeMd
 	}
-	if dirs := a.knowledgeDirs(p); len(dirs) > 0 {
-		b.WriteString("Knowledge base: reference folders to search for background on the domain, conventions and past decisions (read them, never edit them):\n")
-		for _, d := range dirs {
-			fmt.Fprintf(&b, "- %s\n", d)
-		}
+	d.Knowledge = a.knowledgeDirs(p)
+	if d.General == "" && d.Project == "" && !d.ClaudeMd && len(d.Knowledge) == 0 {
+		return ""
 	}
-	return b.String()
+	return a.settings.Render(settings.PromptContext, d)
 }
 
 var cmdName = regexp.MustCompile(`^/herd:([A-Za-z0-9_-]+)`)
@@ -172,9 +152,5 @@ func (a *App) writePlugin() error {
 // CommandText is the command herd writes for an agent (/herd:<name>): just
 // its own instructions; what every agent shares is in the system prompt.
 func (a *App) CommandText(ag settings.Agent) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "---\ndescription: Herd %s agent\nargument-hint: \"<task> [-- guidance]\"\n---\n\n", ag.Name)
-	fmt.Fprintf(&b, "You are the Herd **%s** agent. Arguments: $ARGUMENTS\n\n", ag.Name)
-	b.WriteString(strings.TrimSpace(ag.Instructions) + "\n")
-	return b.String()
+	return a.settings.Render(settings.PromptCommand, struct{ Name, Instructions string }{ag.Name, strings.TrimSpace(ag.Instructions)})
 }

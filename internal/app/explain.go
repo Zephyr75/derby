@@ -118,12 +118,12 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 // explainSystemPrompt is the system prompt of the Claude run that explains a
 // PR: what it works on, then the Writing prompt and the Rules.
 func (a *App) explainSystemPrompt(t store.Task, p settings.Project) string {
-	sys := fmt.Sprintf("# Herd\nYou explain the changes of the task %s (project %s) in its worktree %s. The run directory %s holds TASK.md and every artifact.", t.ID, p.Name, worktreePath(p, t), a.runDir(p, t))
+	sys := a.settings.Render(settings.PromptExplain, struct{ Task, Project, Worktree, RunDir string }{t.ID, p.Name, worktreePath(p, t), a.runDir(p, t)})
 	if w := strings.TrimSpace(a.settings.Prompt(settings.PromptWriting)); w != "" {
 		sys += "\n\n" + w
 	}
-	if rules := strings.TrimSpace(a.settings.Config().Rules); rules != "" {
-		sys += "\n\n# Rules\nAlways follow these rules:\n" + rules
+	if r := a.rulesText(); r != "" {
+		sys += "\n\n" + r
 	}
 	return sys
 }

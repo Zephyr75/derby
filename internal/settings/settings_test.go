@@ -1,11 +1,15 @@
 package settings
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
+
+	"herd/defaults"
 )
 
 func TestCheckTriggers(t *testing.T) {
@@ -150,7 +154,78 @@ func TestCopilotModelAndInstructions(t *testing.T) {
 		t.Fatalf("%+v", c)
 	}
 	got = normalize([]Agent{{ID: CopilotID}})
-	if c := got[len(got)-1]; c.Model != "opus" || c.Instructions != CopilotInstructions {
+	if c := got[len(got)-1]; c.Model != "opus" || c.Instructions != Copilot().Instructions || !strings.Contains(c.Instructions, "Explain the changes of PR #{pr}") {
 		t.Fatalf("defaults: %+v", c)
+	}
+}
+
+// A new ~/.herd gets agents.toml and prompts.toml byte for byte as in the
+// repository's defaults/, so the two folders compare with a plain diff.
+func TestFilesMatchTheDefaults(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Open(dir); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string][]byte{"agents.toml": defaults.Agents, "prompts.toml": defaults.Prompts} {
+		got, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("%s differs from defaults/%s: write the defaults with encodeTables", name, name)
+		}
+	}
+}
+
+// Every prompt that is a template parses, and the texts read back as written.
+func TestDefaultPrompts(t *testing.T) {
+	seen := map[string]bool{}
+	for _, p := range DefaultPrompts() {
+		if p.ID == "" || p.Name == "" || strings.TrimSpace(p.Default) == "" || seen[p.ID] {
+			t.Fatalf("prompt %+v", p)
+		}
+		seen[p.ID] = true
+		if strings.Contains(p.Default, "{{") {
+			if _, err := template.New(p.ID).Parse(p.Default); err != nil {
+				t.Errorf("%s: %v", p.ID, err)
+			}
+		}
+	}
+	for _, id := range []string{PromptStep, PromptBlock, PromptContext, PromptRules, PromptCommand, PromptTaskFile, PromptExplain, PromptParts} {
+		if !seen[id] {
+			t.Errorf("no default prompt %q", id)
+		}
+	}
+}
+
+// The prompts config.toml held before prompts.toml move there; an edited
+// prompt is saved there and read back.
+func TestPromptsFile(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[prompts]\ntodo = \"Old todo: {todo}\"\n"), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Prompt(PromptTodo) != "Old todo: {todo}" {
+		t.Fatalf("todo = %q", s.Prompt(PromptTodo))
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "config.toml")); strings.Contains(string(b), "prompts") {
+		t.Fatalf("config.toml still has the prompts:\n%s", b)
+	}
+	if err := s.SetPrompt(PromptRules, "# My rules\n{{.Rules}}"); err != nil {
+		t.Fatal(err)
+	}
+	s, _ = Open(dir)
+	if s.Prompt(PromptTodo) != "Old todo: {todo}" || s.Prompt(PromptRules) != "# My rules\n{{.Rules}}" {
+		t.Fatalf("not read back: %q %q", s.Prompt(PromptTodo), s.Prompt(PromptRules))
+	}
+	if got := s.Render(PromptRules, struct{ Rules string }{"a"}); got != "# My rules\na" {
+		t.Fatalf("render = %q", got)
+	}
+	// A broken template falls back to the default.
+	_ = s.SetPrompt(PromptRules, "{{.Nope")
+	if got := s.Render(PromptRules, struct{ Rules string }{"a"}); !strings.HasPrefix(got, "# Rules") {
+		t.Fatalf("broken template = %q", got)
 	}
 }

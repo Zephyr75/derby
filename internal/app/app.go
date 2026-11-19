@@ -240,32 +240,23 @@ type SystemMemory struct {
 // systemClaudeMd is what Override writes: the General context, the Rules,
 // then the knowledge base folders (General, and each project's for its repo).
 func (a *App) systemClaudeMd() string {
-	var b strings.Builder
-	b.WriteString("<!-- Written by Herd from Settings > Context: General context, Rules and knowledge base folders. -->\n\n")
-	if c, ok := a.settings.Context("general"); ok && strings.TrimSpace(c.Text) != "" {
-		b.WriteString(strings.TrimSpace(c.Text))
-		b.WriteString("\n")
+	var d struct {
+		General, Rules string
+		Knowledge      []string
 	}
-	if r := strings.TrimSpace(a.settings.Config().Rules); r != "" {
-		b.WriteString("\n# Rules\n\nAlways follow these rules:\n\n")
-		b.WriteString(r)
-		b.WriteString("\n")
-	}
-	var kb []string
-	if c, ok := a.settings.Context("general"); ok && isDir(c.Knowledge) {
-		kb = append(kb, "- "+expandHome(c.Knowledge))
-	}
-	for _, p := range a.settings.Config().Projects {
-		if c, ok := a.settings.Context(p.ID); ok && isDir(c.Knowledge) {
-			kb = append(kb, fmt.Sprintf("- %s (when working in %s)", expandHome(c.Knowledge), p.Path))
+	if c, ok := a.settings.Context("general"); ok {
+		d.General = strings.TrimSpace(c.Text)
+		if isDir(c.Knowledge) {
+			d.Knowledge = append(d.Knowledge, expandHome(c.Knowledge))
 		}
 	}
-	if len(kb) > 0 {
-		b.WriteString("\n# Knowledge base\n\nReference folders you can read (never edit them). Search them for background on the domain, conventions and past decisions:\n\n")
-		b.WriteString(strings.Join(kb, "\n"))
-		b.WriteString("\n")
+	d.Rules = strings.TrimSpace(a.settings.Config().Rules)
+	for _, p := range a.settings.Config().Projects {
+		if c, ok := a.settings.Context(p.ID); ok && isDir(c.Knowledge) {
+			d.Knowledge = append(d.Knowledge, fmt.Sprintf("%s (when working in %s)", expandHome(c.Knowledge), p.Path))
+		}
 	}
-	return b.String()
+	return a.settings.Render(settings.PromptClaudeMd, d)
 }
 
 func isDir(p string) bool {

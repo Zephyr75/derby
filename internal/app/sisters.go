@@ -175,25 +175,35 @@ func (a *App) summarised(group []store.Task, offers []SisterOffer, plans map[str
 	return c.Lines
 }
 
+// partsPrompt is the prompt of summariseParts.
+func (a *App) partsPrompt(group []store.Task, offers []SisterOffer, plans map[string]string) string {
+	type task struct{ Project, Title, Description, Plan string }
+	type offer struct{ Repo, Scope string }
+	var d struct {
+		Tasks  []task
+		Offers []offer
+	}
+	for _, x := range group {
+		d.Tasks = append(d.Tasks, task{a.projectOf(x).Name, x.Title, clip(x.Description, 800), clip(plans[x.ID], 2000)})
+	}
+	for _, o := range offers {
+		d.Offers = append(d.Offers, offer{o.Repo, clip(o.Scope, 800)})
+	}
+	return a.settings.Render(settings.PromptParts, d)
+}
+
 // summariseParts asks Claude (Haiku, no tools needed) for one short line per
 // part of the group, from each task and its newest plan, and what the plans
 // ask of the repositories without a task yet.
 func (a *App) summariseParts(group []store.Task, offers []SisterOffer, plans map[string]string) map[string]string {
-	var b strings.Builder
-	b.WriteString(`Each repository below is one part of the same piece of work. For each, write what its part does in under 10 words: start with what is specific to that part (never the same verb on every line, never the repository's name) and end with how it connects to the others when there is one (e.g. "needs X's new endpoint"). Reply with only a JSON object: {"<repository>": "<line>"}.` + "\n")
-	for _, x := range group {
-		fmt.Fprintf(&b, "\n## %s\nTask: %s\n%s\nPlan:\n%s\n", a.projectOf(x).Name, x.Title, clip(x.Description, 800), clip(plans[x.ID], 2000))
-	}
-	for _, o := range offers {
-		fmt.Fprintf(&b, "\n## %s\nNo task yet. What the plan asks of it:\n%s\n", o.Repo, clip(o.Scope, 800))
-	}
+	prompt := a.partsPrompt(group, offers, plans)
 	bin := strings.Fields(a.settings.Config().ClaudeCommand)
 	if len(bin) == 0 {
 		bin = []string{"claude"}
 	}
 	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, bin[0], append(bin[1:], "-p", "--model", "haiku", "--", b.String())...)
+	cmd := exec.CommandContext(ctx, bin[0], append(bin[1:], "-p", "--model", "haiku", "--", prompt)...)
 	cmd.Dir = a.Home
 	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
 		name, _, _ := strings.Cut(kv, "=")

@@ -89,64 +89,36 @@ func (a *App) stepFiles(s store.Step) []string {
 // stepBlock is appended to the system prompt: per-step facts the agent's
 // command file refers to.
 func (a *App) stepBlock(l launch, runDir, wt string) string {
-	var b strings.Builder
-	b.WriteString("# Herd step\n")
-	fmt.Fprintf(&b, "- task: %s (%s), project %s\n", l.task.ID, l.task.Title, l.proj.Name)
-	fmt.Fprintf(&b, "- step: %s ({n} = %d)\n", l.agent.DisplayName(l.step.N), l.step.N)
+	art := l.agent.ArtifactName(l.step.N)
+	d := blockData{
+		Task: l.task.ID, Title: l.task.Title, Project: l.proj.Name, Step: l.agent.DisplayName(l.step.N), N: l.step.N,
+		SHA: l.prevSHA, Rerun: l.mode == modeRerun, Worktree: wt, Branch: branchName(l.task), Base: l.proj.BaseBranch,
+		RunDir: runDir, Artifact: filepath.Join(runDir, art), PR: l.task.PRNumber, PRURL: l.task.PRURL,
+	}
 	if l.task.Issue != "" {
-		fmt.Fprintf(&b, "- {issue} = %s (%s)\n", l.task.Issue, a.issueRepo(l.task))
-		ref := "#" + l.task.Issue
+		d.Issue, d.IssueRepo, d.IssueRef, d.Sister = l.task.Issue, a.issueRepo(l.task), "#"+l.task.Issue, l.task.Sister
 		if l.task.IssueRepo != "" && l.task.IssueRepo != l.proj.Repo {
-			ref = l.task.IssueRepo + "#" + l.task.Issue
-			fmt.Fprintf(&b, "- the issue lives in another repository: refer to it as %s\n", ref)
+			d.OtherRepo, d.IssueRef = true, l.task.IssueRepo+"#"+l.task.Issue
 		}
-		if l.task.Sister {
-			fmt.Fprintf(&b, "- sister task: its main task closes the issue; this one's PR is only Part of %s\n", ref)
-		}
-	} else {
-		b.WriteString("- LOCAL task: no GitHub issue\n")
 	}
-	if l.prevSHA != "" {
-		fmt.Fprintf(&b, "- {sha} = %s (the latest commit Herd made)\n", l.prevSHA)
-	}
-	if l.mode == modeRerun {
-		b.WriteString("- rerun: you already ran this step in this conversation. The user changed the worktree since; do the step again on the current state and rewrite your artifact\n")
-	}
-	fmt.Fprintf(&b, "- worktree (cwd): %s, branch %s; {base} = %s (the base branch)\n", wt, branchName(l.task), l.proj.BaseBranch)
 	for _, x := range a.sisters(l.task.ID) {
 		xp := a.projectOf(x)
-		fmt.Fprintf(&b, "- sister task %s handles the %s part of this work, in %s; its run directory %s holds every artifact of that task: keep what both share consistent with it, and change only this repository\n", x.ID, xp.Name, worktreePath(xp, x), a.runDir(xp, x))
+		d.Sisters = append(d.Sisters, sisterData{ID: x.ID, Project: xp.Name, Worktree: worktreePath(xp, x), RunDir: a.runDir(xp, x)})
 	}
 	// The steps so far, so the agent knows which artifacts are new to it and
 	// why it runs: Next step starts it without guidance after a failure.
 	if steps, err := a.db.Steps(l.task.ID); err == nil {
-		var done []string
-		var prev *store.Step
-		for i, s := range steps {
+		for _, s := range steps {
 			if s.Seq >= l.step.Seq {
 				continue
 			}
-			line := fmt.Sprintf("  - %s: %s, %s", agentFor(a.settings.Agents(), s.Agent).DisplayName(s.N), outcome(s), strings.Join(a.stepFiles(s), " and "))
-			if s.Guidance != "" { // e.g. the plan's option the user picked
-				line += fmt.Sprintf("; the user's guidance: %q", s.Guidance)
-			}
-			done = append(done, line)
-			prev = &steps[i]
-		}
-		if len(done) > 0 {
-			b.WriteString("- the steps so far, oldest first (outcome, files in the run directory):\n" + strings.Join(done, "\n") + "\n")
-		}
-		if prev != nil {
-			fmt.Fprintf(&b, "- this step follows %s (%s): unless your guidance says otherwise, it is why this step runs, so start from %s\n",
-				agentFor(a.settings.Agents(), prev.Agent).DisplayName(prev.N), outcome(*prev), a.stepFiles(*prev)[0])
+			name := agentFor(a.settings.Agents(), s.Agent).DisplayName(s.N)
+			d.Steps = append(d.Steps, stepData{Name: name, Outcome: outcome(s), Files: strings.Join(a.stepFiles(s), " and "), Guidance: s.Guidance})
+			d.Follows = &followData{Name: name, Outcome: outcome(s), Start: a.stepFiles(s)[0]}
 		}
 	}
-	fmt.Fprintf(&b, "- run directory: %s (TASK.md and every artifact)\n", runDir)
-	art := l.agent.ArtifactName(l.step.N)
-	fmt.Fprintf(&b, "- your artifact: %s\n", filepath.Join(runDir, art))
-	if l.task.PRNumber > 0 {
-		fmt.Fprintf(&b, "- pull request: #%d %s (gh pr checks %d shows its CI checks)\n", l.task.PRNumber, l.task.PRURL, l.task.PRNumber)
-	}
+	var b strings.Builder
+	b.WriteString(a.settings.Render(settings.PromptBlock, d))
 	// The shared prompts (Settings > Context > Prompts), then the context
 	// and the rules: everything every agent follows, so each agent's own
 	// instructions only say what is special to it.
@@ -164,12 +136,41 @@ func (a *App) stepBlock(l launch, runDir, wt string) string {
 		}
 	}
 	if c := a.contextText(l.proj); c != "" {
-		b.WriteString("\n# Context\n" + c)
+		b.WriteString("\n" + c)
 	}
-	if rules := strings.TrimSpace(a.settings.Config().Rules); rules != "" && !l.agent.IgnoreRules {
-		fmt.Fprintf(&b, "\n# Rules\nAlways follow these rules:\n%s\n", rules)
+	if r := a.rulesText(); r != "" && !l.agent.IgnoreRules {
+		b.WriteString("\n" + r + "\n")
 	}
 	return b.String()
+}
+
+// The Herd step block's data (the stepBlock prompt).
+type blockData struct {
+	Task, Title, Project, Step  string
+	N                           int
+	Issue, IssueRepo, IssueRef  string
+	OtherRepo, Sister, Rerun    bool
+	SHA, Worktree, Branch, Base string
+	Sisters                     []sisterData
+	Steps                       []stepData
+	Follows                     *followData
+	RunDir, Artifact, PRURL     string
+	PR                          int
+}
+
+type sisterData struct{ ID, Project, Worktree, RunDir string }
+
+type stepData struct{ Name, Outcome, Files, Guidance string }
+
+type followData struct{ Name, Outcome, Start string }
+
+// rulesText is the Rules section (the rules prompt), or "" without rules.
+func (a *App) rulesText() string {
+	rules := strings.TrimSpace(a.settings.Config().Rules)
+	if rules == "" {
+		return ""
+	}
+	return a.settings.Render(settings.PromptRules, struct{ Rules string }{rules})
 }
 
 // knowledgeDirs lists the existing knowledge base folders for a project's
