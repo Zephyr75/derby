@@ -122,6 +122,8 @@ export function diffStat(diff: string): { add: number; del: number } {
 
 export interface Question {
   question: string
+  header: string
+  multi: boolean // several options may be picked
   options: { label: string; description: string }[]
 }
 
@@ -131,7 +133,7 @@ export function questions(call: ChatItem): Question[] {
   return qs.map((q) => {
     const o = q as Record<string, unknown>
     const opts = (o.options as unknown[]) ?? []
-    return { question: str(o.question), options: opts.map((x) => ({ label: str((x as Record<string, unknown>).label), description: str((x as Record<string, unknown>).description) })) }
+    return { question: str(o.question), header: str(o.header), multi: o.multiSelect === true, options: opts.map((x) => ({ label: str((x as Record<string, unknown>).label), description: str((x as Record<string, unknown>).description) })) }
   })
 }
 

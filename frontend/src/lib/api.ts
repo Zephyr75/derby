@@ -71,6 +71,7 @@ export interface Api {
   SetStepModel(step: string, model: string, effort: string): Promise<void>
   AttachToStep(step: string, files: string[]): Promise<string[]>
   StepFiles(step: string, query: string): Promise<string[]>
+  AnswerQuestions(step: string, answers: { multi: boolean; count: number; picks: number[]; other: string }[]): Promise<void>
   SaveAppearance(a: Appearance, zedCommand: string): Promise<void>
   CheckPrerequisites(): Promise<Check[]>
 }

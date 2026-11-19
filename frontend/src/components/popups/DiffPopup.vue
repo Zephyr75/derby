@@ -210,11 +210,11 @@ function key(e: KeyboardEvent) {
     height: 24px;
     margin-right: 4px;
     padding: 0 8px;
-    border: 1px solid var(--border);
+    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
     border-radius: 4px;
-    background: var(--surface);
+    background: transparent;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .notes {
     margin: 8px 12px 0;
@@ -303,12 +303,12 @@ function key(e: KeyboardEvent) {
     height: 36px;
     padding: 0 10px 0 14px;
     border-bottom: 1px solid var(--border);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .st {
     flex: none;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-11);
     font-weight: 600;
   }
   .path {
@@ -352,11 +352,11 @@ function key(e: KeyboardEvent) {
     gap: 5px;
     height: 24px;
     padding: 0 8px;
-    border: 1px solid var(--border);
+    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
     border-radius: 4px;
-    background: var(--surface);
+    background: transparent;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .zed:hover:not(:disabled) {
     background: var(--hover);
@@ -369,7 +369,7 @@ function key(e: KeyboardEvent) {
   .empty {
     margin: 12px 14px;
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .side .empty {
     margin: 0;

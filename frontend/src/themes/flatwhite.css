@@ -4,6 +4,7 @@
   color-scheme: light;
   --bg: #f7f3ee;
   --chrome: #f1ece4;
+  --panel: #f1ece4; /* side panels a shade off the editor, as Zed's light themes */
   --surface: #fdfbf8;
   --elev: #fdfbf8;
   --border: #dcd3c6;

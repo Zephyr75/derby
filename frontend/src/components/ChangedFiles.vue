@@ -50,7 +50,7 @@ export const sourceLabel = (c: Changes) =>
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   font-family: var(--mono);
   white-space: nowrap;
 }
@@ -78,7 +78,7 @@ export const sourceLabel = (c: Changes) =>
   background: transparent;
   color: var(--text);
   text-align: left;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .file:hover {
   background: var(--hover);
@@ -90,7 +90,7 @@ export const sourceLabel = (c: Changes) =>
   flex: none;
   width: 12px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-11);
   font-weight: 600;
   text-align: center;
 }
@@ -107,7 +107,7 @@ export const sourceLabel = (c: Changes) =>
 .small {
   flex: none;
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
 }
 .c-add {
   color: var(--done);

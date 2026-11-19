@@ -111,7 +111,7 @@ function key(e: KeyboardEvent) {
     outline: none;
     background: transparent;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .rows {
     display: flex;
@@ -131,7 +131,7 @@ function key(e: KeyboardEvent) {
     border-radius: 6px;
     border: 0;
     text-align: left;
-    font-size: 13px;
+    font-size: var(--fs-13);
     color: var(--text);
     background: transparent;
   }
@@ -146,19 +146,19 @@ function key(e: KeyboardEvent) {
     text-overflow: ellipsis;
   }
   .primary.mono {
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .secondary {
     flex: 1;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .status {
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .none {

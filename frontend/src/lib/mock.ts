@@ -104,7 +104,7 @@ const T: MockTask[] = [
   { id: 'rider:1188', project: 'rider', issue: '1188', slug: '1188', title: 'Show unlock retry progress in the app', description: '',
     fx: { goal: 'When the backend retries a BLE unlock, the rider sees nothing for up to 6 seconds. Show the attempt count in the unlock sheet.', files: ['src/unlock/UnlockSheet.tsx', 'src/unlock/useUnlock.ts'],
       grep: 'useUnlock', test: 'pnpm test unlock', testOut: 'Tests  12 passed', flow: ['Tap unlock', 'Show progress sheet', 'Retry event from API', 'Update attempt count', 'Success or error state'] },
-    steps: [{ key: 'plan-1', agent: 'plan', n: 1, state: 'running', session: '6e0d1f93' }] },
+    steps: [{ key: 'plan-1', agent: 'plan', n: 1, state: 'idle', session: '6e0d1f93' }] },
   { id: 'rider:local-map-sdk', project: 'rider', issue: '', slug: 'local-map-sdk', title: 'Remove deprecated map SDK calls',
     description: 'Replace MapView.setCamera calls deprecated in map SDK 11 with the new camera API. No visual change.',
     fx: { goal: 'Map SDK 11 deprecates MapView.setCamera. Move every call to the camera API without changing what riders see.', files: ['src/map/RideMap.tsx', 'src/map/camera.ts'], grep: 'setCamera',
@@ -301,6 +301,10 @@ export function mockChat(stepId: string): ChatItem[] {
     if (s.state === 'approval') out.push(...tool('Bash', { command: test, description: 'Run the tests' }))
     else out.push(...tool('Bash', { command: test, description: 'Run the tests' }, 'ok   ./internal/unlock   1.84s\nok   ./internal/config   0.41s'))
   }
+  if (s.state === 'idle') out.push(...tool('AskUserQuestion', { questions: [
+    { question: 'Where should the retry progress show?', header: 'Placement', multiSelect: false, options: [{ label: 'Unlock sheet', description: 'Under the unlock button, while it retries' }, { label: 'Toast', description: 'A short message at the bottom' }] },
+    { question: 'Which states should it cover?', header: 'States', multiSelect: true, options: [{ label: 'Retrying', description: '' }, { label: 'Gave up', description: '' }, { label: 'Recovered', description: '' }] },
+  ] }))
   if (s.state === 'running') out.push(it('text', { text: 'Writing the artifact now.' }))
   else if (s.state !== 'approval') out.push(it('text', { text: `Done. The artifact is written in \`${run}\`:\n\n- the change keeps the diff small\n- tests pass (\`${test}\`)\n\nNext: start the next step from the left panel.` }))
   if (s.state === 'done') out.push(it('user', { text: 'Why did you keep the old retry helper?' }), it('text', { text: 'Two callers outside `internal/unlock` still use it; removing it belongs in its own change.' }))
@@ -513,6 +517,7 @@ export const api: Api = {
     skills: [{ name: 'herd:implement', description: 'Herd Implement agent' }, { name: 'herd:review', description: 'Herd Review agent' }, { name: 'archify', description: 'Create validated architecture diagrams as explorable HTML' }, { name: 'humanizer:humanizer', description: 'Rewrite AI-sounding text' }],
     status: { model: 'claude-opus-5-5', modelName: 'Opus 5.5', effort: 'xhigh', contextUsed: 61400, contextSize: 200000, plan: { fiveHour: 23, fiveHourReset: Math.floor(Date.now() / 1000) + 7200, week: 41, weekReset: Math.floor(Date.now() / 1000) + 3 * 86400, at: 1 } } }),
   SetStepModel: () => ok(undefined),
+  AnswerQuestions: () => ok(undefined),
   StepFiles: (_s, q) => ok(['internal/', 'internal/unlock/', 'internal/unlock/ble.go', 'internal/unlock/budget.go', 'internal/config/config.go', 'README.md'].filter((f) => f.toLowerCase().includes(q.toLowerCase()))),
   AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.herd/runs/core/4356/attachments/' + f.split('/').pop())),
   SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false }); return ok(undefined) },

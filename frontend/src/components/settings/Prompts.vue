@@ -64,7 +64,7 @@ const rows = (text: string) => Math.max(8, Math.min(30, text.split('\n').reduce(
     font-weight: 600;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .row {
     display: flex;

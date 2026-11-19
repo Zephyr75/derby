@@ -112,25 +112,31 @@ section {
   flex: none;
   height: 32px; /* Zed's tab bar */
   background: var(--chrome);
-  border-bottom: 1px solid var(--border);
   overflow-x: auto;
   overflow-y: hidden;
 }
 .tabs::-webkit-scrollbar {
   height: 0;
 }
+/* As Zed's tab bar: the inactive tabs and the empty space draw the line under
+   it, the active tab does not, so it opens into the toolbar below (the bar
+   scrolls sideways, which would clip a tab overlapping a line of the bar's own). */
 .tab {
   flex: none;
   display: flex;
   align-items: center;
   border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--chrome);
   color: var(--muted);
 }
 .tab.on {
   background: var(--bg);
   color: var(--text);
-  margin-bottom: -1px;
+  border-bottom-color: transparent;
+}
+.tabs > .grow {
+  border-bottom: 1px solid var(--border);
 }
 .open {
   display: flex;
@@ -142,10 +148,10 @@ section {
   background: transparent;
   color: inherit;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .proj {
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   color: var(--muted);
 }
 .dot {
@@ -197,14 +203,14 @@ section {
   min-width: 0;
 }
 .chip {
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   align-self: center;
 }
 .chip .dot {
   background: var(--dot);
 }
 .small {
-  font-size: 12px;
+  font-size: var(--fs-12);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,16 +230,16 @@ section {
   gap: 6px;
   height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
   border-radius: 4px;
   background: transparent;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--fs-12);
   white-space: nowrap;
 }
 .mono-s {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   color: var(--muted);
 }
 .tb:hover {
@@ -267,10 +273,10 @@ section {
   display: flex;
 }
 .title {
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 .text {
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   color: var(--muted);
   max-width: 380px;
   line-height: 1.5;

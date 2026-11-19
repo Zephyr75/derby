@@ -29,7 +29,7 @@ import { herd } from '../lib/state'
   gap: 6px;
 }
 .title {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 .error .title {
@@ -37,7 +37,7 @@ import { herd } from '../lib/state'
 }
 .body {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   color: var(--code-kw);
   white-space: pre-wrap;
   word-break: break-word;

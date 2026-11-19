@@ -156,7 +156,7 @@ async function archive() {
     position: relative;
     flex: 0 1 auto; /* narrow windows: shrink before the terminal is cut */
     min-width: 240px;
-    background: var(--bg);
+    background: var(--panel); /* Zed's panel shade; the artifact below is on the editor's */
     border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -200,7 +200,7 @@ async function archive() {
     color: var(--text);
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .desc {
     margin: 0;
@@ -208,7 +208,7 @@ async function archive() {
     border-radius: 6px;
     background: var(--surface);
     border: 1px solid var(--border);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     line-height: 1.5;
     max-height: 120px;
     overflow: auto;
@@ -253,7 +253,7 @@ async function archive() {
   .none {
     margin: 8px;
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .row {
     display: flex;
@@ -307,7 +307,7 @@ async function archive() {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .step.static .name {
     color: var(--muted);
@@ -322,11 +322,11 @@ async function archive() {
     font-weight: 500;
   }
   .meta {
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .meta.skipped {
-    font-size: 11px;
+    font-size: var(--fs-11);
   }
   .c-running { color: var(--running); }
   .c-approval { color: var(--approval); }
@@ -334,7 +334,7 @@ async function archive() {
   .c-done { color: var(--done); }
   .sub {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-11);
     color: var(--muted);
   }
   .acts {
@@ -350,10 +350,10 @@ async function archive() {
     height: 22px;
     padding: 0 8px;
     border-radius: 4px;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
+    background: transparent;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .act.icon {
     padding: 0 4px;

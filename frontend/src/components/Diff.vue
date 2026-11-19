@@ -252,7 +252,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
   width: max-content; /* the scrolling parent scrolls long lines sideways */
   min-width: 100%;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   line-height: 1.55;
   tab-size: 4;
 }
@@ -321,7 +321,7 @@ td {
   border-radius: 3px;
   background: var(--accent);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--fs-13);
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
@@ -384,13 +384,13 @@ tr:hover .add-note,
   border-left: 3px solid var(--accent);
   border-radius: 4px;
   background: var(--surface);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   cursor: text;
 }
 .where {
   flex: none;
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
 }
 .text {
   flex: 1;
@@ -400,7 +400,7 @@ tr:hover .add-note,
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--fs-14);
   line-height: 1;
 }
 .x:hover {
@@ -415,7 +415,7 @@ tr:hover .add-note,
 .editor .area {
   width: 100%;
   font-family: var(--ui-font);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .bar {
   display: flex;
@@ -425,7 +425,7 @@ tr:hover .add-note,
 .hint {
   flex: 1;
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
 }
 .b {
   height: 24px;
@@ -434,7 +434,7 @@ tr:hover .add-note,
   border-radius: 4px;
   background: var(--surface);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .b.on {
   background: var(--accent);

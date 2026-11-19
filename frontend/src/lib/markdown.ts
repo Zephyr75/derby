@@ -87,7 +87,7 @@ export async function renderMermaid(root: HTMLElement, dark: boolean) {
       lineColor: token('--faint'),
       secondaryColor: token('--surface'),
       tertiaryColor: token('--surface'),
-      fontSize: '12.5px',
+      fontSize: `${((parseFloat(token('--ui-size')) || 13) * 12.5) / 13}px`, // follows the UI font size, as --fs-12-5
     },
   })
   try {

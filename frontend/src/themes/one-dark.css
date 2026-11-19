@@ -4,6 +4,7 @@
   color-scheme: dark;
   --bg: #282c33; /* editor.background */
   --chrome: #2f343e; /* tab_bar.background, panel.background */
+  --panel: #2f343e; /* panel.background: side panels a shade off the editor */
   --surface: #2e343e; /* element.background */
   --elev: #2f343e; /* elevated_surface.background */
   --border: #464b57;

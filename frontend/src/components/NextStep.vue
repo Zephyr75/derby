@@ -87,12 +87,12 @@ const markDone = (id: string) => herd.attempt('Mark done failed', () => api.Mark
   gap: 8px;
 }
 .small {
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .ref,
 .tref {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--muted);
 }
 .tref.sis {
@@ -108,7 +108,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 7px 9px;
-  font-size: 13px;
+  font-size: var(--fs-13);
   line-height: 1.45;
 }
 .warn {
@@ -120,7 +120,7 @@ textarea {
   border-radius: 6px;
   background: var(--waiting-bg);
   color: var(--waiting);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   line-height: 1.45;
 }
 .warn :deep(svg) {
@@ -143,7 +143,7 @@ textarea:focus {
 }
 p {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   line-height: 1.5;
   color: var(--muted);
 }

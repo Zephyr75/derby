@@ -146,7 +146,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .prefix.wide {
     width: 220px;
@@ -164,7 +164,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
     height: 28px;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .checks {
     display: flex;
@@ -175,7 +175,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
     align-items: center;
     gap: 10px;
     padding: 8px 14px;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .check + .check {
     border-top: 1px solid var(--border);
@@ -191,7 +191,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
   .check .detail {
     color: var(--muted);
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .proj {
     display: flex;
@@ -214,7 +214,7 @@ const openInZed = (id: string) => herd.attempt('Could not open Zed', () => api.O
   }
   .path {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .grid4 {

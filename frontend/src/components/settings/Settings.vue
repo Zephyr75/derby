@@ -50,7 +50,7 @@ const file = computed(
   }
   .head {
     padding: 4px 10px 10px;
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .item {
@@ -58,7 +58,7 @@ const file = computed(
     padding: 0 10px;
     border-radius: 6px;
     text-align: left;
-    font-size: 13px;
+    font-size: var(--fs-13);
     color: var(--text);
     border: 1px solid transparent;
     background: transparent;
@@ -75,7 +75,7 @@ const file = computed(
   .path {
     padding: 10px;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-11);
     color: var(--muted);
     word-break: break-all;
   }
@@ -87,9 +87,12 @@ const file = computed(
     margin: 0 4px 4px;
     height: 26px;
     border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
+    background: transparent;
     color: var(--text);
+  }
+  .back:hover {
+    background: var(--hover);
   }
   section {
     position: relative;
@@ -106,7 +109,7 @@ const file = computed(
   }
   .col :deep(h1) {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--fs-20);
     font-weight: 600;
   }
   .col :deep(.intro) {
@@ -128,7 +131,7 @@ const file = computed(
     padding: 7px 10px;
     border-radius: 6px;
     text-align: left;
-    font-size: 13px;
+    font-size: var(--fs-13);
     color: var(--text);
     border: 1px solid transparent;
     background: transparent;
@@ -140,7 +143,7 @@ const file = computed(
     background: var(--sel);
   }
   .col :deep(.list-btn .sub) {
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .col :deep(.card) {

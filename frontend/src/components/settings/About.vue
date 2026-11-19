@@ -76,14 +76,14 @@ const open = () => herd.attempt('Could not open the link', () => api.OpenURL(rep
   }
   code {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .link {
     border: 0;
     background: none;
     padding: 0;
     color: var(--accent);
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .link:hover {
     text-decoration: underline;

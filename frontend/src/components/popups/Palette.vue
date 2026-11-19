@@ -88,11 +88,11 @@ function key(e: KeyboardEvent) {
     outline: none;
     background: transparent;
     color: var(--text);
-    font-size: 14px;
+    font-size: var(--fs-14);
   }
   .heading {
     padding: 8px 12px 4px;
-    font-size: 11.5px;
+    font-size: var(--fs-11-5);
     color: var(--muted);
   }
   .rows {
@@ -113,7 +113,7 @@ function key(e: KeyboardEvent) {
     border-radius: 6px;
     border: 0;
     text-align: left;
-    font-size: 13px;
+    font-size: var(--fs-13);
     color: var(--text);
     background: transparent;
   }
@@ -128,7 +128,7 @@ function key(e: KeyboardEvent) {
     text-overflow: ellipsis;
   }
   .proj {
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .badge {

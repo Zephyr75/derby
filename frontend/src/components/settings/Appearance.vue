@@ -154,7 +154,7 @@ function setZed(e: Event) {
     padding: 10px;
     border-radius: 8px;
     text-align: left;
-    font-size: 13px;
+    font-size: var(--fs-13);
     color: var(--text);
     border: 1px solid var(--border);
     background: transparent;
@@ -227,7 +227,7 @@ function setZed(e: Event) {
     font-weight: 600;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .rows {
     display: flex;
@@ -251,7 +251,7 @@ function setZed(e: Event) {
   }
   .val {
     font-family: var(--mono);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     padding: 3px 8px;
     border-radius: 4px;
     border: 1px solid var(--border);

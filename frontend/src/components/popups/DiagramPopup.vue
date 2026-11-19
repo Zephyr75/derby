@@ -90,7 +90,7 @@ function key(e: KeyboardEvent) {
     white-space: nowrap;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
     white-space: nowrap;
   }
   .grow {
@@ -153,11 +153,11 @@ function key(e: KeyboardEvent) {
     background: var(--sel);
   }
   .name {
-    font-size: 13px;
+    font-size: var(--fs-13);
     font-weight: 500;
   }
   .file {
-    font-size: 11px;
+    font-size: var(--fs-11);
     color: var(--muted);
   }
   .page {

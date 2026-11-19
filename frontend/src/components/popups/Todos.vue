@@ -79,7 +79,7 @@ function go(t: Task) {
   flex: 1;
 }
 .small {
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .hide {
   display: flex;
@@ -128,7 +128,7 @@ button.task:hover {
 }
 .task .name {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--fs-13);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

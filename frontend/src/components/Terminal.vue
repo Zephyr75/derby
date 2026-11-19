@@ -8,6 +8,7 @@ import { api, errorText } from '../lib/api'
 import { herd, resumeCommand } from '../lib/state'
 import type { Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
+import Working from './ui/Working.vue'
 
 // A paused step (stopped with Stop) is not reconnected: the user may be
 // running the same session elsewhere, e.g. claude --resume in Zed.
@@ -178,6 +179,7 @@ watch(
 <template>
   <div class="wrap">
     <div ref="el" class="term"></div>
+    <Working v-if="step.live && step.state === 'running' && !ended" class="busy" label="Working" />
     <div v-if="others()" class="paused">
       <span class="ico warn"><Icon name="warn" :size="22" /></span>
       <span class="title">Claude is still running this session elsewhere</span>
@@ -220,6 +222,17 @@ watch(
   padding: 8px 4px 4px 12px;
   background: var(--bg);
 }
+.busy {
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  z-index: 2;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--elev);
+  pointer-events: none;
+}
 .term {
   flex: 1;
   min-width: 0;
@@ -245,11 +258,11 @@ watch(
   color: var(--faint);
 }
 .paused .title {
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 .paused .text {
   max-width: 400px;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   line-height: 1.5;
   color: var(--muted);
 }
@@ -261,7 +274,7 @@ watch(
   padding: 4px 8px;
   border-radius: 4px;
   background: var(--surface);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;

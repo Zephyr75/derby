@@ -83,7 +83,7 @@ aside {
   min-width: 200px;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--panel);
   border-right: 1px solid var(--border);
   min-height: 0;
 }
@@ -123,18 +123,18 @@ aside {
   margin-top: 4px;
   border: 0;
   background: transparent;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
   text-align: left;
 }
 .group .name {
   color: var(--text);
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .empty {
   padding: 2px 12px 6px 30px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 .card {
@@ -148,7 +148,7 @@ aside {
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  font-size: 13px;
+  font-size: var(--fs-13);
   color: var(--text);
 }
 .cardw {
@@ -191,7 +191,7 @@ aside {
   margin: 0 0 10px;
 }
 .gone {
-  font-size: 11px;
+  font-size: var(--fs-11);
   padding: 0 5px;
   border-radius: 4px;
   border: 1px solid var(--border);

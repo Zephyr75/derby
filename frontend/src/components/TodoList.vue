@@ -153,7 +153,7 @@ const dropCls = (t: Todo) => (over.value?.id === t.id && dragging.value !== t.id
   gap: 8px;
   padding: 4px 6px 4px 2px;
   border-radius: 5px;
-  font-size: 13px;
+  font-size: var(--fs-13);
   line-height: 1.45;
 }
 .todos:not(.sorting) .item:hover {

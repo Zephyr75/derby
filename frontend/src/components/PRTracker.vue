@@ -208,18 +208,18 @@ async function refresh() {
     white-space: nowrap;
   }
   .title {
-    font-size: 15px;
+    font-size: var(--fs-15);
     font-weight: 600;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .grow {
     flex: 1;
   }
   h3 {
     margin: 0 0 8px;
-    font-size: 12px;
+    font-size: var(--fs-12);
     font-weight: 500;
     color: var(--muted);
     text-transform: uppercase;
@@ -229,7 +229,7 @@ async function refresh() {
     display: flex;
     align-items: center;
     gap: 9px;
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .row {
     width: 100%;
@@ -254,7 +254,7 @@ async function refresh() {
     border: 0;
     background: transparent;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-12);
     text-align: left;
   }
   .sub:hover {
@@ -278,10 +278,10 @@ async function refresh() {
     height: 24px;
     padding: 0 9px;
     border-radius: 4px;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
+    background: transparent;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .act:hover {
     background: var(--hover);
@@ -302,7 +302,7 @@ async function refresh() {
     padding: 1px 7px;
     border: 1px solid var(--border);
     border-radius: 10px;
-    font-size: 11.5px;
+    font-size: var(--fs-11-5);
     color: var(--muted);
   }
   .state.ready {
@@ -364,7 +364,7 @@ async function refresh() {
     border-radius: 4px;
     background: transparent;
     color: var(--approval);
-    font-size: 11px;
+    font-size: var(--fs-11);
     line-height: 16px;
     cursor: pointer;
   }
@@ -389,21 +389,21 @@ async function refresh() {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .who {
     font-weight: 500;
   }
   .fmeta .mono {
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-11-5);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .ftext {
     margin-top: 2px;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     line-height: 1.45;
     white-space: pre-wrap;
     display: -webkit-box;

@@ -704,3 +704,65 @@ func subsequence(s, q string) bool {
 	}
 	return i == len(q)
 }
+
+// QuestionAnswer is the user's answer to one question of Claude Code's
+// question form (AskUserQuestion), from the chat view.
+type QuestionAnswer struct {
+	Multi bool   `json:"multi"` // the question takes several options
+	Count int    `json:"count"` // its options
+	Picks []int  `json:"picks"` // the options picked, from 1
+	Other string `json:"other"` // a typed answer instead (one-option questions)
+}
+
+// AnswerQuestions answers the question form Claude Code shows, by typing
+// what its terminal form expects: an option's number picks it (and moves on
+// to the next question; on a several-option question it ticks it, and Tab
+// moves on), the number after the options opens a text answer, and Enter on
+// the last screen submits the answers.
+func (a *App) AnswerQuestions(stepID string, answers []QuestionAnswer) error {
+	sess, ok := a.run.Get(stepID)
+	if !ok {
+		return errors.New("the session is not running")
+	}
+	var keys []string
+	for i, q := range answers {
+		digit := func(n int) error {
+			if n < 1 || n > q.Count+1 || n > 9 {
+				return fmt.Errorf("question %d: no option %d", i+1, n)
+			}
+			keys = append(keys, fmt.Sprint(n))
+			return nil
+		}
+		switch {
+		case !q.Multi && strings.TrimSpace(q.Other) != "":
+			if err := digit(q.Count + 1); err != nil {
+				return err
+			}
+			keys = append(keys, "\x1b[200~"+strings.TrimSpace(q.Other)+"\x1b[201~", "\r")
+		case !q.Multi && len(q.Picks) == 1:
+			if err := digit(q.Picks[0]); err != nil {
+				return err
+			}
+		case q.Multi && len(q.Picks) > 0:
+			for _, p := range q.Picks {
+				if p > q.Count {
+					return fmt.Errorf("question %d: no option %d", i+1, p)
+				}
+				if err := digit(p); err != nil {
+					return err
+				}
+			}
+			keys = append(keys, "\t")
+		default:
+			return fmt.Errorf("question %d has no answer", i+1)
+		}
+	}
+	keys = append(keys, "\r") // Submit answers
+	for _, k := range keys {
+		if _, err := sess.Write([]byte(k)); err != nil {
+			return err
+		}
+		time.Sleep(250 * time.Millisecond) // the form redraws between keys
+	}
+	return nil
+}

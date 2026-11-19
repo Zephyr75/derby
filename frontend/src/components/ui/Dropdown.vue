@@ -72,11 +72,11 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     border: 1px dashed var(--border);
     background: transparent;
     color: var(--text);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .chip.strong {
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .chip:hover:not(:disabled),
   .chip.on {
@@ -115,7 +115,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     background: transparent;
     color: var(--text);
     text-align: left;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -126,7 +126,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     margin-right: 7px;
     padding: 0 6px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: var(--fs-11);
     font-weight: 600;
     line-height: 17px;
   }

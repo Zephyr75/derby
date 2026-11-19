@@ -79,7 +79,7 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(herd.settings?.prompts)
   height: 28px;
 }
 .hint {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 .box {
@@ -114,10 +114,10 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(herd.settings?.prompts)
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .proj select {
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .x {
   display: grid;
@@ -151,11 +151,11 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(herd.settings?.prompts)
   padding: 4px 0;
 }
 .part .title {
-  font-size: 12px;
+  font-size: var(--fs-12);
   font-weight: 600;
 }
 .where {
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   color: var(--muted);
 }
 .text {
@@ -164,7 +164,7 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(herd.settings?.prompts)
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   line-height: 1.5;
   white-space: pre-wrap;
 }

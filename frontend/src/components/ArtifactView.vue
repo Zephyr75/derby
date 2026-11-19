@@ -57,7 +57,7 @@ watch(
 
 <style scoped>
   .md {
-    font-size: 13px;
+    font-size: var(--fs-13);
     line-height: 1.6;
   }
   .md :deep(h1),
@@ -67,11 +67,11 @@ watch(
     margin: 14px 0 8px;
     padding-bottom: 6px;
     border-bottom: 1px solid var(--border);
-    font-size: 15px;
+    font-size: var(--fs-15);
     font-weight: 600;
   }
   .md :deep(h1) {
-    font-size: 16px;
+    font-size: var(--fs-16);
   }
   .md > :deep(:first-child) {
     margin-top: 0;
@@ -89,7 +89,7 @@ watch(
   }
   .md :deep(code) {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-12);
     padding: 1px 4px;
     border-radius: 4px;
     background: var(--surface);
@@ -101,7 +101,7 @@ watch(
     background: var(--surface);
     border: 1px solid var(--border);
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-12);
     line-height: 1.55;
     white-space: pre-wrap;
   }
@@ -121,7 +121,7 @@ watch(
   .md :deep(table) {
     border-collapse: collapse;
     margin-bottom: 10px;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .md :deep(th),
   .md :deep(td) {
@@ -148,7 +148,7 @@ watch(
     gap: 8px;
     padding: 6px 8px 6px 12px;
     border-top: 1px solid var(--border);
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .md :deep(.diagram-fig figcaption span) {
@@ -166,7 +166,7 @@ watch(
     border: 1px solid var(--border);
     background: var(--bg);
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .md :deep(.diagram-fig button:hover) {
     background: var(--hover);
@@ -186,7 +186,7 @@ watch(
     background: none;
     border: 0;
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
     white-space: pre-wrap;
     align-self: stretch; /* full width, so the diagram can grow to its zoom */
@@ -198,7 +198,7 @@ watch(
   .md :deep(figcaption) {
     margin-top: 10px;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-11);
     color: var(--muted);
   }
 </style>

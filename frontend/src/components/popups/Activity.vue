@@ -96,7 +96,7 @@ function open(t: Task) {
     flex: 1;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .list {
     overflow: auto;
@@ -107,14 +107,14 @@ function open(t: Task) {
   .none {
     margin: 10px 8px;
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .group {
     display: flex;
     align-items: center;
     gap: 7px;
     padding: 8px 8px 4px;
-    font-size: 11.5px;
+    font-size: var(--fs-11-5);
     color: var(--muted);
   }
   .group .dot {
@@ -152,10 +152,10 @@ function open(t: Task) {
     text-overflow: ellipsis;
   }
   .name {
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .sub {
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .meta {
@@ -165,7 +165,7 @@ function open(t: Task) {
     align-items: flex-end;
     gap: 2px;
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-11-5);
     color: var(--muted);
   }
 </style>

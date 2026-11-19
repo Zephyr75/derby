@@ -118,6 +118,7 @@ const tab = computed(() =>
     flex: 1;
     display: flex;
     flex-direction: column;
+    background: var(--bg);
     border-top: 1px solid var(--border);
     min-height: 0;
   }
@@ -139,7 +140,7 @@ const tab = computed(() =>
     background: var(--chrome);
     color: var(--muted);
     white-space: nowrap;
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .tab.on {
     background: var(--bg);
@@ -148,7 +149,7 @@ const tab = computed(() =>
   }
   .count {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-11);
     padding: 0 5px;
     border-radius: 8px;
     background: var(--surface);
@@ -195,22 +196,22 @@ const tab = computed(() =>
   }
   .todo-title {
     font-weight: 600;
-    font-size: 14px;
+    font-size: var(--fs-14);
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .hide-done {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .empty {
     margin: 0;
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     line-height: 1.5;
   }
 </style>

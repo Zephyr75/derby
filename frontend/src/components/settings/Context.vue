@@ -178,7 +178,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
     font-weight: 600;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .row {
     display: flex;
@@ -192,7 +192,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
     gap: 8px;
   }
   .path {
-    font-size: 12px;
+    font-size: var(--fs-12);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -219,10 +219,10 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
     flex-wrap: wrap;
     align-items: baseline;
     gap: 4px 10px;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .state {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .c-done { color: var(--done); }
   .c-waiting { color: var(--waiting); }

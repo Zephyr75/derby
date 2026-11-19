@@ -97,12 +97,12 @@ const addProject = () => herd.attempt('Could not add the project', () => api.Add
   color: var(--text);
 }
 .title {
-  font-size: 12px;
+  font-size: var(--fs-12);
   font-weight: 600;
   color: var(--text);
 }
 .small {
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 ul {
   margin: 0;
@@ -118,7 +118,7 @@ li {
   gap: 10px;
   padding: 3px 6px;
   border-radius: 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   line-height: 18px;
 }
 li.here {
@@ -136,7 +136,7 @@ li.here {
   background: transparent;
   color: var(--text);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;

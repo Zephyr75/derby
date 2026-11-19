@@ -73,7 +73,7 @@ const unbound = computed(() => actions.filter((a) => !km.value[a.id]?.length))
     flex: 1;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .keys {
     display: flex;

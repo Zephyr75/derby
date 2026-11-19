@@ -316,7 +316,7 @@ function pick(id: string) {
   .pp {
     padding: 3px 9px;
     border-radius: 4px;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     border: 1px solid var(--border);
     background: var(--bg);
   }
@@ -327,7 +327,7 @@ function pick(id: string) {
     flex: 1;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .split {
     display: flex;
@@ -374,7 +374,7 @@ function pick(id: string) {
     display: flex;
     gap: 18px;
     flex-wrap: wrap;
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .checks label {
     display: flex;
@@ -412,7 +412,7 @@ function pick(id: string) {
     border-radius: 3px;
     border: 1px solid var(--border);
     color: var(--muted);
-    font-size: 10.5px;
+    font-size: var(--fs-10-5);
     font-weight: 400;
     vertical-align: 1px;
   }
@@ -421,18 +421,18 @@ function pick(id: string) {
     align-items: center;
     gap: 6px;
     margin: 0;
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     color: var(--muted);
   }
   .box {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .hint {
     margin: -2px 0 4px 22px;
-    font-size: 12px;
+    font-size: var(--fs-12);
     line-height: 1.45;
     color: var(--muted);
   }
@@ -447,7 +447,7 @@ function pick(id: string) {
     padding: 8px 10px;
     border-radius: 6px;
     border: 1px solid var(--waiting-dot);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     line-height: 1.5;
   }
   .offers {
@@ -465,7 +465,7 @@ function pick(id: string) {
     border-radius: 4px;
     border: 1px solid var(--border);
     background: var(--surface);
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .offer.main {
     border-color: var(--accent);

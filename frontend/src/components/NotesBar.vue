@@ -44,7 +44,7 @@ function clear() {
     border-left: 3px solid var(--accent);
     border-radius: 4px;
     background: var(--surface);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .count {
     display: flex;
@@ -57,11 +57,11 @@ function clear() {
   .b {
     height: 24px;
     padding: 0 9px;
-    border: 1px solid var(--border);
+    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
     border-radius: 4px;
-    background: var(--bg);
+    background: transparent;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .b:hover {
     background: var(--hover);

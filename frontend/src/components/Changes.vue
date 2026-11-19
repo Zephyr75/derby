@@ -31,12 +31,12 @@ function pick(path: string) {
 .hint {
   margin: 10px 0 0;
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .empty {
   margin: 0;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   line-height: 1.5;
 }
 </style>

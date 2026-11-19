@@ -9,6 +9,23 @@
   --ui-font: 'Geist', system-ui, sans-serif;
   --mono: 'Geist Mono', ui-monospace, monospace;
   --ui-size: 13px;
+  /* every text size, relative to the UI font size (13px by default, Settings >
+     Appearance): --fs-12 is 12px at 13px and grows with it */
+  --fs-10-5: calc(var(--ui-size) * 10.5 / 13);
+  --fs-11: calc(var(--ui-size) * 11 / 13);
+  --fs-11-5: calc(var(--ui-size) * 11.5 / 13);
+  --fs-12: calc(var(--ui-size) * 12 / 13);
+  --fs-12-5: calc(var(--ui-size) * 12.5 / 13);
+  --fs-13: calc(var(--ui-size) * 13 / 13);
+  --fs-13-5: calc(var(--ui-size) * 13.5 / 13);
+  --fs-14: calc(var(--ui-size) * 14 / 13);
+  --fs-14-5: calc(var(--ui-size) * 14.5 / 13);
+  --fs-15: calc(var(--ui-size) * 15 / 13);
+  --fs-15-5: calc(var(--ui-size) * 15.5 / 13);
+  --fs-16: calc(var(--ui-size) * 16 / 13);
+  --fs-18: calc(var(--ui-size) * 18 / 13);
+  --fs-20: calc(var(--ui-size) * 20 / 13);
+  --fs-21: calc(var(--ui-size) * 21 / 13);
 }
 
 html,
@@ -76,14 +93,14 @@ button:disabled {
   background: var(--surface);
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-11);
   line-height: 1;
 }
 
 .local-chip {
   flex: none;
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: var(--fs-10-5);
   font-weight: 600;
   letter-spacing: 0.4px;
   padding: 1px 5px;
@@ -96,7 +113,7 @@ button:disabled {
 .issue-ref {
   flex: none;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 
@@ -119,7 +136,7 @@ button:disabled {
   align-self: flex-start;
   padding: 1px 7px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   white-space: nowrap;
 }
 
@@ -143,13 +160,23 @@ button:disabled {
 .chip .dot {
   background: var(--dot);
 }
+/* status as Zed shows it: plain muted text after a coloured dot (an icon in
+   the dot's colour for the PR badge) */
+.badge[class*='s-'] {
+  padding: 1px 0;
+  background: transparent;
+  color: var(--muted);
+}
+.badge[class*='s-'] > svg {
+  color: var(--dot);
+}
 
 /* segmented choice buttons */
 .seg {
   height: 26px;
   padding: 0 10px;
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
@@ -179,7 +206,7 @@ button:disabled {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   white-space: nowrap;
 }
 .pill > button + button {
@@ -194,6 +221,7 @@ button:disabled {
   color: var(--toggle-text);
 }
 
+/* buttons as Zed's: ghost (no border, a fill on hover); primary filled */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -201,11 +229,14 @@ button:disabled {
   height: 26px;
   padding: 0 12px;
   border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--fs-13);
   white-space: nowrap;
+}
+.btn:not(.primary):not(.danger):hover:not(:disabled) {
+  background: var(--hover);
 }
 .btn.primary {
   border-color: var(--button);
@@ -229,7 +260,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 
@@ -240,7 +271,7 @@ button:disabled {
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--fs-13);
   min-width: 0;
 }
 /* WebKitGTK draws native selects in its own colours: draw ours. */
@@ -254,7 +285,7 @@ select.input {
 .input.mono,
 .area.mono {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .input:focus,
 .area:focus {
@@ -273,7 +304,7 @@ select.input {
 
 .tool-chip {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid var(--border);

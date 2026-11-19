@@ -112,7 +112,7 @@ button {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-13);
   white-space: nowrap;
   min-width: 0; /* long worktree and branch names shrink first */
   overflow: hidden;
@@ -140,7 +140,7 @@ button {
   /* Zed: a small muted slash at a quarter of its opacity */
   color: var(--muted);
   opacity: 0.25;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .stext {
   overflow: hidden;
@@ -175,7 +175,7 @@ button {
 }
 .tcount {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-11);
 }
 .search {
   display: flex;
@@ -203,9 +203,12 @@ button {
   padding: 0 13px 0 10px; /* text ends flush, so the right side needs more to look even */
   margin-left: 6px;
   border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
+  background: transparent;
   color: var(--text);
+}
+.new:hover {
+  background: var(--hover);
 }
 .menu {
   width: 28px;

@@ -3,6 +3,7 @@
   color-scheme: dark;
   --bg: #18191b;
   --chrome: #090909;
+  --panel: #18191b; /* panel.background: in Fleet Dark, the editor's own */
   --surface: #252629;
   --elev: #202124;
   --border: #3e4147;

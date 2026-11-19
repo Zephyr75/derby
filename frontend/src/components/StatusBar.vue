@@ -58,7 +58,7 @@ footer {
   padding: 0 12px;
   background: var(--chrome);
   border-top: 1px solid var(--border);
-  font-size: 13.5px;
+  font-size: var(--fs-13-5);
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -74,7 +74,7 @@ footer {
   border-radius: 4px;
   background: transparent;
   color: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-13-5);
 }
 .activity:hover,
 .activity.on {

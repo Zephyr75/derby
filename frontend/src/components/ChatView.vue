@@ -12,6 +12,7 @@ import { entries, toolView, diffStat, questions, todos, response, rawInput, comm
 import type { ChatItem, SessionStatus, Skill, Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
 import Diff from './Diff.vue'
+import Working from './ui/Working.vue'
 
 const props = defineProps<{ step: Step }>()
 const task = computed(() => herd.task(props.step.taskId))
@@ -231,6 +232,32 @@ const title = (t: ToolCall) => renderInline(view(t).title)
 // The tool call waiting for approval is a card with its content and the permission buttons.
 const confirming = (t: ToolCall) => (approval.value || asking.value) && pending.value === t
 
+// Claude's question form, answered in the chat: the options picked (from 1)
+// and the typed answers, by question; reset for each new form.
+const picks = ref<Record<number, number[]>>({})
+const typed = ref<Record<number, string>>({})
+const answering = ref(false)
+watch(
+  () => pending.value?.call.id,
+  () => {
+    picks.value = {}
+    typed.value = {}
+  },
+)
+const picked = (q: number, k: number) => (picks.value[q] ?? []).includes(k)
+function pickOption(q: number, k: number, multi: boolean) {
+  const cur = picks.value[q] ?? []
+  picks.value[q] = multi ? (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k].sort()) : [k]
+  if (!multi) typed.value[q] = ''
+}
+const answered = (t: ToolCall) => questions(t.call).every((q, i) => (picks.value[i]?.length ?? 0) > 0 || (!q.multi && !!typed.value[i]?.trim()))
+async function submitAnswers(t: ToolCall) {
+  const answers = questions(t.call).map((q, i) => ({ multi: q.multi, count: q.options.length, picks: typed.value[i]?.trim() ? [] : picks.value[i] ?? [], other: q.multi ? '' : typed.value[i] ?? '' }))
+  answering.value = true
+  await herd.attempt('Could not answer', () => api.AnswerQuestions(props.step.id, answers))
+  answering.value = false
+}
+
 // ---- the editor's toolbar: attach files, context, plan usage, model, effort ----
 async function attach() {
   const files = await herd.attempt('Could not open the file picker', () => api.ChooseFiles('Attach files to your message'))
@@ -317,6 +344,17 @@ async function checkAgain() {
             </button>
             <template v-if="isOpen(e.id) || confirming(e.tool)">
               <div v-if="e.tool.result?.diff" class="diffw"><Diff :diff="e.tool.result.diff" /></div>
+              <!-- Claude's question form, answered here: Herd types the answers into Claude Code's form -->
+              <div v-else-if="view(e.tool).body === 'question' && confirming(e.tool)" class="qs form">
+                <div v-for="(q, i) in questions(e.tool.call)" :key="i" class="qblock">
+                  <div class="qq"><span v-if="q.header" class="qh">{{ q.header }}</span>{{ q.question }}<span v-if="q.multi" class="muted"> (pick any)</span></div>
+                  <button v-for="(o, k) in q.options" :key="o.label" class="opt" :class="{ on: picked(i, k + 1) }" @click="pickOption(i, k + 1, q.multi)">
+                    <span :class="q.multi ? 'box' : 'radio'"></span>
+                    <span class="ol"><b>{{ o.label }}</b><span v-if="o.description" class="muted">{{ o.description }}</span></span>
+                  </button>
+                  <input v-if="!q.multi" v-model="typed[i]" class="other" :class="{ on: !!typed[i]?.trim() }" placeholder="Or type your own answer" data-own-escape @focus="picks[i] = []" />
+                </div>
+              </div>
               <div v-else-if="view(e.tool).body === 'question'" class="qs">
                 <div v-for="(q, i) in questions(e.tool.call)" :key="i">
                   <div class="qq">{{ q.question }}</div>
@@ -329,8 +367,12 @@ async function checkAgain() {
               <template v-if="e.tool.call.tool !== 'AskUserQuestion'">
                 <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
                 <button class="pb" title="Decline, as Esc does in the terminal; then tell Claude what to do instead" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
+                <button class="pb" @click="herd.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
               </template>
-              <button class="pb" @click="herd.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+              <template v-else>
+                <button class="pb" :disabled="!answered(e.tool) || answering" @click="submitAnswers(e.tool)"><Icon name="check" :size="13" class="ok" />{{ answering ? 'Sending…' : 'Submit answers' }}</button>
+                <button class="pb" title="Cancel the form, as Esc does in the terminal; then tell Claude what you want instead" @click="interrupt"><Icon name="close" :size="13" class="bad" />Skip</button>
+              </template>
             </div>
           </div>
 
@@ -395,7 +437,7 @@ async function checkAgain() {
           </div>
         </div>
         <div v-if="approval" class="generating"><span class="sand"></span><span class="lbl">Awaiting Confirmation</span></div>
-        <div v-else-if="running" class="generating"><span class="dots"></span></div>
+        <div v-else-if="running" class="generating"><Working /></div>
       </div>
     </div>
 
@@ -468,7 +510,7 @@ async function checkAgain() {
   background: var(--bg);
   --card-border: color-mix(in srgb, var(--border) 80%, transparent);
   --card-head: var(--surface);
-  --tool-size: 13px;
+  --tool-size: var(--fs-13);
 }
 .thread {
   flex: 1;
@@ -489,7 +531,7 @@ async function checkAgain() {
   margin: 24px 20px;
   color: var(--muted);
   text-align: center;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .grow {
   flex: 1;
@@ -543,7 +585,7 @@ button:hover > .disc,
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: var(--fs-13);
   line-height: 1.5;
 }
 .ubox:hover {
@@ -551,7 +593,7 @@ button:hover > .disc,
 }
 .slash {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   color: var(--accent);
 }
 
@@ -560,7 +602,7 @@ button:hover > .disc,
   padding: 6px 20px;
 }
 .md {
-  font-size: 13.5px;
+  font-size: var(--fs-13-5);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -584,13 +626,13 @@ button:hover > .disc,
 .md :deep(h3),
 .md :deep(h4) {
   margin: 16px 0 8px;
-  font-size: 14px;
+  font-size: var(--fs-14);
   font-weight: 600;
 }
 /* inline code in Claude Code's blue (its theme's "permission" color, which its terminal gives code spans) */
 .md :deep(code) {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   padding: 1px 4px;
   border-radius: 4px;
   background: var(--surface);
@@ -621,7 +663,7 @@ button:hover > .disc,
 }
 .md :deep(table) {
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .md :deep(blockquote) {
   padding-left: 10px;
@@ -658,7 +700,7 @@ button:hover > .disc,
 }
 .ttl :deep(code) {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   padding: 0 3px;
   border-radius: 3px;
   background: var(--surface);
@@ -678,7 +720,7 @@ button:hover > .disc,
 }
 .io {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--muted);
 }
 .raw {
@@ -686,7 +728,7 @@ button:hover > .disc,
   max-height: 240px;
   overflow: auto;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -712,7 +754,7 @@ button:hover > .disc,
   max-height: 256px;
   overflow: auto;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 
 /* cards: my-1.5 mx-5, rounded, bordered; the header on its own background */
@@ -750,7 +792,7 @@ button:hover > .disc,
   display: flex;
   gap: 6px;
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
 }
 .stat .add {
   color: var(--add);
@@ -771,7 +813,7 @@ button:hover > .disc,
   padding: 8px 10px;
   border-top: 1px solid var(--card-border);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   line-height: 1.45;
   color: var(--muted);
   white-space: pre-wrap;
@@ -800,14 +842,14 @@ button:hover > .disc,
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--muted);
 }
 .command {
   margin: 0;
   padding: 2px 30px 6px 6px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   line-height: 17px;
   color: var(--text);
   white-space: pre-wrap;
@@ -840,7 +882,7 @@ button:hover > .disc,
   gap: 8px;
   padding: 8px 10px;
   border-top: 1px solid var(--card-border);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .qq {
   font-weight: 600;
@@ -848,6 +890,83 @@ button:hover > .disc,
 }
 .qo {
   padding-left: 10px;
+}
+/* the question form */
+.form {
+  gap: 14px;
+}
+.qblock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.qh {
+  margin-right: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--fs-11);
+  font-weight: 500;
+}
+.opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: var(--fs-12-5);
+}
+.opt:hover {
+  background: var(--hover);
+}
+.opt.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.opt .ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.opt .radio,
+.opt .box {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+}
+.opt .box {
+  border-radius: 3px;
+}
+.opt.on .radio,
+.opt.on .box {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--elev);
+}
+.other {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-12-5);
+  outline: 0;
+}
+.other.on,
+.other:focus {
+  border-color: var(--accent);
+}
+.pb:disabled {
+  opacity: 0.5;
 }
 /* permission buttons: p-1 under a rule, small labels with Zed's check and cross */
 .perm {
@@ -867,7 +986,7 @@ button:hover > .disc,
   border-radius: 4px;
   background: transparent;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .pb:hover {
   background: var(--hover);
@@ -879,7 +998,7 @@ button:hover > .disc,
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .todos li {
   display: flex;
@@ -908,7 +1027,7 @@ button:hover > .disc,
 .note {
   align-self: center;
   margin: 4px 20px;
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   color: var(--faint);
 }
 .callout {
@@ -921,7 +1040,7 @@ button:hover > .disc,
   border-radius: 6px;
   background: var(--del-bg);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .callout :deep(svg) {
   color: var(--del);
@@ -958,7 +1077,7 @@ button:hover > .disc,
   align-items: center;
   gap: 8px;
   padding: 8px 22px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 .dots::before,
@@ -1019,7 +1138,7 @@ button:hover > .disc,
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   color: var(--muted);
 }
 .banner.warn :deep(svg) {
@@ -1039,7 +1158,7 @@ textarea {
   background: transparent;
   color: var(--text);
   font-family: var(--ui-font);
-  font-size: 13.5px;
+  font-size: var(--fs-13-5);
   line-height: 1.5;
 }
 textarea::placeholder {
@@ -1059,7 +1178,7 @@ textarea:disabled {
   gap: 6px;
   height: 22px;
   padding: 0 6px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -1067,7 +1186,7 @@ textarea:disabled {
   opacity: 0.5;
 }
 .usage {
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
   color: var(--muted);
   white-space: nowrap;
   padding: 0 4px;
@@ -1129,7 +1248,7 @@ textarea:disabled {
   border-radius: 4px;
   background: transparent;
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
   text-align: left;
 }
 .menu button:hover {
@@ -1181,7 +1300,7 @@ textarea:disabled {
 .sl {
   flex: none;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--code-blue);
 }
 .sd {
@@ -1189,13 +1308,13 @@ textarea:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 /* bash mode: Claude Code's pink */
 textarea.bash {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .bashpill {
   display: flex;
@@ -1206,14 +1325,14 @@ textarea.bash {
   background: color-mix(in srgb, var(--bash) 16%, transparent);
   color: var(--bash);
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: var(--fs-11-5);
 }
 .bashbox {
   border-color: color-mix(in srgb, var(--bash) 45%, var(--border));
   border-left-color: var(--bash);
   background: color-mix(in srgb, var(--bash) 9%, var(--elev));
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-12-5);
 }
 .bang {
   color: var(--bash);
@@ -1228,7 +1347,7 @@ textarea.bash {
   border-radius: 6px;
   background: var(--elev);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-12);
   line-height: 1.45;
   color: var(--muted);
   white-space: pre-wrap;

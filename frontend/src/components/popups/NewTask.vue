@@ -352,7 +352,7 @@ function key(e: KeyboardEvent) {
   }
   .iv-title {
     flex: none;
-    font-size: 12px;
+    font-size: var(--fs-12);
     font-weight: 600;
     color: var(--text);
   }
@@ -379,7 +379,7 @@ function key(e: KeyboardEvent) {
     gap: 6px;
   }
   .lbl {
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .faint {
@@ -405,7 +405,7 @@ function key(e: KeyboardEvent) {
     border-radius: 6px;
     border: 1px solid var(--border);
     background: var(--surface);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .x {
     display: flex;
@@ -449,22 +449,22 @@ function key(e: KeyboardEvent) {
     background: transparent;
     color: var(--text);
     font-family: var(--mono);
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
   .repo {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--muted);
   }
   .fetched {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .branch {
     height: 30px;
   }
   .err {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-12);
     color: var(--approval);
   }
   textarea {
@@ -474,7 +474,7 @@ function key(e: KeyboardEvent) {
     border-radius: 6px;
     background: var(--bg);
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--fs-13);
     line-height: 1.5;
     outline: none;
   }
@@ -495,13 +495,13 @@ function key(e: KeyboardEvent) {
   }
   .mode-chip {
     flex: none;
-    font-size: 11.5px;
+    font-size: var(--fs-11-5);
     font-weight: 600;
     padding: 2px 7px;
     border-radius: 4px;
   }
   .mode-text {
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
     line-height: 1.5;
   }
   .preview {
@@ -510,7 +510,7 @@ function key(e: KeyboardEvent) {
     gap: 10px;
     flex-wrap: wrap;
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: var(--fs-11-5);
     color: var(--muted);
   }
   .foot {
@@ -522,7 +522,7 @@ function key(e: KeyboardEvent) {
     border-top: 1px solid var(--border);
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .btn {
     height: 28px;

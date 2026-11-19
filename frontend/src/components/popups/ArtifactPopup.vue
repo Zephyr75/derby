@@ -104,11 +104,11 @@ function key(e: KeyboardEvent) {
     height: 24px;
     margin-right: 4px;
     padding: 0 8px;
-    border: 1px solid var(--border);
+    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
     border-radius: 4px;
-    background: var(--surface);
+    background: transparent;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .other:hover {
     background: var(--hover);
@@ -126,7 +126,7 @@ function key(e: KeyboardEvent) {
     font-weight: 600;
   }
   .small {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .grow {
     flex: 1;
@@ -199,11 +199,11 @@ function key(e: KeyboardEvent) {
     background: var(--sel);
   }
   .name {
-    font-size: 13px;
+    font-size: var(--fs-13);
     font-weight: 500;
   }
   .file {
-    font-size: 11px;
+    font-size: var(--fs-11);
     color: var(--muted);
   }
   .scroll {
@@ -219,32 +219,32 @@ function key(e: KeyboardEvent) {
   }
   /* Bigger type than the Preview tab. */
   .page :deep(.md) {
-    font-size: 15.5px;
+    font-size: var(--fs-15-5);
     line-height: 1.65;
   }
   .page :deep(.md h1) {
-    font-size: 21px;
+    font-size: var(--fs-21);
   }
   .page :deep(.md h2) {
-    font-size: 18px;
+    font-size: var(--fs-18);
   }
   .page :deep(.md h3),
   .page :deep(.md h4) {
-    font-size: 16px;
+    font-size: var(--fs-16);
   }
   .page :deep(.md code),
   .page :deep(.md pre:not(.mermaid)) {
-    font-size: 13.5px;
+    font-size: var(--fs-13-5);
   }
   .page :deep(.md table) {
-    font-size: 14.5px;
+    font-size: var(--fs-14-5);
   }
   .page :deep(.fm) {
-    font-size: 12.5px;
+    font-size: var(--fs-12-5);
   }
   .empty {
     margin: 0;
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--fs-13);
   }
 </style>
