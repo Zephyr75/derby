@@ -573,14 +573,13 @@ button:hover > .disc,
 
 /* user message: pt-2 pb-3 px-2; its box py-3 px-2, rounded, bordered, on the editor background */
 .umsg {
-  padding: 8px 8px 12px;
+  padding: 8px 20px 12px; /* as wide as the answers */
 }
 /* the one place Herd leaves Zed: user messages stand out, tinted with the accent */
 .ubox {
-  padding: 12px 12px 12px 10px;
+  padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--accent) 11%, var(--elev));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   white-space: pre-wrap;
@@ -1329,7 +1328,6 @@ textarea.bash {
 }
 .bashbox {
   border-color: color-mix(in srgb, var(--bash) 45%, var(--border));
-  border-left-color: var(--bash);
   background: color-mix(in srgb, var(--bash) 9%, var(--elev));
   font-family: var(--mono);
   font-size: var(--fs-12-5);
