@@ -8,8 +8,7 @@ export const LABEL_GAP = 6
  * only their icons: when the children of one of groups(root) no longer fit
  * on one line. The component hides them with .compact .label (max-width: 0,
  * no margin, overflow hidden), which keeps their natural width measurable,
- * so it knows when they fit again. A .swap, an icon shown only while compact,
- * stands in for its label (and its LABEL_GAP): it doesn't count once they fit.
+ * so it knows when they fit again.
  */
 export function useCompact(root: Ref<HTMLElement | undefined>, groups: (root: HTMLElement) => HTMLElement[] = (el) => [el]) {
   const compact = ref(false)
@@ -19,10 +18,7 @@ export function useCompact(root: Ref<HTMLElement | undefined>, groups: (root: HT
     const kids = [...g.children] as HTMLElement[]
     let w = kids.reduce((n, k) => n + k.offsetWidth, 0) + (parseFloat(s.columnGap) || 0) * Math.max(0, kids.length - 1)
     w += (parseFloat(s.paddingLeft) || 0) + (parseFloat(s.paddingRight) || 0)
-    if (compact.value) {
-      for (const l of g.querySelectorAll<HTMLElement>('.label')) w += l.scrollWidth + LABEL_GAP
-      for (const i of g.querySelectorAll('.swap')) w -= i.getBoundingClientRect().width + LABEL_GAP
-    }
+    if (compact.value) for (const l of g.querySelectorAll<HTMLElement>('.label')) w += l.scrollWidth + LABEL_GAP
     return w
   }
   function fit() {

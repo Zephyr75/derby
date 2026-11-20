@@ -91,16 +91,16 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
   <div class="wrap">
     <div ref="bar" class="bar" :class="{ compact }" role="tablist">
       <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the report this step wrote` : 'The report a step writes'" aria-label="Report" @click="derby.rightTab = 'preview'">
-        <span class="in"><Icon name="file" class="swap" /><span class="label">Report</span></span>
+        <span class="in"><Icon name="file" /><span class="label">Report</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="Changes" @click="hasChanges && (derby.rightTab = 'changes')">
-        <span class="in"><Icon name="diff" class="swap" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
+        <span class="in"><Icon name="diff" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}: its review comments and CI checks` : 'No PR yet: Commit and push opens one'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
-        <span class="in"><Icon name="pr" class="swap" /><span class="label">PR</span></span>
+        <span class="in"><Icon name="pr" /><span class="label">PR</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="`The task's todos${openTodos ? `, ${openTodos} open` : ''}`" aria-label="TODOs" @click="task && (derby.rightTab = 'todos')">
-        <span class="in"><Icon name="todo" class="swap" /><span class="label">TODOs</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
+        <span class="in"><Icon name="todo" /><span class="label">TODOs</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
       </button>
     </div>
     <div class="content">
@@ -151,14 +151,14 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 10px;
+    padding: 0 4px;
     overflow: hidden;
     border: 0;
     border-bottom: 1px solid var(--border);
     background: var(--chrome);
     color: var(--muted);
     white-space: nowrap;
-    font-size: var(--fs-13);
+    font-size: var(--fs-12-5);
     cursor: default;
   }
   .tab + .tab {
@@ -181,15 +181,13 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     display: flex;
     align-items: center;
   }
-  /* the name, or its icon once the names no longer fit */
   .label {
+    margin-left: 6px; /* LABEL_GAP in lib/compact.ts */
     overflow: hidden;
   }
   .compact .label {
     max-width: 0;
-  }
-  .bar:not(.compact) .swap {
-    display: none;
+    margin-left: 0;
   }
   .count {
     margin-left: 6px;
