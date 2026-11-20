@@ -15,10 +15,10 @@ const tabs = computed(() =>
     const steps = t?.steps ?? []
     const kind = steps.some((s) => s.state === 'approval') ? 'approval' : steps.some((s) => s.state === 'running' || s.state === 'idle') ? 'live' : 'off'
     const step = steps.find((x) => x.id === tb.step)?.name ?? ''
-    return { i, id: tb.task, kind, ref: t?.issue ? '#' + t.issue : 'LOCAL', title: t?.title ?? '', tip: `${t?.title ?? ''}${step ? ` (${step})` : ''}`, project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
+    return { i, id: tb.task, kind, label: `${t?.issue ? '#' + t.issue : 'LOCAL'} · ${step}`, tip: t?.title ?? '', project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
   }),
 )
-// Task titles make the tabs wide: the bar scrolls to the open one.
+// The bar scrolls to the open tab when the tabs overflow it.
 const bar = ref<HTMLElement>()
 const reveal = () => bar.value?.querySelector('.tab.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 watch(() => [derby.active, derby.tabs.length], reveal, { flush: 'post' })
@@ -46,8 +46,7 @@ const chip = computed(() => {
       <div v-for="tb in tabs" :key="tb.id" class="tab" :class="{ on: tb.on }">
         <button class="open" role="tab" :aria-selected="tb.on" :title="tb.tip" @click="derby.focusTab(tb.i)">
           <span :class="['dot', `k-${tb.kind}`]"></span>
-          <span class="issue-ref">{{ tb.ref }}</span>
-          <span class="name">{{ tb.title }}</span>
+          <span>{{ tb.label }}</span>
           <span class="proj">{{ tb.project }}</span>
         </button>
         <button class="x" aria-label="Close tab" @click="derby.closeTab(tb.i)"><Icon name="close" :size="14" /></button>
@@ -153,11 +152,6 @@ section {
   color: inherit;
   white-space: nowrap;
   font-size: var(--fs-13);
-}
-.name {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .proj {
   font-size: var(--fs-11-5);
