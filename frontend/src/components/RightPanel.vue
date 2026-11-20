@@ -25,6 +25,8 @@ function meta(s: Step): { text: string; cls: string } {
   return { text: '', cls: '' }
 }
 const dotCls = (s: Step) => (unsuccessful(s) ? 'd-failed' : s.state === 'done' ? 'd-done' : s.paused ? 'd-paused' : s.state === 'running' ? 'd-running' : s.state === 'failed' ? 'd-failed' : 'd-waiting')
+// What used to sit under the step's name, now on hover.
+const stepInfo = (s: Step) => (s.external ? 'Run by Derby · PR #' + t.value?.pr : s.sha ? 'Commit ' + s.sha : 'Session ' + s.session.slice(0, 8)) + (s.auto ? ' · auto' : '')
 
 // Rerun (set by derby): the latest step when it commits, and the cycle's
 // Review once you changed the worktree by hand (Edit opens it in Zed).
@@ -100,13 +102,12 @@ async function archive() {
             <span :class="['sdot', dotCls(s)]"></span>
             <span v-if="i < t.steps.length - 1 || t.next.ghost" class="line"></span>
           </span>
-          <button class="step" @click="derby.openStep(t.id, s.id)">
+          <button class="step" :title="stepInfo(s)" @click="derby.openStep(t.id, s.id)">
             <span class="name-row">
               <span class="name">{{ s.name }}</span>
               <span v-if="meta(s).text" :class="['meta', meta(s).cls]">{{ meta(s).text }}</span>
               <span v-if="s.skipped || (s.external && s.verdict === 'skipped')" class="meta skipped" :title="s.skipped ? 'Ended with the check or cross button' : 'Derby stopped waiting for Copilot: you moved on'">skipped</span>
             </span>
-            <span class="sub">{{ s.external ? 'run by Derby · PR #' + t.pr : s.sha ? 'commit ' + s.sha : 'session ' + s.session.slice(0, 8) }}{{ s.auto ? ' · auto' : '' }}</span>
           </button>
           <span class="acts">
             <button v-if="s.revert" class="act" :class="{ danger: derby.confirmRevert === s.id }" :title="`Put the worktree back to how it was when ${s.name} started, and remove it and the steps after it`" @click="derby.revertStep(s)">
@@ -121,11 +122,10 @@ async function archive() {
             <button v-else-if="s.diff && diffs(s)" class="act" aria-label="Open this step's changes in Zed" title="Open this step's changes in Zed: the commit it belongs to, or the uncommitted work" @click="derby.openDiff(s)"><Icon name="diff" :size="13" />Diff</button>
           </span>
         </div>
-        <div v-if="t.next.ghost" class="row ghost">
+        <div v-if="t.next.ghost" class="row ghost" :title="`Starts automatically if ${t.next.ghost.after} succeeds`">
           <span class="rail"><span class="sdot pending"></span></span>
           <span class="step static">
             <span class="name">{{ t.next.ghost.name }}</span>
-            <span class="small muted">Starts automatically if {{ t.next.ghost.after }} succeeds</span>
           </span>
         </div>
       </div>
@@ -158,11 +158,11 @@ async function archive() {
     min-height: 0;
   }
   .head {
-    padding: 10px 14px 12px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     flex: none;
   }
   .title-row {
@@ -215,7 +215,7 @@ async function archive() {
     gap: 8px;
     height: 32px;
     flex: none;
-    padding: 0 8px 0 14px;
+    padding: 0 10px 0 16px;
     border-bottom: 1px solid var(--border);
   }
   .grow {
@@ -224,8 +224,8 @@ async function archive() {
   .timeline {
     display: flex;
     flex-direction: column;
-    padding: 6px 6px 2px;
-    gap: 1px;
+    padding: 8px 8px 6px;
+    gap: 2px;
     flex: none;
     max-height: 40%;
     overflow: auto;
@@ -250,18 +250,16 @@ async function archive() {
     color: var(--muted);
     font-size: var(--fs-12-5);
   }
+  /* one line per step: name, state and actions on a 36px row */
   .row {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     align-items: flex-start;
-    padding: 6px 8px 0;
+    padding: 0 10px;
     border-radius: 6px;
   }
   .row.on {
     background: var(--sel);
-  }
-  .row.ghost {
-    padding-left: 10px;
   }
   .rail {
     display: flex;
@@ -275,7 +273,7 @@ async function archive() {
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    margin-top: 4px;
+    margin-top: 13.5px; /* centred on the name's line */
   }
   .d-done { background: var(--done-dot); }
   .d-paused { background: var(--faint); }
@@ -289,7 +287,7 @@ async function archive() {
     flex: 1;
     width: 1px;
     background: var(--border);
-    margin-top: 4px;
+    margin: 4px 0 -11.5px; /* down to 4px above the next step's dot */
   }
   .step {
     flex: 1;
@@ -298,11 +296,11 @@ async function archive() {
     background: transparent;
     border: 0;
     color: var(--text);
-    padding: 2px 0 10px;
+    padding: 8px 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
     font-size: var(--fs-13);
+    line-height: 20px;
   }
   .step.static .name {
     color: var(--muted);
@@ -327,16 +325,11 @@ async function archive() {
   .c-approval { color: var(--approval); }
   .c-waiting { color: var(--waiting); }
   .c-done { color: var(--done); }
-  .sub {
-    font-family: var(--mono);
-    font-size: var(--fs-11);
-    color: var(--muted);
-  }
   .acts {
     flex: none;
     display: flex;
     gap: 4px;
-    align-self: flex-start;
+    margin-top: 7px; /* centred on the name's line, like the dot */
   }
   .act {
     display: flex;
