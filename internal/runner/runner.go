@@ -480,6 +480,18 @@ func (s *Session) Attach() (*Viewer, []byte) {
 	return v, append([]byte(nil), s.scrollback...)
 }
 
+// Output returns the session's output so far when it is at most max bytes,
+// else nil: what a terminal shows at startup, without copying a long
+// scrollback.
+func (s *Session) Output(max int) []byte {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.scrollback) > max {
+		return nil
+	}
+	return append([]byte(nil), s.scrollback...)
+}
+
 // Detach unregisters a viewer.
 func (v *Viewer) Detach() {
 	s := v.s

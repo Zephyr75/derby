@@ -211,7 +211,7 @@ func TestDefaultPrompts(t *testing.T) {
 			}
 		}
 	}
-	for _, id := range []string{PromptStep, PromptBlock, PromptContext, PromptRules, PromptCommand, PromptTaskFile, PromptExplain, PromptParts} {
+	for _, id := range []string{PromptStep, PromptBlock, PromptContext, PromptRules, PromptCommand, PromptTaskFile, PromptExplain, PromptParts, PromptName} {
 		if !seen[id] {
 			t.Errorf("no default prompt %q", id)
 		}

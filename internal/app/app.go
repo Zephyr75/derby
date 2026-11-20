@@ -97,6 +97,9 @@ type App struct {
 
 	busy sync.Map // ids of the steps whose post-success actions (git, automatic next steps) are running
 
+	startMu sync.Mutex
+	starts  map[string]chan struct{} // steps waiting for their session to start, by step id (see SendToStep)
+
 	statusMu sync.Mutex
 	status   map[string]SessionStatus // the latest statusline of each step's session, by step id (the chat view)
 	planUse  PlanUsage                // the account's latest plan usage, from any session's statusline
@@ -175,6 +178,7 @@ func Start(a *App, ctx context.Context, plat Platform) error {
 		}
 	}
 	a.reconcile()
+	a.nameTasks()
 	hooks.Replay(a.spoolDir(), a.onHook)
 	_ = a.settings.Watch(a.ctx, func() {
 		if err := a.writePlugin(); err != nil {
@@ -643,7 +647,7 @@ func (a *App) notify(s store.Step) {
 	if t.Issue != "" {
 		ref = "#" + t.Issue
 	}
-	a.plat.Notify(title, fmt.Sprintf("%s %s · %s", ref, t.Title, a.projectOf(t).Name), t.ID)
+	a.plat.Notify(title, fmt.Sprintf("%s %s · %s", ref, t.Label(), a.projectOf(t).Name), t.ID)
 }
 
 func (a *App) updateConfig(fn func(*settings.Config)) error {

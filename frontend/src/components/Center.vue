@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { derby, resumeCommand } from '../lib/state'
+import { derby, resumeCommand, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import Terminal from './Terminal.vue'
 import ChatView from './ChatView.vue'
@@ -15,7 +15,7 @@ const tabs = computed(() =>
     const steps = t?.steps ?? []
     const kind = steps.some((s) => s.state === 'approval') ? 'approval' : steps.some((s) => s.state === 'running' || s.state === 'idle') ? 'live' : 'off'
     const step = steps.find((x) => x.id === tb.step)?.name ?? ''
-    return { i, id: tb.task, kind, label: `${t?.issue ? '#' + t.issue : 'LOCAL'} · ${step}`, tip: t?.title ?? '', project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
+    return { i, id: tb.task, kind, label: `${t?.issue ? '#' + t.issue : 'LOCAL'} · ${step}`, tip: t ? taskName(t) : '', project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
   }),
 )
 // The bar scrolls to the open tab when the tabs overflow it.

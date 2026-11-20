@@ -8,9 +8,11 @@ package app
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,6 +22,7 @@ import (
 	"time"
 
 	"derby/internal/hooks"
+	"derby/internal/runner"
 	"derby/internal/settings"
 	"derby/internal/store"
 )
@@ -49,6 +52,9 @@ type Chat struct {
 	// Skills: the session's skills and plugin commands (/derby:implement…),
 	// when the transcript read listed them.
 	Skills []Skill `json:"skills"`
+	// Trust: the folder Claude Code asks to trust before it starts (a new
+	// worktree), while it asks.
+	Trust string `json:"trust"`
 }
 
 // Skill is a skill or command the session offers after a "/".
@@ -71,16 +77,20 @@ func (a *App) StepChat(stepID string, offset int64) (Chat, error) {
 	if err != nil {
 		return Chat{}, err
 	}
+	trust := ""
+	if folder, _, ok := a.stepTrust(stepID); ok {
+		trust = cmp.Or(folder, "this folder")
+	}
 	path := transcriptPath(s.SessionID)
 	if path == "" {
-		return Chat{Items: []ChatItem{}, Offset: offset}, nil
+		return Chat{Items: []ChatItem{}, Offset: offset, Trust: trust}, nil
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return Chat{Items: []ChatItem{}, Offset: offset}, nil
+		return Chat{Items: []ChatItem{}, Offset: offset, Trust: trust}, nil
 	}
 	defer f.Close()
-	c := Chat{Items: []ChatItem{}, Found: true}
+	c := Chat{Items: []ChatItem{}, Found: true, Trust: trust}
 	if fi, err := f.Stat(); err == nil && fi.Size() < offset {
 		offset, c.Reset = 0, true // rewritten, e.g. after a compaction
 	}
@@ -296,7 +306,7 @@ func userText(s string) []ChatItem {
 	if strings.HasPrefix(s, "<bash-std") {
 		var out []string
 		for _, m := range bashOut.FindAllStringSubmatch(s, -1) {
-			if t := strings.TrimRight(m[1], "\n"); t != "" {
+			if t := strings.TrimRight(html.UnescapeString(m[1]), "\n"); t != "" { // Claude Code escapes the output
 				out = append(out, t)
 			}
 		}
@@ -426,19 +436,89 @@ func (a *App) SendToStep(stepID, text string) error {
 		return nil
 	}
 	if sess, ok := a.run.Get(stepID); ok {
-		// A bracketed paste keeps newlines in the message; Enter sends it.
-		if _, err := sess.Write([]byte("\x1b[200~" + text + "\x1b[201~")); err != nil {
-			return err
-		}
-		time.Sleep(80 * time.Millisecond)
-		_, err := sess.Write([]byte("\r"))
-		return err
+		return typeMessage(sess, text)
 	}
 	if err := a.elsewhereErr(stepID); err != nil {
 		return err
 	}
 	a.setPaused(stepID, false)
-	return a.resumeWith(stepID, text)
+	if !strings.HasPrefix(text, "!") {
+		return a.resumeWith(stepID, text)
+	}
+	// "!cmd" runs in Claude Code's bash mode only when typed: as the resume
+	// prompt it would go to the model. So resume, then type it once started.
+	started := a.awaitStart(stepID)
+	if err := a.resumeWith(stepID, ""); err != nil {
+		a.dropStart(stepID, started)
+		return err
+	}
+	go func() {
+		fail := func(why string) { a.toast("Could not run "+cut(text, 60), why, true) }
+		select {
+		case <-started:
+		case <-time.After(time.Minute):
+			a.dropStart(stepID, started)
+			fail("Claude Code did not start within a minute. Is it waiting in the terminal?")
+			return
+		case <-a.ctx.Done():
+			return
+		}
+		time.Sleep(time.Second) // the prompt draws after the hook
+		sess, ok := a.run.Get(stepID)
+		if !ok {
+			fail("The session ended before the command could be typed.")
+			return
+		}
+		if err := typeMessage(sess, text); err != nil {
+			fail(err.Error())
+		}
+	}()
+	return nil
+}
+
+// typeMessage types a message into a session's prompt and sends it. A
+// bracketed paste keeps newlines in the message; Enter sends it.
+func typeMessage(sess *runner.Session, text string) error {
+	if _, err := sess.Write([]byte("\x1b[200~" + text + "\x1b[201~")); err != nil {
+		return err
+	}
+	time.Sleep(80 * time.Millisecond)
+	_, err := sess.Write([]byte("\r"))
+	return err
+}
+
+// awaitStart returns a channel closed when the step's session next starts
+// (its SessionStart hook).
+func (a *App) awaitStart(stepID string) chan struct{} {
+	a.startMu.Lock()
+	defer a.startMu.Unlock()
+	if a.starts == nil {
+		a.starts = map[string]chan struct{}{}
+	}
+	if ch, ok := a.starts[stepID]; ok {
+		return ch
+	}
+	ch := make(chan struct{})
+	a.starts[stepID] = ch
+	return ch
+}
+
+func (a *App) dropStart(stepID string, ch chan struct{}) {
+	a.startMu.Lock()
+	defer a.startMu.Unlock()
+	if a.starts[stepID] == ch {
+		delete(a.starts, stepID)
+	}
+}
+
+// sessionStarted wakes what waits on the step's session start.
+func (a *App) sessionStarted(stepID string) {
+	a.startMu.Lock()
+	defer a.startMu.Unlock()
+	if ch, ok := a.starts[stepID]; ok {
+		close(ch)
+		delete(a.starts, stepID)
+	}
 }
 
 // InterruptStep stops what Claude is doing, as Esc does in its terminal: an

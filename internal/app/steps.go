@@ -534,6 +534,9 @@ func (a *App) onHook(ev hooks.Event) {
 	if ev.Name == "PostToolUse" {
 		a.recordExternal(ev)
 	}
+	if ev.Name == "SessionStart" {
+		defer a.sessionStarted(ev.StepID) // after the session id is saved
+	}
 	var finish, shell bool
 	var verdict string
 	if ev.Name == "Stop" {

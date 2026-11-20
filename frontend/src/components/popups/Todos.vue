@@ -3,7 +3,7 @@
 // archived ones that still have open todos, then Others, for the todos of
 // no task. A task's name opens it.
 import { computed } from 'vue'
-import { derby } from '../../lib/state'
+import { derby, taskName } from '../../lib/state'
 import type { Task, Todo } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import TaskRef from '../ui/TaskRef.vue'
@@ -36,9 +36,9 @@ function go(t: Task) {
     </div>
     <div class="body">
       <section v-for="t in tasks" :key="t.id">
-        <button class="task" :title="`Open ${t.title}`" @click="go(t)">
+        <button class="task" :title="`Open ${taskName(t)}`" @click="go(t)">
           <TaskRef :issue="t.issue" :task="t.id" />
-          <span class="name">{{ t.title }}</span>
+          <span class="name">{{ taskName(t) }}</span>
           <span class="muted small">{{ t.projectName }}{{ t.archived ? ' · archived' : '' }}</span>
         </button>
         <TodoList :todos="t.todos" :hide-done="derby.hideDone" @change="derby.setTodos(t, $event)" :run="derby.todoAgent(t)?.name ?? 'Implement'" :blocked="derby.todoBlocked(t)" @run="derby.runTodo(t, $event)" />

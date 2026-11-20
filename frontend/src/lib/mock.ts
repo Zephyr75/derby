@@ -21,6 +21,10 @@ const projects: Project[] = [
   { id: 'rider', name: 'pony-rider-app', path: '~/code/pony/rider-app', repo: 'pony-org/rider-app', baseBranch: 'develop', worktreesDir: '.worktrees', commonIssues: false },
   { id: 'infra', name: 'pony-infra', path: '~/code/pony/infra', repo: 'pony-org/infra', baseBranch: 'main', worktreesDir: '.worktrees', commonIssues: false },
 ]
+// The names an agent gave the tasks (the others show their titles).
+const NAMES: Record<string, string> = { 'core:4356': 'BLE unlock retry', 'infra:214': 'Telemetry node pool', 'infra:219': 'Ingestion lag alert', 'core:4390': 'Region config cache' }
+// The steps whose Claude Code asks to trust its folder: add one from the console to see the card.
+export const mockTrusting = new Set<string>()
 const ISSUE_TITLES: Record<string, string> = { '1190': 'Pause rides when the battery drops under 5%', '4356': 'Retry BLE unlock on flaky connections' }
 
 const agents: Agent[] = [
@@ -276,7 +280,7 @@ function derive(t: MockTask): Task {
   if (t.fx.options && last?.agent === 'plan' && last.state === 'done' && next.options.length)
     next.warning = `${last.artifact} lists several options. Read them, then name the one to take in the guidance before starting ${next.options[0].label}.`
   return {
-    id: t.id, project: t.project, slug: t.slug, issue: t.issue, title: t.title, description: t.description, createdAt: '',
+    id: t.id, project: t.project, slug: t.slug, issue: t.issue, title: t.title, name: NAMES[t.id] ?? '', description: t.description, createdAt: '',
     archived: !!t.archived, archivedAt: t.archivedOn ?? '', pr: t.pr ?? 0, prUrl: t.pr ? `https://github.com/pony-org/${t.project}/pull/${t.pr}` : '', prState: t.prState ?? '', worktreeRemoved: !!t.removed,
     projectName: p.name, repo: p.repo, issueRepo: '', sister: !!t.sister, sisters: (t.sisterOf ?? []).map((id) => ({ id, project: proj(find(id).project).name, part: find(id).part ?? '' })), part: t.part ?? '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
     branch: t.branch ?? 'ar-' + t.slug, runDir: `~/.derby/runs/${p.name}/${t.slug}`,
@@ -413,6 +417,18 @@ export const api: Api = {
     { number: 1190, title: ISSUE_TITLES['1190'], priority: 'Urgent' }, { number: 4356, title: ISSUE_TITLES['4356'], priority: 'High' }, { number: 4388, title: 'Export ride receipts as PDF', priority: '' },
   ]) : Promise.reject('the project has no GitHub repo')),
   IssuePreview: (_p, issue) => (ISSUE_TITLES[issue] ? ok({ path: '', file: 'ISSUE.md', exists: true, front: [{ k: 'author', v: 'octocat' }, { k: 'created', v: '2026-11-03' }], body: `# ${ISSUE_TITLES[issue]}\n\nThe issue's description.\n\n## Comments\n\n### octocat · 2026-11-04 10:12\n\nA comment.\n` }) : Promise.reject('issue not found')),
+  GetTaskIssue: (id) => {
+    const t = find(id)
+    return ok({
+      number: Number(t.issue), repo: `pony-org/${proj(t.project).repo.split('/').pop()}`, title: t.title, url: `https://github.com/pony-org/${t.project}/issues/${t.issue}`, state: 'open', author: 'octocat', created: '2026-11-03', labels: ['bug', 'ble'],
+      body: `Riders on older Android phones see **"Unlock failed"** about one time in twenty: the BLE link drops during the handshake and the app gives up.\n\n### Steps\n\n1. Open a scooter on a Pixel 4a\n2. Tap *Unlock* with the phone in a pocket\n3. The sheet shows the error after 3 s\n\n### Expected\n\nThe app retries the handshake twice before it shows the error, with \`UNLOCK_RETRIES\` in the config.`,
+      comments: [
+        { author: 'mlopez', created: '2026-11-04 10:12', body: 'Seen on iOS too, less often. The logs show \`GATT 133\` right before the drop.' },
+        { author: 'octocat', created: '2026-11-05 08:40', body: 'Keep the total under 8 s, so the rider does not walk away.' },
+      ],
+      offline: '',
+    })
+  },
   IssueTitle: (_p, issue) => (ISSUE_TITLES[issue] ? ok(ISSUE_TITLES[issue]) : Promise.reject('issue not found')),
   CreateTask: (project, issue, description, branch, runPlan) => {
     if (!issue && !description) return Promise.reject('add a GitHub issue number, a description, or both')
@@ -537,11 +553,12 @@ export const api: Api = {
   AddProject: () => Promise.reject('The folder picker needs the desktop app'),
   AddProjectPath: () => Promise.reject('Adding projects needs the desktop app'),
   SetSessionView: (view) => { settings.config.appearance.sessionView = view as any; emit('settings:changed', settings); return ok(undefined) },
-  StepChat: (step) => ok({ items: mockChat(step), offset: 1, reset: true, title: 'Retry BLE unlock on flaky connections', found: true, live: true,
+  StepChat: (step) => ok({ items: mockTrusting.has(step) ? [] : mockChat(step), offset: 1, reset: true, title: 'Retry BLE unlock on flaky connections', found: true, live: true, trust: mockTrusting.has(step) ? '/Users/me/pony-core/.worktrees/4356' : '',
     skills: [{ name: 'derby:implement', description: 'Derby Implement agent' }, { name: 'derby:review', description: 'Derby Review agent' }, { name: 'archify', description: 'Create validated architecture diagrams as explorable HTML' }, { name: 'humanizer:humanizer', description: 'Rewrite AI-sounding text' }],
     status: { model: 'claude-opus-5-5', modelName: 'Opus 5.5', effort: 'xhigh', contextUsed: 61400, contextSize: 200000, plan: { fiveHour: 23, fiveHourReset: Math.floor(Date.now() / 1000) + 7200, week: 41, weekReset: Math.floor(Date.now() / 1000) + 3 * 86400, at: 1 } } }),
   SetStepModel: () => ok(undefined),
   AnswerQuestions: () => ok(undefined),
+  TrustFolder: (step) => { mockTrusting.delete(step); return ok(undefined) },
   StepFiles: (_s, q) => ok(['internal/', 'internal/unlock/', 'internal/unlock/ble.go', 'internal/unlock/budget.go', 'internal/config/config.go', 'README.md'].filter((f) => f.toLowerCase().includes(q.toLowerCase()))),
   AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.derby/runs/core/4356/attachments/' + f.split('/').pop())),
   SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false }); return ok(undefined) },

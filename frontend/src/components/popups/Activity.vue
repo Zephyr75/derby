@@ -2,7 +2,7 @@
 // Opened from the status bar counts: every task that is working or needs
 // you, grouped by what it is doing. A click opens the task.
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { derby } from '../../lib/state'
+import { derby, taskName } from '../../lib/state'
 import TaskRef from '../ui/TaskRef.vue'
 import type { Task } from '../../lib/types'
 
@@ -52,7 +52,7 @@ function open(t: Task) {
         <button v-for="t in g.tasks" :key="t.id" class="row" @click="open(t)">
           <TaskRef :issue="t.issue" width="46px" :task="t.id" />
           <span class="main">
-            <span class="name">{{ t.title }}</span>
+            <span class="name">{{ taskName(t) }}</span>
             <span class="sub">{{ current(t).what }} · {{ t.projectName }}</span>
           </span>
           <span class="meta">

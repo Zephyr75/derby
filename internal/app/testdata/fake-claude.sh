@@ -12,6 +12,7 @@ if [ -n "$resume" ] && [ -z "$prompted" ]; then
   post SessionStart "{\"session_id\":\"$resume\",\"source\":\"resume\"}"
   echo "resumed $resume"
   read -r line
+  printf '%s' "$line" > "$DERBY_RUN_DIR/typed" # what was typed into the session
   exit 0
 fi
 if [ -n "$CLAUDE_CODE_CHILD_SESSION$CLAUDECODE" ]; then echo "inherited Claude Code session markers" >&2; exit 3; fi

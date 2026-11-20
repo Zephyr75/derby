@@ -23,6 +23,8 @@ const status = ref<SessionStatus | null>(null)
 const skills = ref<Skill[]>([]) // the session's, for "/" (its transcript lists them once)
 const found = ref(true)
 const loaded = ref(false)
+// The folder Claude Code asks to trust, before it starts (its first run in a new worktree).
+const trust = ref('')
 let offset = 0
 let timer: ReturnType<typeof setTimeout> | undefined
 let seq = 0
@@ -38,6 +40,7 @@ async function load(id: string, mine: number) {
     if (c.items.length) items.value.push(...c.items)
     offset = c.offset
     found.value = c.found
+    trust.value = c.trust || ''
     if (c.title) derby.chatTitles[id] = c.title
     if (c.skills?.length) skills.value = c.skills
     // The statusline's report wins; from the transcript, keep what was read before.
@@ -57,6 +60,7 @@ function start(id: string) {
   status.value = null
   offset = 0
   loaded.value = false
+  trust.value = ''
   open.value = {}
   void load(id, seq)
 }
@@ -165,6 +169,8 @@ function selectPaste(back: boolean) {
 async function send() {
   const text = expand(draft.value).trim()
   if (!text || sending.value || blocked.value) return
+  // Typed into the trust dialog, it would answer it (Enter on "No" exits).
+  if (trust.value) return derby.toast('Trust the folder first', 'Claude Code starts once the folder is trusted; then send your message.')
   sending.value = true
   try {
     if (!(await derby.restoreFor(props.step))) return
@@ -270,6 +276,12 @@ function accept(s: Sug | undefined) {
 const bash = computed(() => draft.value.startsWith('!'))
 const interrupt = () => derby.attempt('Could not interrupt Claude', () => api.InterruptStep(props.step.id))
 const allow = () => derby.attempt('Could not allow it', () => api.AllowOnce(props.step.id))
+const trusting = ref(false)
+async function trustFolder() {
+  trusting.value = true
+  if (await derby.attempt('Could not trust the folder', () => api.TrustFolder(props.step.id).then(() => true))) trust.value = ''
+  trusting.value = false
+}
 const placeholder = computed(() =>
   props.step.live ? (running.value ? 'Queue a message for Claude…' : 'Message Claude… / for commands, @ for files, ! for bash (Enter to send, Shift+Enter for a new line)') : task.value?.archived ? 'Send to restore the task and resume this session…' : 'Send a message to resume this session…',
 )
@@ -369,7 +381,7 @@ async function checkAgain() {
   <div class="chat" :style="{ '--code-blue': derby.dark ? '#b1b9f9' : '#5769f7', '--bash': derby.dark ? '#fd5db1' : '#ff0087' }">
     <div ref="thread" class="thread">
       <div class="inner">
-        <p v-if="loaded && !found" class="empty">Claude Code has not saved this session's conversation yet. It shows here as soon as Claude starts.</p>
+        <p v-if="loaded && !found && !trust" class="empty">Claude Code has not saved this session's conversation yet. It shows here as soon as Claude starts.</p>
 
         <template v-for="e in list" :key="e.id">
           <!-- a command: Zed's terminal card, its header the command -->
@@ -496,7 +508,19 @@ async function checkAgain() {
             <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
           </div>
         </div>
-        <div v-if="approval" class="generating"><span class="sand"></span><span class="lbl">Awaiting Confirmation</span></div>
+        <!-- Claude Code's folder trust dialog, shown before the session starts -->
+        <div v-if="trust" class="card">
+          <div class="chead static"><Icon name="folder" :size="14" class="ico" /><span class="ttl">Claude Code asks to trust this folder</span></div>
+          <div class="trust">
+            <code>{{ trust }}</code>
+            <span>Claude has not worked in it before. Trusting it lets Claude read, edit and run files there.</span>
+          </div>
+          <div class="perm">
+            <button class="pb" :disabled="trusting" @click="trustFolder"><Icon name="check" :size="13" class="ok" />Trust folder</button>
+            <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+          </div>
+        </div>
+        <div v-else-if="approval" class="generating"><span class="sand"></span><span class="lbl">Awaiting Confirmation</span></div>
         <div v-else-if="running" class="generating"><Working /></div>
       </div>
     </div>
@@ -1041,6 +1065,19 @@ button:hover > .disc,
 }
 .pb:disabled {
   opacity: 0.5;
+}
+.trust {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+.trust code {
+  font-family: var(--mono);
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 /* permission buttons: p-1 under a rule, small labels with Zed's check and cross */
 .perm {

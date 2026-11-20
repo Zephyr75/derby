@@ -49,6 +49,8 @@ async function loadPreview() {
     if (want === pseq) previewError.value = errorText(e)
   }
 }
+// The title already shows on the issue line: the preview starts at the description.
+const previewArt = computed(() => preview.value && { ...preview.value, body: preview.value.body.replace(/^\s*# .*\n+/, '') })
 const front = (k: string) => preview.value?.front?.find((f) => f.k === k)?.v ?? ''
 const comments = computed(() => (preview.value?.body.split('\n## Comments\n')[1]?.match(/^### /gm) ?? []).length)
 const previewMeta = computed(() =>
@@ -80,15 +82,18 @@ const branch = computed({
 })
 const branchOk = computed(() => branch.value.startsWith(prefix.value) && branch.value.length > prefix.value.length && /^[A-Za-z0-9._/-]+$/.test(branch.value))
 
-const info = computed(
+// One quiet line in the footer says what Claude will start from.
+const hint = computed(
   () =>
     ({
-      issue: { label: 'Issue only', text: `Claude reads issue #${nIssue.value} from ${issuesRepo.value || 'the repo'} and plans from it.`, cls: 's-running' },
-      both: { label: 'Issue + description', text: `Claude reads issue #${nIssue.value} and follows your description on top of it.`, cls: 's-running' },
-      local: { label: 'LOCAL', text: 'No GitHub issue. Claude works from your description only; the task is tagged LOCAL.', cls: 's-local' },
-      none: { label: 'Missing', text: 'Add a GitHub issue number, a description, or both.', cls: 's-idle' },
+      issue: `Claude plans from issue #${nIssue.value}`,
+      both: `Claude plans from issue #${nIssue.value} and your instructions`,
+      local: 'LOCAL task: Claude works from your instructions',
+      none: 'Pick an issue, describe the task, or both',
     })[mode.value],
 )
+const worktree = computed(() => `${p.value?.worktreesDir ?? '.worktrees'}/${slug.value}`)
+const keys = isMac() ? '⌘⏎' : 'Ctrl+⏎'
 const first = computed(() => derby.settings?.agents.find((a) => !a.builtin)?.name ?? 'Plan')
 const valid = computed(() => mode.value !== 'none' && !!p.value && !busy.value && branchOk.value)
 
@@ -149,9 +154,10 @@ const mineItems = computed(() =>
     disabled: hasTask(is.number),
   })),
 )
-const minePlaceholder = computed(() =>
-  mine.value === null ? 'Loading the issues assigned to you…' : mineError.value ? 'Could not list your issues: ' + mineError.value : mine.value.length ? `Assigned to you (${mine.value.length} open, most urgent first)` : 'No open issues assigned to you',
+const mineTip = computed(() =>
+  mine.value === null ? 'Loading the issues assigned to you…' : mineError.value ? 'Could not list your issues: ' + mineError.value : mine.value.length ? `${mine.value.length} open issues assigned to you, most urgent first` : 'No open issues assigned to you',
 )
+const mineLabel = computed(() => (mine.value === null ? 'Assigned to you…' : mine.value.length ? `Assigned to you · ${mine.value.length}` : 'None assigned'))
 function pickMine(v: string) {
   const is = mine.value?.find((x) => String(x.number) === v)
   if (!is) return
@@ -168,6 +174,11 @@ async function addFiles() {
   for (const f of picked ?? []) if (!files.value.includes(f)) files.value.push(f)
 }
 
+// The project, picked in the header; its last item adds one.
+const ADD = '\u0000add'
+const projectItems = computed(() => [...derby.projects.map((pr) => ({ value: pr.id, label: pr.name, title: pr.path })), { value: ADD, label: 'Add project…', title: 'Pick a git repository to add as a project' }])
+const onProject = (v: string) => (v === ADD ? void addProject() : pickProject(v))
+
 // Adds a project without leaving the pop-up, then selects it.
 async function addProject() {
   const pr = await derby.attempt('Could not add the project', () => api.AddProject())
@@ -180,6 +191,7 @@ function pickProject(id: string) {
   project.value = id
   issueTitle.value = ''
   preview.value = null
+  titleError.value = ''
   void fetchTitle()
 }
 
@@ -213,80 +225,56 @@ function key(e: KeyboardEvent) {
   <button class="scrim dim" aria-label="Cancel new task" @click="derby.overlay = 'none'"></button>
   <div class="box popup" role="dialog" aria-label="New task" tabindex="-1" @keydown="key">
     <div class="head">
+      <Dropdown class="proj" :items="projectItems" :value="project" placeholder="Pick a project" title="The project to work in" @pick="onProject" />
+      <Icon name="chevron-right" :size="12" class="sep" />
       <span class="title">New task</span>
+      <span class="grow"></span>
+      <button class="x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
-      <div class="group">
-        <span class="lbl">Project</span>
-        <div class="chips">
-          <button v-for="pr in derby.projects" :key="pr.id" class="seg" :class="{ on: pr.id === project }" @click="pickProject(pr.id)">{{ pr.name }}</button>
-          <button class="seg add" title="Pick a git repository to add as a project" @click="addProject"><Icon name="plus" :size="12" />Add project</button>
+      <div class="issue-line">
+        <label for="nfissue" class="hash">#</label>
+        <input id="nfissue" ref="issueInput" class="num" :value="issue" placeholder="Issue" inputmode="numeric" autocomplete="off" @input="onIssue" @blur="fetchTitle" :style="{ width: (issue ? issue.length + 0.5 : 5) + 'ch' }" />
+        <span v-if="titleError" class="itext err" :title="titleError">{{ titleError }}</span>
+        <span v-else-if="issueTitle" class="itext" :title="issueTitle">{{ issueTitle }}</span>
+        <span v-else class="itext faint">{{ issuesRepo ? `optional, from ${issuesRepo}` : 'the project has no GitHub repo' }}</span>
+        <Dropdown v-if="issuesRepo" class="mine" :items="mineItems" :value="nIssue" :disabled="!mine?.length" :title="mineTip" @pick="pickMine">
+          <span class="mine-label">{{ mineLabel }}</span><Icon name="chevron" :size="12" />
+        </Dropdown>
+      </div>
+      <div v-if="nIssue && (preview || previewError)" class="issue-view">
+        <button class="iv-head" :aria-expanded="previewOpen" @click="previewOpen = !previewOpen">
+          <Icon :name="previewOpen ? 'chevron' : 'chevron-right'" :size="12" />
+          <span class="iv-meta">{{ previewError ? 'Could not load the issue' : previewMeta }}</span>
+        </button>
+        <div v-if="previewOpen" class="iv-body">
+          <p v-if="previewError" class="err">{{ previewError }}</p>
+          <ArtifactView v-else-if="previewArt" :art="previewArt" task="" :zoom="1" />
         </div>
       </div>
-      <div class="group">
-        <span class="lbl">GitHub issue <span class="faint">optional</span></span>
-        <Dropdown v-if="issuesRepo" class="mine" wide :items="mineItems" :value="nIssue" :placeholder="minePlaceholder" :disabled="!mine?.length" @pick="pickMine" />
-        <div class="issue-row">
-          <span v-if="issuesRepo" class="muted small">or any issue</span>
-          <div class="issue">
-            <span class="muted mono">#</span>
-            <input id="nfissue" ref="issueInput" :value="issue" placeholder="1190" inputmode="numeric" autocomplete="off" @input="onIssue" @blur="fetchTitle" />
-          </div>
-          <span class="repo">{{ issuesRepo || 'no GitHub repo' }}</span>
-          <span v-if="issueTitle" class="fetched">“{{ issueTitle }}”</span>
-          <span v-if="titleError" class="err">{{ titleError }}</span>
-        </div>
-        <div v-if="nIssue && (preview || previewError || issueTitle)" class="issue-view">
-          <button class="iv-head" :aria-expanded="previewOpen" @click="previewOpen = !previewOpen">
-            <Icon :name="previewOpen ? 'chevron' : 'chevron-right'" :size="13" />
-            <span class="iv-title">Issue #{{ nIssue }}</span>
-            <span class="muted small iv-meta">{{ preview ? previewMeta : previewError ? '' : 'Loading…' }}</span>
-          </button>
-          <div v-if="previewOpen" class="iv-body">
-            <p v-if="previewError" class="err">Could not load the issue: {{ previewError }}</p>
-            <ArtifactView v-else-if="preview" :art="preview" task="" :zoom="1" />
-          </div>
-        </div>
+      <textarea id="nfdesc" v-model="desc" rows="5" aria-label="Instructions" :placeholder="nIssue ? 'Anything to add on top of the issue? (optional)' : 'What should Claude do?'"></textarea>
+      <div v-if="files.length" class="files">
+        <span v-for="f in files" :key="f" class="file" :title="f">
+          <Icon name="file" :size="12" />{{ baseName(f) }}
+          <button class="fx" :aria-label="`Remove ${baseName(f)}`" @click="files = files.filter((x) => x !== f)"><Icon name="close" :size="11" /></button>
+        </span>
       </div>
-      <div class="group">
-        <label for="nfdesc" class="lbl">Description <span class="faint">optional</span></label>
-        <textarea id="nfdesc" v-model="desc" rows="4" placeholder="What should Claude do? Added on top of the issue, or used alone for a LOCAL task."></textarea>
-      </div>
-      <div class="group">
-        <span class="lbl">Files <span class="faint">optional: screenshots, logs, specs… Claude reads them with the task</span></span>
-        <div class="chips">
-          <span v-for="f in files" :key="f" class="file" :title="f">
-            {{ baseName(f) }}
-            <button class="x" :aria-label="`Remove ${baseName(f)}`" @click="files = files.filter((x) => x !== f)"><Icon name="close" :size="11" /></button>
-          </span>
-          <button class="seg add" @click="addFiles"><Icon name="plus" :size="12" />Add files</button>
-        </div>
-      </div>
-      <div class="group">
-        <label for="nfbranch" class="lbl">Branch <span class="faint">starts with {{ prefix }}</span></label>
-        <input id="nfbranch" v-model="branch" class="input mono branch" autocomplete="off" spellcheck="false" />
-        <span v-if="mode !== 'none' && !branchOk" class="err">Start with {{ prefix }}, then name the task: letters, digits, . _ / -</span>
-      </div>
-      <div class="mode">
-        <div class="mode-row">
-          <span :class="['mode-chip', info.cls]">{{ info.label }}</span>
-          <span class="mode-text">{{ info.text }}</span>
-        </div>
-        <div v-if="mode !== 'none'" class="preview">
-          <span v-if="mode === 'local'" class="local-chip">LOCAL</span>
-          <span>branch {{ branch }}</span>
-          <span>worktree {{ p?.worktreesDir ?? '.worktrees' }}/{{ slug }}</span>
-        </div>
-      </div>
-      <p v-if="error" class="err">{{ error }}</p>
     </div>
+    <div class="details">
+      <button class="btn ghost quiet" title="Screenshots, logs, specs…: Claude reads them with the task" @click="addFiles"><Icon name="plus" :size="13" />Attach files</button>
+      <span class="grow"></span>
+      <label class="branch" :class="{ bad: mode !== 'none' && !branchOk }" :title="`Branch, starting with ${prefix}. Worktree ${worktree}`">
+        <Icon name="branch" :size="13" />
+        <input id="nfbranch" v-model="branch" aria-label="Branch" autocomplete="off" spellcheck="false" :style="{ width: branch.length + 1 + 'ch' }" />
+      </label>
+    </div>
+    <p v-if="mode !== 'none' && !branchOk" class="err line">The branch starts with {{ prefix }}, then names the task: letters, digits, . _ / -</p>
+    <p v-if="error" class="err line">{{ error }}</p>
     <div class="foot">
-      <span class="muted small">Starts with the {{ first }} agent</span>
+      <span class="hint" :class="{ local: mode === 'local' }">{{ hint }}</span>
       <span class="grow"></span>
       <button class="btn ghost" @click="derby.overlay = 'none'">Cancel</button>
-      <button class="btn primary run" :disabled="!valid" @click="create()">
-        <Icon name="play" :size="13" />Create and run {{ first }}
-      </button>
+      <button class="btn primary" :disabled="!valid" :title="`Create the task and run ${first} (${keys})`" @click="create()">Create and run {{ first }}<span class="keys">{{ keys }}</span></button>
     </div>
   </div>
 </template>
@@ -309,50 +297,124 @@ function key(e: KeyboardEvent) {
     flex: none;
     display: flex;
     align-items: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 14px;
-    border-bottom: 1px solid var(--border);
+    gap: 4px;
+    padding: 10px 10px 0 12px;
+  }
+  .proj :deep(.chip) {
+    border-color: transparent;
+    padding: 0 6px 0 8px;
+    font-weight: 600;
+  }
+  .sep {
+    color: var(--faint);
   }
   .title {
-    font-weight: 600;
+    color: var(--muted);
   }
   .grow {
     flex: 1;
   }
+  .x {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted);
+  }
+  .x:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
   .body {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 14px;
+    gap: 6px;
     min-height: 0;
-    overflow: auto;
+    padding: 10px 20px 8px;
+  }
+  .issue-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    height: 32px;
+  }
+  .hash {
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: var(--fs-15);
+  }
+  .num {
+    flex: none;
+    margin-left: -6px;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: var(--fs-15);
+  }
+  .num::placeholder {
+    color: var(--faint);
+    font-family: var(--ui-font);
+  }
+  .itext {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--fs-14);
+    font-weight: 600;
+  }
+  .itext.faint {
+    color: var(--faint);
+    font-weight: 400;
+    font-size: var(--fs-12-5);
+  }
+  .itext.err {
+    font-weight: 400;
+    font-size: var(--fs-12-5);
+  }
+  .mine :deep(.chip) {
+    border-color: transparent;
+    color: var(--muted);
+  }
+  .mine :deep(.chip:hover:not(:disabled)) {
+    color: var(--text);
+  }
+  .mine :deep(.menu) {
+    left: auto;
+    right: 0;
+    width: 460px;
+  }
+  .mine-label {
+    white-space: nowrap;
   }
   .issue-view {
-    margin-top: 4px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    margin-left: -4px;
   }
   .iv-head {
     display: flex;
     align-items: center;
     gap: 6px;
-    width: 100%;
-    height: 30px;
-    padding: 0 10px;
+    height: 22px;
+    padding: 0 4px;
     border: 0;
+    border-radius: 4px;
     background: transparent;
     color: var(--muted);
+    font-size: var(--fs-12);
     text-align: left;
   }
   .iv-head:hover {
-    color: var(--text);
-  }
-  .iv-title {
-    flex: none;
-    font-size: var(--fs-12);
-    font-weight: 600;
     color: var(--text);
   }
   .iv-meta {
@@ -362,51 +424,65 @@ function key(e: KeyboardEvent) {
     white-space: nowrap;
   }
   .iv-body {
-    max-height: 320px;
+    max-height: 260px;
     overflow: auto;
-    padding: 4px 14px 12px;
-    border-top: 1px solid var(--border);
+    margin: 4px 0 4px 10px;
+    padding: 0 10px 0 12px;
+    border-left: 2px solid var(--border);
+  }
+  .iv-body :deep(.md) {
+    font-size: var(--fs-12-5);
+  }
+  /* ISSUE.md's sections (Comments, each author): plain bold lines */
+  .iv-body :deep(h1),
+  .iv-body :deep(h2),
+  .iv-body :deep(h3),
+  .iv-body :deep(h4) {
+    margin: 12px 0 4px;
+    padding: 0;
+    border: 0;
+    font-size: var(--fs-12-5);
+  }
+  .iv-body :deep(h2) {
+    color: var(--muted);
   }
   .iv-body :deep(img) {
     max-width: 100%;
     height: auto;
     border-radius: 4px;
   }
-  .group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  textarea {
+    min-height: 96px;
+    max-height: 40vh;
+    padding: 6px 0;
+    resize: none;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: var(--fs-13);
+    line-height: 1.55;
   }
-  .lbl {
-    font-size: var(--fs-12);
-    color: var(--muted);
-  }
-  .faint {
+  textarea::placeholder {
     color: var(--faint);
   }
-  .chips {
+  .files {
     display: flex;
-    gap: 4px;
     flex-wrap: wrap;
-  }
-  .add {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    color: var(--muted);
+    gap: 4px;
   }
   .file {
     display: flex;
     align-items: center;
-    gap: 4px;
-    height: 26px;
-    padding: 0 4px 0 9px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
+    gap: 5px;
+    height: 24px;
+    padding: 0 2px 0 7px;
+    border-radius: 5px;
     background: var(--surface);
+    color: var(--muted);
     font-size: var(--fs-12);
   }
-  .x {
+  .fx {
     display: flex;
     padding: 3px;
     border: 0;
@@ -414,119 +490,85 @@ function key(e: KeyboardEvent) {
     background: none;
     color: var(--muted);
   }
-  .x:hover {
+  .fx:hover {
     background: var(--hover);
     color: var(--text);
   }
-  .mine {
-    margin-bottom: 8px;
-  }
-  .mine :deep(.chip) {
-    height: 30px;
-  }
-  .issue-row {
+  .details {
+    flex: none;
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 12px;
+    border-top: 1px solid var(--border);
   }
-  .issue {
+  .quiet {
+    padding: 0 8px;
+    color: var(--muted);
+    font-size: var(--fs-12-5);
+  }
+  .quiet:hover {
+    color: var(--text);
+  }
+  .branch {
     display: flex;
     align-items: center;
-    width: 160px;
-    height: 30px;
-    padding: 0 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-  }
-  .issue input {
-    flex: 1;
+    gap: 6px;
     min-width: 0;
+    max-width: 60%;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 6px;
+    color: var(--muted);
+  }
+  .branch:hover,
+  .branch:focus-within {
+    background: var(--hover);
+  }
+  .branch.bad {
+    color: var(--approval);
+  }
+  .branch input {
+    flex: 0 1 auto;
+    min-width: 8ch;
+    padding: 0;
     border: 0;
     outline: none;
     background: transparent;
     color: var(--text);
     font-family: var(--mono);
-    font-size: var(--fs-13);
-  }
-  .repo {
-    font-family: var(--mono);
     font-size: var(--fs-12);
-    color: var(--muted);
-  }
-  .fetched {
-    font-size: var(--fs-12);
-  }
-  .branch {
-    height: 30px;
   }
   .err {
     margin: 0;
     font-size: var(--fs-12);
     color: var(--approval);
   }
-  textarea {
-    resize: vertical;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--text);
-    font-size: var(--fs-13);
-    line-height: 1.5;
-    outline: none;
-  }
-  .mode {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: 6px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-  }
-  .mode-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .mode-chip {
-    flex: none;
-    font-size: var(--fs-11-5);
-    font-weight: 600;
-    padding: 2px 7px;
-    border-radius: 4px;
-  }
-  .mode-text {
-    font-size: var(--fs-12-5);
-    line-height: 1.5;
-  }
-  .preview {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    font-family: var(--mono);
-    font-size: var(--fs-11-5);
-    color: var(--muted);
+  .err.line {
+    padding: 0 20px 6px;
   }
   .foot {
     flex: none;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
+    gap: 6px;
+    padding: 8px 12px 10px 20px;
     border-top: 1px solid var(--border);
   }
-  .small {
+  .hint {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: var(--fs-12);
+    color: var(--muted);
   }
-  .btn {
-    height: 28px;
+  .hint.local {
+    color: var(--toggle-text);
   }
-  .run {
-    gap: 7px;
+  .keys {
+    margin-left: 4px;
+    opacity: 0.7;
+    font-size: var(--fs-11-5);
   }
 </style>

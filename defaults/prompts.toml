@@ -279,6 +279,23 @@ No task yet. What the plan asks of it:
 {{end}}'''
 
 [[prompt]]
+id = "taskName"
+name = "Task name"
+where = "The prompt of the Claude run (Haiku) that names a new task in a few words, the name it shows under in the task list, tabs and title bar (the issue's title stays in TASK.md and the PR). A Go template"
+vars = "{{.Issue}}: the issue with its comments (none for a LOCAL task), {{.Description}}: the user's description"
+text = '''
+Name this coding task in 2 to 5 words, so it is easy to recognise at a glance in a list of tasks: the feature or the bug it is about, in plain words, e.g. "BLE unlock retry", "Dark mode toggle", "Fix login redirect loop". No issue number, no repository name, no quotes, no final period. Reply with only the name.
+{{if .Issue}}
+# Issue
+
+{{.Issue}}
+{{end}}{{if .Description}}
+# Description
+
+{{.Description}}
+{{end}}'''
+
+[[prompt]]
 id = "claudeMd"
 name = "Your CLAUDE.md"
 where = "What Override writes to your own ~/.claude/CLAUDE.md (Settings > Context), for Claude Code sessions outside Derby. A Go template"

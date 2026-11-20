@@ -2,7 +2,7 @@
 // at window.runtime. In a plain browser (npm run dev) a mock built from the
 // UI preview's fixtures stands in, so the UI can be worked on without Go.
 
-import type { Diagram, FileDiff, Issue, SystemMemory, Agent, Artifact, Bootstrap, Changes, Chat, Check, Context, Proc, Project, Settings, Step, Task, Appearance, Note, ContextPart, Todo } from './types'
+import type { Diagram, FileDiff, Issue, SystemMemory, Agent, Artifact, Bootstrap, Changes, Chat, Check, Context, Proc, Project, Settings, Step, Task, Appearance, Note, ContextPart, Todo, TaskIssue } from './types'
 
 export interface Api {
   Bootstrap(): Promise<Bootstrap>
@@ -11,6 +11,7 @@ export interface Api {
   IssueTitle(project: string, issue: string): Promise<string>
   MyIssues(project: string): Promise<Issue[]>
   IssuePreview(project: string, issue: string): Promise<Artifact>
+  GetTaskIssue(task: string): Promise<TaskIssue>
   CreateSister(task: string, repo: string): Promise<Task>
   CreateTask(project: string, issue: string, description: string, branch: string, runPlan: boolean, files: string[]): Promise<Task>
   StartStep(task: string, agent: string, guidance: string, n: number): Promise<Step>
@@ -71,6 +72,7 @@ export interface Api {
   AttachToStep(step: string, files: string[]): Promise<string[]>
   StepFiles(step: string, query: string): Promise<string[]>
   AnswerQuestions(step: string, answers: { multi: boolean; count: number; picks: number[]; other: string }[]): Promise<void>
+  TrustFolder(step: string): Promise<void>
   SaveAppearance(a: Appearance, zedCommand: string): Promise<void>
   CheckPrerequisites(): Promise<Check[]>
 }

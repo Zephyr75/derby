@@ -47,6 +47,7 @@ const (
 	PromptTaskFile = "taskFile"
 	PromptExplain  = "explain"
 	PromptParts    = "partsSummary"
+	PromptName     = "taskName"
 	PromptClaudeMd = "claudeMd"
 )
 

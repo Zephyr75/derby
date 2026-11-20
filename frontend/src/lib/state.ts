@@ -875,6 +875,8 @@ class Derby {
 }
 
 /** resumeCommand continues a step's session elsewhere. */
+/** How a task shows in lists, tabs and title bars: its agent-given name, else its title. */
+export const taskName = (t: Pick<Task, 'name' | 'title'>) => t.name || t.title
 export const resumeCommand = (step: Step) => `claude --resume ${step.session}`
 
 /** The left panel's Sisters group, collapsed like a project. */

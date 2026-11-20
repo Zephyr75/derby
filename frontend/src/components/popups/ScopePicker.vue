@@ -2,7 +2,7 @@
 // Scope picker (⌘O, or a click on project, worktree or branch): the open
 // tasks of one project, labelled by the clicked attribute.
 import { computed, onMounted, ref, watch } from 'vue'
-import { derby, type ScopeMode } from '../../lib/state'
+import { derby, taskName, type ScopeMode } from '../../lib/state'
 import { isMac } from '../../lib/keymap'
 
 const project = ref(derby.selTask?.project ?? derby.projects[0]?.id ?? '')
@@ -18,7 +18,7 @@ const rows = computed(() =>
     .filter((t) => t.project === project.value && !t.archived)
     .filter((t) => {
       const q = filter.value.toLowerCase().trim()
-      return !q || `${t.title} ${t.slug} ${t.branch} ${t.worktreeRel}`.toLowerCase().includes(q)
+      return !q || `${t.name} ${t.title} ${t.slug} ${t.branch} ${t.worktreeRel}`.toLowerCase().includes(q)
     }),
 )
 watch([filter, project], () => (hi.value = Math.max(0, rows.value.findIndex((t) => t.id === derby.sel))), { immediate: true })
@@ -27,7 +27,7 @@ const placeholder = computed(() =>
 )
 const openCount = (id: string) => derby.tasks.filter((t) => t.project === id && !t.archived).length
 const primary = (t: (typeof rows.value)[number]) =>
-  derby.scope === 'project' ? `${t.issue ? '#' + t.issue : 'LOCAL'}  ${t.title}` : derby.scope === 'worktree' ? t.worktreeRel : t.branch
+  derby.scope === 'project' ? `${t.issue ? '#' + t.issue : 'LOCAL'}  ${taskName(t)}` : derby.scope === 'worktree' ? t.worktreeRel : t.branch
 
 function key(e: KeyboardEvent) {
   const mod = isMac() ? e.metaKey : e.ctrlKey
@@ -63,7 +63,7 @@ function key(e: KeyboardEvent) {
       <button v-for="(t, i) in rows" :key="t.id" class="row" :class="{ hi: i === hi }" @click="derby.pickTask(t.id)" @mousemove="hi = i">
         <span class="dot" :style="{ background: `var(--${t.status.kind === 'failed' ? 'approval' : t.status.kind}-dot)` }"></span>
         <span class="primary" :class="{ mono: derby.scope !== 'project' }">{{ primary(t) }}</span>
-        <span class="secondary">{{ derby.scope === 'project' ? t.branch : t.title }}</span>
+        <span class="secondary">{{ derby.scope === 'project' ? t.branch : taskName(t) }}</span>
         <span class="status">{{ t.status.short }}</span>
       </button>
       <span v-if="!rows.length" class="none">Nothing in this scope.</span>

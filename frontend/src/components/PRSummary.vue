@@ -14,7 +14,6 @@ const pr = reactive(usePR(props))
 const state = computed(() =>
   props.task.prState === 'merged' ? 'Merged' : props.task.prState === 'closed' ? 'Closed' : pr.ready === 'draft' ? 'Draft' : pr.ready === 'ready' ? 'Ready' : '',
 )
-const meta = computed(() => [state.value, `${props.task.branch} → ${props.task.baseBranch}`].filter(Boolean).join(' · '))
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 const review = computed(() => {
@@ -42,7 +41,7 @@ const fullTip = computed(() => (pr.cop ? `Open the full PR view: ${pr.cop.name}`
 </script>
 
 <template>
-  <PaneHead :title="`#${task.pr}`" :meta="meta" :tip="`PR #${task.pr}`">
+  <PaneHead :title="`#${task.pr}`" :meta="state" :tip="`PR #${task.pr}: ${task.branch} → ${task.baseBranch}`">
     <button v-if="pr.ready === 'draft'" title="Turn the draft PR into one ready for review and add the ready label" aria-label="Mark ready" @click="pr.markReady"><Icon name="check" :size="13" /></button>
     <button v-if="pr.live" :disabled="pr.refreshing" title="Check Copilot's review and the CI checks now instead of waiting for the next minute" aria-label="Refresh" @click="pr.refresh"><Icon name="rerun" :size="13" /></button>
     <button v-if="pr.cop" :title="`Open the full PR view (${pr.cop.name}): the comments to send to a fix, the checks to rerun`" aria-label="Open the full PR view" @click="pr.openStep(pr.cop.id)"><Icon name="maximize" :size="13" /></button>

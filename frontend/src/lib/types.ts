@@ -79,6 +79,7 @@ export interface Chat {
   status: SessionStatus // from the session's statusline (live), else its transcript
   live: boolean
   skills: Skill[] | null // the session's skills and plugin commands, when the transcript read listed them
+  trust: string // the folder Claude Code asks to trust before it starts, while it asks
 }
 
 /** A skill or command a session offers after "/". */
@@ -242,7 +243,8 @@ export interface Task {
   sister: boolean // created as a sister task; the family's task without it started the others
   sisters: { id: string; project: string; part: string }[] // tasks for the other repositories of the same work, with what each does
   part: string // what this task's part of the work does, in a line
-  title: string
+  title: string // the issue's title, else the description's first line
+  name: string // a few words an agent picked to name the task in lists; '' until then (see taskName)
   description: string
   createdAt: string
   archived: boolean
@@ -317,6 +319,21 @@ export interface CICheck {
 }
 
 /** An open GitHub issue assigned to you, for New task. */
+/** A task's issue with its comments (GetTaskIssue); images load through derby. */
+export interface TaskIssue {
+  number: number
+  repo: string
+  title: string
+  url: string
+  state: string
+  author: string
+  created: string
+  labels: string[]
+  body: string
+  comments: { author: string; created: string; body: string }[]
+  offline: string // why GitHub could not be read: body is the copy in ISSUE.md
+}
+
 export interface Issue {
   number: number
   title: string

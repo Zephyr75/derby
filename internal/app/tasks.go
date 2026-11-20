@@ -259,6 +259,7 @@ func (a *App) createTask(projectID, issue, issueRepo, description, branch string
 		}
 	}
 	a.emitTask(t.ID)
+	a.nameTasks(t.ID)
 	return a.GetTask(t.ID)
 }
 

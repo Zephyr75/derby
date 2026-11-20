@@ -83,6 +83,62 @@ func (a *App) IssuePreview(projectID, issue string) (artifacts.Artifact, error) 
 	return art, nil
 }
 
+// TaskIssue is a task's issue as its description pop-up shows it: fetched
+// again for the latest comments, else the copy in ISSUE.md (Body only).
+type TaskIssue struct {
+	Number   int            `json:"number"`
+	Repo     string         `json:"repo"`
+	Title    string         `json:"title"`
+	URL      string         `json:"url"`
+	State    string         `json:"state"`
+	Author   string         `json:"author"`
+	Created  string         `json:"created"`
+	Labels   []string       `json:"labels"`
+	Body     string         `json:"body"`
+	Comments []IssueComment `json:"comments"`
+	Offline  string         `json:"offline"` // why GitHub could not be read: Body is ISSUE.md
+}
+
+// IssueComment is a comment of a TaskIssue.
+type IssueComment struct {
+	Author  string `json:"author"`
+	Created string `json:"created"`
+	Body    string `json:"body"`
+}
+
+// GetTaskIssue returns a task's issue with its comments; images load
+// through derby (see previewImages).
+func (a *App) GetTaskIssue(taskID string) (TaskIssue, error) {
+	t, err := a.db.Task(taskID)
+	if err != nil {
+		return TaskIssue{}, err
+	}
+	if t.Issue == "" {
+		return TaskIssue{}, errors.New("this task has no GitHub issue")
+	}
+	repo := a.issueRepo(t)
+	d, err := a.gh.Issue(a.ctx, repo, t.Issue)
+	if err != nil {
+		b, rerr := os.ReadFile(filepath.Join(a.runDir(a.projectOf(t), t), issueFile))
+		if rerr != nil {
+			return TaskIssue{}, err
+		}
+		_, body := artifacts.Parse(string(b))
+		return TaskIssue{Repo: repo, Title: t.Title, Body: previewImages(body), Offline: err.Error(), Comments: []IssueComment{}}, nil
+	}
+	v := TaskIssue{
+		Number: d.Number, Repo: repo, Title: d.Title, URL: d.URL, State: strings.ToLower(d.State), Author: d.Author.Login,
+		Created: d.CreatedAt.Format("2006-01-02"), Body: previewImages(strings.TrimSpace(d.Body)), Labels: []string{}, Comments: []IssueComment{},
+	}
+	for _, l := range d.Labels {
+		v.Labels = append(v.Labels, l.Name)
+	}
+	for _, c := range d.Comments {
+		v.Comments = append(v.Comments, IssueComment{Author: c.Author.Login, Created: c.CreatedAt.Format("2006-01-02 15:04"), Body: previewImages(strings.TrimSpace(c.Body))})
+	}
+	return v, nil
+}
+
 var (
 	imgTag     = regexp.MustCompile(`(?is)<img\b[^>]*>`)
 	imgAttr    = regexp.MustCompile(`(?is)\b(src|alt)\s*=\s*"([^"]*)"`)

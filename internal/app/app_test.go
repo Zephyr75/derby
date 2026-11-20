@@ -365,6 +365,27 @@ func TestPauseAndResume(t *testing.T) {
 	}
 }
 
+// A "!" message to an ended session runs in Claude Code's bash mode: typed
+// into the resumed session, not handed to the model as its prompt.
+func TestBashOnResume(t *testing.T) {
+	a, _ := newTestApp(t)
+	tv, _ := a.CreateTask("core", "", "run a command", "", true, nil)
+	id := store.StepID(tv.ID, "plan-1")
+	waitFor(t, "plan done", func() bool { return stepState(a, id) == store.Done })
+	step, _ := a.db.Step(id)
+	proj := filepath.Join(os.Getenv("CLAUDE_CONFIG_DIR"), "projects", "-tmp-x")
+	os.MkdirAll(proj, 0o755)
+	os.WriteFile(filepath.Join(proj, step.SessionID+".jsonl"), []byte("{}\n"), 0o644)
+	a.StopStep(id)
+	waitFor(t, "stopped", func() bool { _, live := a.run.Get(id); return !live })
+
+	if err := a.SendToStep(id, "!echo hi"); err != nil {
+		t.Fatal(err)
+	}
+	typed := filepath.Join(tv.RunDir, "typed")
+	waitFor(t, "typed", func() bool { b, _ := os.ReadFile(typed); return strings.Contains(string(b), "!echo hi") })
+}
+
 func addAskAgent(t *testing.T, a *App) {
 	t.Helper()
 	ags := append([]settings.Agent{{ID: "ask", Name: "Ask", Command: "/derby:ask {task}", Writes: "ASK.md"}}, a.settings.Agents()...)

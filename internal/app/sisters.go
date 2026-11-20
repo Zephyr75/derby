@@ -7,16 +7,13 @@ package app
 // they share consistent.
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 
 	"derby/internal/settings"
 	"derby/internal/store"
@@ -196,20 +193,7 @@ func (a *App) partsPrompt(group []store.Task, offers []SisterOffer, plans map[st
 // part of the group, from each task and its newest plan, and what the plans
 // ask of the repositories without a task yet.
 func (a *App) summariseParts(group []store.Task, offers []SisterOffer, plans map[string]string) map[string]string {
-	prompt := a.partsPrompt(group, offers, plans)
-	bin := strings.Fields(a.settings.Config().ClaudeCommand)
-	if len(bin) == 0 {
-		bin = []string{"claude"}
-	}
-	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, bin[0], append(bin[1:], "-p", "--model", "haiku", "--", prompt)...)
-	cmd.Dir = a.Home
-	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
-		name, _, _ := strings.Cut(kv, "=")
-		return slices.Contains(inheritedSessionVars, name) || strings.HasPrefix(name, "DERBY_")
-	})
-	out, _ := cmd.Output()
+	out := a.haiku(a.partsPrompt(group, offers, plans))
 	i, j := strings.Index(string(out), "{"), strings.LastIndex(string(out), "}")
 	if i < 0 || j < i {
 		return nil

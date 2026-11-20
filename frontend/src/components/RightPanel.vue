@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { api } from '../lib/api'
-import { derby } from '../lib/state'
+import { derby, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 import Preview from './Preview.vue'
@@ -17,6 +17,14 @@ const prIcon = computed(() => (t.value?.prState === 'merged' ? 'rebase' : t.valu
 const behindText = computed(() => `${t.value?.behind} commits behind origin/${t.value?.baseBranch} (Derby fetches it every 5 minutes)`)
 // Issue opens it on GitHub; a task without one has a description instead.
 const hasIssue = computed(() => !!(t.value?.issue && (t.value.issueRepo || t.value.repo)))
+// The title shows the issue, its comments and the user's instructions.
+const canDescribe = computed(() => hasIssue.value || !!t.value?.description)
+const titleTip = computed(() => {
+  const task = t.value
+  if (!task) return ''
+  const full = task.name && task.name !== task.title ? task.title + '\n\n' : ''
+  return full + (hasIssue.value ? `Show issue #${task.issue}, its comments${task.description ? ' and your instructions' : ''}` : task.description ? 'Show your instructions' : 'The task has no issue and no description')
+})
 // Rebase always shows, before Archive; it's off unless the branch is behind
 // and a step can rebase it now.
 const canRebase = computed(() => !!t.value?.behind && !t.value.archived && derby.canFix(t.value))
@@ -91,7 +99,7 @@ async function archive() {
       <div class="head">
         <div class="title-row">
           <TaskRef :issue="t.issue" :task="t.id" />
-          <span class="title" :title="t.title">{{ t.title }}</span>
+          <button class="title" :class="{ plain: !canDescribe }" :disabled="!canDescribe" :title="titleTip" @click="derby.openOverlay('description')">{{ taskName(t) }}</button>
         </div>
         <div ref="bar" class="bar" :class="{ compact }">
           <button v-if="hasIssue" class="hb" :title="`Open issue #${t.issue} of ${t.issueRepo || t.repo} on GitHub`" aria-label="Issue" @click="openIssue"><Icon name="issue" /><span class="label">Issue</span></button>
@@ -102,7 +110,6 @@ async function archive() {
           <button class="hb" :class="{ warn: t.behind && !t.archived, off: !canRebase }" :aria-disabled="!canRebase" :title="rebaseTitle" aria-label="Rebase" @click="canRebase && rebase()"><Icon name="rebase" /><span class="label">Rebase</span></button>
           <button v-if="!t.archived" class="hb" title="Archive task" aria-label="Archive" @click="archive"><Icon name="archive" /><span class="label">Archive</span></button>
         </div>
-        <p v-if="t.description && hasIssue" class="desc">{{ t.description }}</p>
       </div>
 
       <div ref="timeline" class="timeline" :class="{ sized: derby.timelineHeight > 0 }" :style="derby.timelineHeight > 0 ? { height: derby.timelineHeight + 'px' } : {}">
@@ -170,12 +177,28 @@ async function archive() {
     gap: 8px;
     min-width: 0;
   }
+  /* The task's name: a click shows its issue, comments and instructions. */
   .title {
-    flex: 1;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0 -5px;
+    padding: 2px 5px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
     font-weight: 600;
+    text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .title:not(.plain):hover {
+    background: var(--hover);
+  }
+  .title.plain {
+    cursor: default;
   }
   /* Issue, PR, Zed, Reports, Archive: Zed's ghost buttons, names dropped
      when the panel is too narrow for them */
@@ -221,18 +244,6 @@ async function archive() {
   .compact .label {
     max-width: 0;
     margin-left: 0;
-  }
-  .desc {
-    margin: 0;
-    padding: 6px 8px;
-    border-radius: 6px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    font-size: var(--fs-12-5);
-    line-height: 1.5;
-    max-height: 120px;
-    overflow: auto;
-    white-space: pre-wrap;
   }
   .timeline {
     display: flex;

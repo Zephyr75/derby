@@ -2,7 +2,7 @@
 // Go to task (⌘P): every word must match the title, issue number, project,
 // description or LOCAL. Open tasks first, archived last.
 import { computed, onMounted, ref, watch } from 'vue'
-import { derby } from '../../lib/state'
+import { derby, taskName } from '../../lib/state'
 import { isMac } from '../../lib/keymap'
 import Icon from '../ui/Icon.vue'
 import TaskRef from '../ui/TaskRef.vue'
@@ -16,7 +16,7 @@ onMounted(() => input.value?.focus())
 const matches = computed(() => {
   const words = query.value.toLowerCase().trim().split(/\s+/).filter(Boolean)
   const out = derby.tasks.filter((t) => {
-    const hay = `${t.title} ${t.issue} ${t.projectName} ${t.issue ? '' : 'local'} ${t.description} ${t.slug}`.toLowerCase()
+    const hay = `${t.name} ${t.title} ${t.issue} ${t.projectName} ${t.issue ? '' : 'local'} ${t.description} ${t.slug}`.toLowerCase()
     return words.every((w) => hay.includes(w))
   })
   return out.sort((a, b) => Number(a.archived) - Number(b.archived))
@@ -49,7 +49,7 @@ function key(e: KeyboardEvent) {
     <div ref="list" class="rows">
       <button v-for="(t, i) in matches" :key="t.id" class="row" :class="{ hi: i === hi }" @click="derby.pickTask(t.id)" @mousemove="hi = i">
         <TaskRef :issue="t.issue" width="46px" :task="t.id" />
-        <span class="title">{{ t.title }}</span>
+        <span class="title">{{ taskName(t) }}</span>
         <span class="proj">{{ t.projectName }}</span>
         <span :class="['badge', `s-${t.status.kind}`]"><span class="dot"></span>{{ t.status.short }}</span>
       </button>

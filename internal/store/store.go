@@ -23,7 +23,8 @@ type Task struct {
 	Project         string    `json:"project"`
 	Slug            string    `json:"slug"` // issue number or local-<words>
 	Issue           string    `json:"issue"`
-	Title           string    `json:"title"`
+	Title           string    `json:"title"` // the issue's title, else the description's first line
+	Name            string    `json:"name"`  // a few words naming the task in lists, by an agent (see App.nameTask); "": Title
 	Description     string    `json:"description"`
 	Branch          string    `json:"-"`         // "" for tasks made before branches were named: agent/<slug>
 	IssueRepo       string    `json:"issueRepo"` // the repository holding Issue, when not the project's (a common issues repository, or a sister task's)
@@ -35,6 +36,14 @@ type Task struct {
 	PRURL           string    `json:"prUrl"`
 	PRState         string    `json:"prState"` // open | merged | closed
 	WorktreeRemoved bool      `json:"worktreeRemoved"`
+}
+
+// Label is how the task shows in lists: its name, else its title.
+func (t Task) Label() string {
+	if t.Name != "" {
+		return t.Name
+	}
+	return t.Title
 }
 
 // Step states. Done: the agent finished, and succeeded unless Verdict is
@@ -112,6 +121,7 @@ type taskJSON struct {
 	IssueRepo       string    `json:"issueRepo,omitempty"`
 	Sister          bool      `json:"sister,omitempty"`
 	Title           string    `json:"title"`
+	Name            string    `json:"name,omitempty"`
 	Description     string    `json:"description,omitempty"`
 	Branch          string    `json:"branch,omitempty"`
 	CreatedAt       time.Time `json:"createdAt"`
@@ -124,13 +134,13 @@ type taskJSON struct {
 }
 
 func (j taskJSON) task() Task {
-	return Task{ID: j.ID, Project: j.Project, Slug: j.Slug, Issue: j.Issue, IssueRepo: j.IssueRepo, Sister: j.Sister, Title: j.Title,
+	return Task{ID: j.ID, Project: j.Project, Slug: j.Slug, Issue: j.Issue, IssueRepo: j.IssueRepo, Sister: j.Sister, Title: j.Title, Name: j.Name,
 		Description: j.Description, Branch: j.Branch, CreatedAt: j.CreatedAt, Archived: j.Archived, ArchivedAt: j.ArchivedAt,
 		PRNumber: j.PRNumber, PRURL: j.PRURL, PRState: j.PRState, WorktreeRemoved: j.WorktreeRemoved}
 }
 
 func toJSON(t Task) taskJSON {
-	return taskJSON{ID: t.ID, Project: t.Project, Slug: t.Slug, Issue: t.Issue, IssueRepo: t.IssueRepo, Sister: t.Sister, Title: t.Title,
+	return taskJSON{ID: t.ID, Project: t.Project, Slug: t.Slug, Issue: t.Issue, IssueRepo: t.IssueRepo, Sister: t.Sister, Title: t.Title, Name: t.Name,
 		Description: t.Description, Branch: t.Branch, CreatedAt: t.CreatedAt, Archived: t.Archived, ArchivedAt: t.ArchivedAt,
 		PRNumber: t.PRNumber, PRURL: t.PRURL, PRState: t.PRState, WorktreeRemoved: t.WorktreeRemoved}
 }

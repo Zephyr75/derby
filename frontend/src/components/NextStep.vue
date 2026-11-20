@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUpdated, ref, watch } from 'vue'
 import { api } from '../lib/api'
-import { derby } from '../lib/state'
+import { derby, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 
 const t = computed(() => derby.selTask)
@@ -31,7 +31,7 @@ async function deleteTask() {
   }
   derby.confirmDelete = ''
   const lines = await derby.attempt('Could not delete the task', () => api.DeleteTask(task.id))
-  if (lines) derby.toast('Deleted ' + (task.issue ? '#' + task.issue : task.title), lines.join('\n'))
+  if (lines) derby.toast('Deleted ' + (task.issue ? '#' + task.issue : taskName(task)), lines.join('\n'))
 }
 const allow = (id: string) => derby.attempt('Allow once failed', () => api.AllowOnce(id))
 const markDone = (id: string) => derby.attempt('Mark done failed', () => api.MarkDone(id))
