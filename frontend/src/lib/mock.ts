@@ -3,7 +3,7 @@
 // every screen; it never touches git, gh or Claude Code.
 
 import type { Api } from './api'
-import { afterOf, unsuccessful, type CICheck, type Agent, type Artifact, type Context, type Next, type Project, type Settings, type Step, type Task, type StatusKind, type Note, type Todo, type ChatItem, type SisterOffer } from './types'
+import { afterOf, unsuccessful, type CICheck, type Agent, type Artifact, type Context, type Next, type Project, type Settings, type Step, type Task, type StatusKind, type Note, type Todo, type ChatItem, type SisterOffer, type Feedback } from './types'
 
 type Handler = (data: any) => void
 const listeners = new Map<string, Set<Handler>>()
@@ -65,7 +65,12 @@ interface Fx {
   diff?: [string, string][]; changes?: string[]; findings?: string[]; copilot?: string[]; options?: boolean // the plan lists options
 }
 interface MockStep { key: string; agent: string; n: number; state: Step['state']; guide?: string; session: string; sha?: string; verdict?: string; manual?: boolean }
-interface MockTask { sisterOf?: string[]; sister?: boolean; part?: string; offers?: SisterOffer[]; notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
+interface MockTask { feedback?: Feedback[]; rejected?: Task['rejected']; sisterOf?: string[]; sister?: boolean; part?: string; offers?: SisterOffer[]; notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
+
+const RUNS = 'https://github.com/pony-org/pony-infra/actions/runs'
+function fb(id: string, author: string, path: string, line: number, body: string, more: Partial<Feedback> = {}): Feedback {
+  return { id, author, path, line, body, outdated: false, resolvedBy: '', url: `https://github.com/pony-org/pony-infra/pull/71#discussion_r${id.slice(1)}00`, replies: [], ...more }
+}
 
 const T: MockTask[] = [
   { id: 'core:4356', project: 'core', issue: '4356', slug: '4356', title: 'Retry BLE unlock on flaky connections', description: '',
@@ -142,10 +147,19 @@ const T: MockTask[] = [
       { key: 'copilot-1', agent: 'copilot', n: 1, state: 'running', session: '' },
     ],
     checks: [
-      { name: 'pytest', workflow: 'Tests', bucket: 'pass', link: '' }, { name: 'ruff', workflow: 'Lint code', bucket: 'pass', link: '' },
-      { name: 'Regtests 1/4', workflow: 'Regtests (local stack)', bucket: 'pass', link: '' }, { name: 'Regtests 2/4', workflow: 'Regtests (local stack)', bucket: 'pending', link: '' },
-      { name: 'Regtests 3/4', workflow: 'Regtests (local stack)', bucket: 'fail', link: '' }, { name: 'Regtests 4/4', workflow: 'Regtests (local stack)', bucket: 'pass', link: '' },
-    ] },
+      { name: 'pytest', workflow: 'Tests', bucket: 'pass', link: `${RUNS}/9101/job/1` }, { name: 'ruff', workflow: 'Lint code', bucket: 'pass', link: `${RUNS}/9102/job/1` },
+      { name: 'Regtests 1/4', workflow: 'Regtests (local stack)', bucket: 'pass', link: `${RUNS}/9103/job/1` }, { name: 'Regtests 2/4', workflow: 'Regtests (local stack)', bucket: 'pending', link: `${RUNS}/9103/job/2` },
+      { name: 'Regtests 3/4', workflow: 'Regtests (local stack)', bucket: 'fail', link: `${RUNS}/9103/job/3` }, { name: 'Regtests 4/4', workflow: 'Regtests (local stack)', bucket: 'pass', link: `${RUNS}/9103/job/4` },
+    ],
+    feedback: [
+      fb('r1', 'Copilot', 'modules/monitor/alerts.tf', 42, 'The 300s lag threshold is hard-coded. Consider a variable so staging can alert earlier than production.'),
+      fb('r2', 'Copilot', 'modules/monitor/alerts.tf', 57, '`window_size` (PT5M) is shorter than the ingestion batch interval, so a single slow batch fires the alert. Use PT15M or average over the window.', { replies: [{ author: 'lea-k', body: 'Agreed, batches land every 10 minutes.' }] }),
+      fb('r3', 'Copilot', 'functions/lag/handler.py', 18, 'Catching `Exception` here hides throttling errors from the queue client; catch `ServiceBusError` instead.'),
+      fb('r4', 'Copilot', 'modules/monitor/variables.tf', 9, 'Add a description to `action_group_id`.', { outdated: true }),
+      fb('r5', 'lea-k', '', 0, 'Can staging page the team channel instead of on-call?'),
+      fb('r6', 'Copilot', 'functions/lag/handler.py', 31, 'Log the partition id with the lag value.', { resolvedBy: 'antoinepony' }),
+    ],
+    rejected: { r3: { step: 'infra:219/impl-1', name: 'Implement 1' } } },
   { id: 'core:4349', project: 'core', issue: '4349', slug: '4349', title: 'Geofence import from city GeoJSON', description: '', archived: true, pr: 812, prState: 'merged', archivedOn: '2026-10-28',
     fx: { goal: 'Import parking and no-ride zones from the city open-data GeoJSON instead of the manual CSV.', files: ['internal/zones/geojson.go', 'internal/zones/import.go'], test: 'go test ./internal/zones/...',
       testOut: 'ok   pony-core/internal/zones   1.12s', flow: ['Fetch GeoJSON', 'Validate polygons', 'Upsert zones'], diff: [['+', 'func ParseGeoJSON(r io.Reader) ([]Zone, error) {']],
@@ -267,7 +281,7 @@ function derive(t: MockTask): Task {
     projectName: p.name, repo: p.repo, issueRepo: '', sister: !!t.sister, sisters: (t.sisterOf ?? []).map((id) => ({ id, project: proj(find(id).project).name, part: find(id).part ?? '' })), part: t.part ?? '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
     branch: t.branch ?? 'ar-' + t.slug, runDir: `~/.derby/runs/${p.name}/${t.slug}`,
     source: t.issue && t.description ? `GitHub issue #${t.issue} + description · ${p.repo}` : t.issue ? `GitHub issue #${t.issue} · ${p.repo}` : 'LOCAL · description only, no GitHub issue',
-    status, steps, next, projectGone: !projects.some((x) => x.id === t.project), checks: t.checks ?? [], labels: t.labels ?? [], draft: t.draft ?? false, conflicting: false, feedback: [], rejected: {}, behind: 0, notes: t.notes ?? [], todos: t.todos ?? [],
+    status, steps, next, projectGone: !projects.some((x) => x.id === t.project), checks: t.checks ?? [], labels: t.labels ?? [], draft: t.draft ?? false, conflicting: false, feedback: t.feedback ?? [], rejected: t.rejected ?? {}, behind: 0, notes: t.notes ?? [], todos: t.todos ?? [],
   }
 }
 

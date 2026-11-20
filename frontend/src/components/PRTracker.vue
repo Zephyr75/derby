@@ -1,338 +1,219 @@
 <script setup lang="ts">
-// The PR at a glance, in the task's PR tab and as the Copilot step's view:
-// Copilot's latest review and the CI checks, refreshed every minute, with
-// buttons to ask Copilot again and to rerun checks. The review itself is in
-// the Copilot step's FEEDBACK-n.md.
-import { computed, ref } from 'vue'
-import { api } from '../lib/api'
-import { derby } from '../lib/state'
-import { type CICheck, type Feedback, type Step, type Task } from '../lib/types'
+// A PR as flat lists, like the TODOs and Changes tabs: Copilot's review
+// comments to tick and send to a fixing step, then the CI checks.
+import { reactive } from 'vue'
+import { usePR, word } from '../lib/pr'
+import type { Feedback, Step, Task } from '../lib/types'
 import Icon from './ui/Icon.vue'
 
 const props = defineProps<{ task: Task; step?: Step }>()
-// The Copilot step shown: the one opened, else the task's latest.
-const cop = computed(() => props.step ?? [...props.task.steps].reverse().find((s) => s.external))
-const live = computed(() => props.task.prState === 'open' && !props.task.archived)
+const pr = reactive(usePR(props))
 
-const rank: Record<string, number> = { fail: 0, cancel: 1, pending: 2, pass: 3, skipping: 4 }
-// One row per workflow (Tests, Regtests, Lint…), worst check first.
-const workflows = computed(() => {
-  const by = new Map<string, CICheck[]>()
-  for (const c of props.task.checks) by.set(c.workflow || c.name, [...(by.get(c.workflow || c.name) ?? []), c])
-  return [...by.entries()]
-    .map(([name, cs]) => {
-      cs = [...cs].sort((a, b) => rank[a.bucket] - rank[b.bucket])
-      const passed = cs.filter((c) => c.bucket === 'pass' || c.bucket === 'skipping').length
-      return { name, cs, bucket: cs[0].bucket, passed, open: cs.filter((c) => c.bucket !== 'pass' && c.bucket !== 'skipping') }
-    })
-    .sort((a, b) => rank[a.bucket] - rank[b.bucket] || a.name.localeCompare(b.name))
-})
-const cls = (b: string) => (b === 'fail' || b === 'cancel' ? 'd-failed' : b === 'pending' ? 'd-running' : 'd-done')
-const word = (b: string) => ({ fail: 'failed', cancel: 'cancelled', pending: 'running', pass: 'passed', skipping: 'skipped' })[b] ?? b
-
-const waiting = computed(() => cop.value?.state === 'running')
-const open = (link: string) => link && derby.attempt('Could not open the link', () => api.OpenURL(link))
-const stop = () => cop.value && derby.attempt('Could not stop waiting', () => api.MarkDone(cop.value!.id))
-const askCopilot = () => derby.attempt('Could not ask Copilot for a review', () => api.RequestCopilotReview(props.task.id))
-
-// Only GitHub Actions jobs can be rerun from derby; a workflow row reruns its whole run.
-const actions = (link: string) => /\/actions\/runs\/\d+/.test(link)
-const runOf = (link: string) => link.replace(/\/job\/.*$/, '')
-const rerunning = ref('')
-async function rerun(link: string, what: string) {
-  rerunning.value = link || 'all'
-  await derby.attempt('Could not rerun ' + what, () => api.RerunChecks(props.task.id, link))
-  rerunning.value = ''
-}
-const anyActions = computed(() => props.task.checks.some((c) => actions(c.link)))
-
-// Fixes go to the agent Copilot offers first when there is something to fix
-// (Implement by default), as a new step with guidance.
-const fixer = computed(() => derby.fixers(props.task)[0])
-const failing = computed(() => props.task.checks.filter((c) => c.bucket === 'fail' || c.bucket === 'cancel'))
-const canFix = computed(() => live.value && derby.canFix(props.task))
-const fix = (guidance: string) => derby.fixWith(props.task, guidance)
-
-// Review comments: every one is sent unless unticked.
-// Ticked by default unless outdated (the code it points at changed since);
-// flipped holds the ones the user ticked or unticked.
-const flipped = ref(new Set<string>())
-// Unticked too when a step rejected it (found it wrong or unnecessary).
-const rejected = (f: Feedback) => props.task.rejected?.[f.id]
-const ticked = (f: Feedback) => (f.outdated || !!rejected(f)) === flipped.value.has(f.id)
-// The GitHub id of a thread's first comment: steps name comments by it.
-const commentId = (f: Feedback) => /#discussion_r(\d+)/.exec(f.url)?.[1] ?? ''
-const toggle = (id: string) => {
-  const s = new Set(flipped.value)
-  if (!s.delete(id)) s.add(id)
-  flipped.value = s
-}
-const openFb = computed(() => props.task.feedback.filter((f) => !f.resolvedBy))
-const resolvedFb = computed(() => props.task.feedback.filter((f) => f.resolvedBy))
-const showResolved = ref(false)
-const picked = computed(() => openFb.value.filter(ticked))
-// Resolve marks a thread resolved on GitHub; it then moves to the resolved ones.
-const resolving = ref('')
-async function resolve(f: Feedback) {
-  resolving.value = f.id
-  await derby.attempt('Could not resolve the comment', () => api.ResolveThread(props.task.id, f.id))
-  resolving.value = ''
-}
-const where = (f: Feedback) => (f.path ? `${f.path}:${f.line}` : 'on the PR')
-function fixFeedback() {
-  const comments = picked.value
-    .map((f) => {
-      const replies = f.replies.map((r) => `> ${r.author}: ${r.body.replace(/\n/g, '\n> ')}`).join('\n')
-      const id = commentId(f) ? ` (comment ${commentId(f)})` : ''
-      const was = [f.outdated && 'outdated: the code changed since', rejected(f) && `rejected by ${rejected(f)!.name}`].filter(Boolean).join('; ')
-      return `### ${where(f)}${id}${was ? ` (${was})` : ''}, by ${f.author}\n${f.body}${replies ? '\n\n' + replies : ''}`
-    })
-    .join('\n\n')
-  fix(derby.prompt('fixFeedback', { pr: String(props.task.pr), comments }))
-}
-const rebase = () => fix(derby.prompt('rebase', { pr: String(props.task.pr), base: props.task.baseBranch, behind: String(props.task.behind || 'some') }))
-const fixChecks = () =>
-  fix(
-    derby.prompt('fixChecks', {
-      pr: String(props.task.pr),
-      checks: failing.value.map((c) => (c.workflow ? `${c.workflow} / ${c.name}` : c.name)).join(', '),
-      links: failing.value.map((c) => c.link).filter(Boolean).join(' '),
-    }),
-  )
-const refreshing = ref(false)
-async function refresh() {
-  refreshing.value = true
-  await derby.attempt('Could not refresh PR #' + props.task.pr, () => api.RefreshPR(props.task.id))
-  refreshing.value = false
-}
+const dot = (b: string) => (b === 'fail' || b === 'cancel' ? 'd-fail' : b === 'pending' ? 'd-run' : b === 'skipping' ? 'd-skip' : 'd-pass')
+const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') + 1)}:${f.line}` : 'on the PR')
 </script>
 
 <template>
-  <div class="tracker">
-    <div class="head">
-      <span class="title">PR #{{ task.pr }}</span>
-      <span v-if="derby.prReady(task)" :class="['state', derby.prReady(task)]" :title="derby.prReady(task) === 'ready' ? 'Ready for review' : 'A draft: reviewers and repo bots leave it alone until it is marked ready'">{{ derby.prReady(task) === 'ready' ? 'Ready' : 'Draft' }}</span>
-      <span class="muted small">{{ task.branch }} → {{ task.baseBranch }}</span>
-      <span class="grow"></span>
-      <button v-if="derby.prReady(task) === 'draft'" class="act" title="Turn the draft PR into one ready for review and add the ready label" @click="derby.markReady(task)"><Icon name="check" :size="13" />Mark ready</button>
-      <button v-if="task.prState === 'open' && !task.archived" class="act" :disabled="refreshing" title="Check Copilot's review and the CI checks now instead of waiting for the next minute" @click="refresh"><Icon name="rerun" :size="13" />{{ refreshing ? 'Refreshing…' : 'Refresh' }}</button>
-      <button v-if="task.prUrl" class="act" :title="`Copy the link to PR #${task.pr}, e.g. to send it to someone`" @click="derby.copy(task.prUrl)"><Icon name="copy" :size="13" />Copy link</button>
-      <button v-if="task.prUrl" class="act" :title="`Open PR #${task.pr} on GitHub`" @click="open(task.prUrl)"><Icon name="external" :size="13" />Open PR</button>
-    </div>
+  <div :class="['prv', { page: step }]">
+    <div class="inner">
+      <header class="head">
+        <Icon :name="pr.ready === 'draft' ? 'pr-draft' : 'pr'" :size="14" :class="pr.ready === 'ready' ? 'c-pass' : 'muted'" />
+        <span class="num">#{{ task.pr }}</span>
+        <span v-if="pr.ready" class="muted" :title="pr.ready === 'ready' ? 'Ready for review' : 'A draft: reviewers and repo bots leave it alone until it is marked ready'">{{ pr.ready === 'ready' ? 'Ready' : 'Draft' }}</span>
+        <span class="branch" :title="`${task.branch} → ${task.baseBranch}`">{{ task.branch }} → {{ task.baseBranch }}</span>
+        <button v-if="pr.ready === 'draft'" class="tb" title="Turn the draft PR into one ready for review and add the ready label" aria-label="Mark ready" @click="pr.markReady"><Icon name="check" :size="13" /><span class="lbl">Mark ready</span></button>
+        <button v-if="pr.live" class="ib" :disabled="pr.refreshing" title="Check Copilot's review and the CI checks now instead of waiting for the next minute" aria-label="Refresh" @click="pr.refresh"><Icon name="rerun" :size="13" /></button>
+        <button v-if="task.prUrl" class="ib" :title="`Copy the link to PR #${task.pr}`" aria-label="Copy link" @click="pr.copyLink"><Icon name="copy" :size="13" /></button>
+        <button v-if="task.prUrl" class="ib" :title="`Open PR #${task.pr} on GitHub`" aria-label="Open PR" @click="pr.open(task.prUrl)"><Icon name="external" :size="13" /></button>
+      </header>
 
-    <section v-if="task.feedback.length || live">
-      <div class="h">
-        <h3>Review comments</h3>
-        <span v-if="waiting" class="muted small">waiting for Copilot's review</span>
-        <span class="grow"></span>
-        <button v-if="waiting" class="act" title="Stop waiting for Copilot (Mark done)" @click="stop">Stop waiting</button>
-        <button v-if="live" class="act" title="Ask Copilot to review the PR as it is now; a Copilot step waits for the review" @click="askCopilot"><Icon name="rerun" :size="13" />{{ waiting ? 'Ask Copilot again' : 'Request Copilot review' }}</button>
-        <button v-if="canFix && openFb.length" class="act" :disabled="!picked.length" :title="`Start a ${fixer!.name} step that addresses the ticked comments`" @click="fixFeedback"><Icon name="pencil" :size="13" />Fix {{ picked.length }} with {{ fixer!.name }}</button>
-      </div>
-      <p v-if="!openFb.length" class="muted small">None open.</p>
-      <!-- open comments, then the resolved ones under their toggle: they collapse from the top -->
-      <template v-for="(list, i) in [openFb, showResolved ? resolvedFb : []]" :key="i">
-        <button v-if="i === 1 && resolvedFb.length" class="more muted small" :aria-expanded="showResolved" @click="showResolved = !showResolved">
-          <Icon :name="showResolved ? 'chevron' : 'chevron-right'" :size="12" />{{ resolvedFb.length }} resolved
-        </button>
-        <div v-for="f in list" :key="f.id" :class="['fb', { resolved: f.resolvedBy }]">
-          <input v-if="!f.resolvedBy" type="checkbox" :checked="ticked(f)" :aria-label="'Send the comment of ' + f.author" @change="toggle(f.id)" />
-          <Icon v-else name="check" :size="13" class="done" />
-          <div class="fbody">
-            <div class="fmeta">
-              <span class="who">{{ f.author }}</span>
-              <span class="mono muted">{{ where(f) }}</span>
-              <span v-if="f.resolvedBy" class="muted">resolved by {{ f.resolvedBy }}</span>
-              <span v-else-if="f.outdated" class="muted">outdated</span>
-              <button v-if="!f.resolvedBy && rejected(f)" class="tag rejected" :title="`${rejected(f)!.name} found it wrong or unnecessary and left the code as it is: open its artifact to see why`" @click="derby.openStep(task.id, rejected(f)!.step)">rejected</button>
-              <span v-if="f.replies.length" class="muted">· {{ f.replies.length }} {{ f.replies.length > 1 ? 'replies' : 'reply' }}</span>
-              <span class="grow"></span>
-              <button v-if="live && f.path && !f.resolvedBy" class="icon" :disabled="resolving === f.id" title="Mark resolved on GitHub" aria-label="Mark resolved on GitHub" @click="resolve(f)"><Icon name="check" :size="15" /></button>
-              <button class="icon" title="Open on GitHub" aria-label="Open on GitHub" @click="open(f.url)"><Icon name="external" :size="12" /></button>
-            </div>
-            <div class="ftext" :title="f.body">{{ f.body }}</div>
-          </div>
+      <section v-if="task.feedback.length || pr.live">
+        <div class="sh">
+          <span class="st">Review</span>
+          <span v-if="pr.openFb.length" class="cnt">{{ pr.openFb.length }}</span>
+          <span v-if="pr.waiting" class="hint" title="Waiting for Copilot's review"><Icon name="pending" :size="12" class="c-run" /><span class="lbl">waiting for Copilot</span></span>
+          <span class="grow"></span>
+          <button v-if="pr.waiting" class="tb" title="Stop waiting for Copilot (Mark done)" aria-label="Stop waiting" @click="pr.stop"><Icon name="stop" :size="11" /><span class="lbl">Stop waiting</span></button>
+          <button v-if="pr.live" class="tb" title="Ask Copilot to review the PR as it is now; a Copilot step waits for the review" :aria-label="pr.waiting ? 'Ask Copilot again' : 'Ask Copilot'" @click="pr.askCopilot"><Icon name="agent" :size="13" /><span class="lbl">{{ pr.waiting ? 'Ask again' : 'Ask Copilot' }}</span></button>
+          <button v-if="pr.canFix && pr.openFb.length" class="tb fix" :disabled="!pr.picked.length" :title="`Start a ${pr.fixer!.name} step that addresses the ticked comments`" @click="pr.fixFeedback"><Icon name="pencil" :size="13" />Fix {{ pr.picked.length }}</button>
         </div>
-      </template>
-    </section>
-
-    <section>
-      <div class="h">
-        <h3>CI checks</h3>
-        <span class="grow"></span>
-        <button v-if="canFix && failing.length && !task.conflicting" class="act" :title="`Start a ${fixer!.name} step that reads the failing checks' logs and fixes them`" @click="fixChecks"><Icon name="pencil" :size="13" />Fix with {{ fixer!.name }}</button>
-        <button v-if="live && anyActions" class="act" :disabled="!!rerunning" title="Run every check again (each workflow run once)" @click="rerun('', 'the checks')"><Icon name="rerun" :size="13" />{{ rerunning === 'all' ? 'Rerunning…' : 'Rerun all' }}</button>
-      </div>
-      <div v-if="live && task.conflicting" class="line conflict">
-        <Icon name="warn" :size="14" />
-        <span>Merge conflicts with {{ task.baseBranch }}: GitHub runs no checks until they are resolved.</span>
-        <span class="grow"></span>
-        <button v-if="canFix" class="act" :title="`Start a ${fixer!.name} step that rebases the branch on origin/${task.baseBranch} and resolves the conflicts`" @click="rebase"><Icon name="rebase" :size="13" />Rebase with {{ fixer!.name }}</button>
-      </div>
-      <p v-if="!workflows.length && !task.conflicting" class="muted small">No checks reported yet (refreshed every minute).</p>
-      <div v-for="w in workflows" :key="w.name" class="wf">
-        <div class="line rowwrap">
-          <button class="line row" :title="w.cs[0].link ? 'Open on GitHub' : ''" @click="open(w.cs[0].link)">
-            <span :class="['sdot', cls(w.bucket)]"></span>
-            <span class="name">{{ w.name }}</span>
-            <span class="muted small">{{ w.cs.length > 1 ? `${w.passed}/${w.cs.length} passed` : word(w.bucket) }}</span>
+        <p v-if="!pr.openFb.length" class="empty">No open comments.</p>
+        <!-- open comments, then the resolved ones under their toggle -->
+        <template v-for="(list, i) in [pr.openFb, pr.showResolved ? pr.resolvedFb : []]" :key="i">
+          <button v-if="i === 1 && pr.resolvedFb.length" class="more" :aria-expanded="pr.showResolved" @click="pr.showResolved = !pr.showResolved">
+            <Icon :name="pr.showResolved ? 'chevron' : 'chevron-right'" :size="12" />{{ pr.resolvedFb.length }} resolved
           </button>
-          <button v-if="live && actions(w.cs[0].link)" class="icon" :disabled="!!rerunning" :title="`Rerun ${w.name}`" :aria-label="`Rerun ${w.name}`" @click="rerun(runOf(w.cs[0].link), w.name)"><Icon name="rerun" :size="15" /></button>
+          <div v-for="f in list" :key="f.id" :class="['item', { off: f.resolvedBy || !pr.ticked(f) }]">
+            <span v-if="f.resolvedBy" class="box done" title="Resolved"><Icon name="check" :size="11" :stroke="3" /></span>
+            <button v-else :class="['box', { on: pr.ticked(f) }]" role="checkbox" :aria-checked="pr.ticked(f)" :title="pr.ticked(f) ? 'Sent with Fix' : 'Left out of Fix'" :aria-label="'Send the comment of ' + f.author" @click="pr.toggle(f.id)"><Icon v-if="pr.ticked(f)" name="check" :size="11" :stroke="3" /></button>
+            <div class="txt">
+              <div class="body" :title="f.body">{{ f.body }}</div>
+              <div class="meta">
+                <span class="mono" :title="f.path ? `${f.path}:${f.line}` : 'A comment on the whole PR'">{{ file(f) }}</span>
+                <span>{{ f.author }}</span>
+                <span v-if="f.resolvedBy">resolved by {{ f.resolvedBy }}</span>
+                <span v-else-if="f.outdated" title="The code it points at changed since">outdated</span>
+                <button v-if="!f.resolvedBy && pr.rejected(f)" class="rej" :title="`${pr.rejected(f)!.name} found it wrong or unnecessary and left the code as it is: open its artifact to see why`" @click="pr.openStep(pr.rejected(f)!.step)">rejected</button>
+                <span v-if="f.replies.length" :title="`Last: ${f.replies[f.replies.length - 1].author}`">{{ f.replies.length }} {{ f.replies.length > 1 ? 'replies' : 'reply' }}</span>
+              </div>
+            </div>
+            <button v-if="pr.live && f.path && !f.resolvedBy" class="ha" :disabled="pr.resolving === f.id" title="Mark resolved on GitHub" aria-label="Mark resolved on GitHub" @click="pr.resolve(f)"><Icon name="check" :size="14" /></button>
+            <button class="ha" title="Open on GitHub" aria-label="Open on GitHub" @click="pr.open(f.url)"><Icon name="external" :size="12" /></button>
+          </div>
+        </template>
+      </section>
+
+      <section>
+        <div class="sh">
+          <span class="st">Checks</span>
+          <span v-if="pr.counts.total" class="cnt">{{ pr.counts.pass }}/{{ pr.counts.total }} passed</span>
+          <span class="grow"></span>
+          <button v-if="pr.live && pr.anyActions" class="tb" :disabled="!!pr.rerunning" title="Run every check again (each workflow run once)" aria-label="Rerun all" @click="pr.rerun('', 'the checks')"><Icon name="rerun" :size="13" /><span class="lbl">{{ pr.rerunning === 'all' ? 'Rerunning…' : 'Rerun all' }}</span></button>
+          <button v-if="pr.canFix && pr.failing.length && !task.conflicting" class="tb fix" :title="`Start a ${pr.fixer!.name} step that reads the failing checks' logs and fixes them`" @click="pr.fixChecks"><Icon name="pencil" :size="13" />Fix</button>
         </div>
-        <div v-for="c in w.open" :key="c.name" class="subrow">
-          <button class="sub" @click="open(c.link)">{{ c.name }} · {{ word(c.bucket) }}</button>
-          <button v-if="live && actions(c.link) && w.cs.length > 1" class="icon" :disabled="!!rerunning" :title="`Rerun ${c.name} only`" :aria-label="`Rerun ${c.name}`" @click="rerun(c.link, c.name)"><Icon name="rerun" :size="14" /></button>
+        <div v-if="pr.live && task.conflicting" class="note">
+          <Icon name="warn" :size="13" class="c-warn" />
+          <span class="ntext">Conflicts with {{ task.baseBranch }}: GitHub runs no checks until they are resolved.</span>
+          <button v-if="pr.canFix" class="tb fix" :title="`Start a ${pr.fixer!.name} step that rebases the branch on origin/${task.baseBranch} and resolves the conflicts`" @click="pr.rebase"><Icon name="rebase" :size="13" />Rebase</button>
         </div>
-      </div>
-    </section>
+        <p v-if="!pr.workflows.length && !task.conflicting" class="empty">No checks reported yet (refreshed every minute).</p>
+        <template v-for="w in pr.workflows" :key="w.name">
+          <div class="row">
+            <button class="rname" :title="w.cs[0].link ? 'Open on GitHub' : ''" @click="pr.open(w.cs[0].link)">
+              <span :class="['sd', dot(w.bucket)]"></span><span class="nm">{{ w.name }}</span>
+            </button>
+            <button v-if="pr.live && pr.actions(w.cs[0].link)" class="ha" :disabled="!!pr.rerunning" :title="`Rerun ${w.name}`" :aria-label="`Rerun ${w.name}`" @click="pr.rerun(pr.runOf(w.cs[0].link), w.name)"><Icon name="rerun" :size="12" /></button>
+            <span class="rmeta">{{ w.cs.length > 1 ? `${w.passed}/${w.cs.length}` : word(w.bucket) }}</span>
+          </div>
+          <div v-for="c in w.open" :key="c.name" class="row sub">
+            <button class="rname" title="Open on GitHub" @click="pr.open(c.link)">
+              <span :class="['sd', dot(c.bucket)]"></span><span class="nm">{{ c.name }}</span>
+            </button>
+            <button v-if="pr.live && pr.actions(c.link) && w.cs.length > 1" class="ha" :disabled="!!pr.rerunning" :title="`Rerun ${c.name} only`" :aria-label="`Rerun ${c.name}`" @click="pr.rerun(c.link, c.name)"><Icon name="rerun" :size="12" /></button>
+            <span class="rmeta">{{ word(c.bucket) }}</span>
+          </div>
+        </template>
+      </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
-  .tracker {
+  .prv {
+    container-type: inline-size;
+    min-width: 0;
+    font-size: var(--fs-13);
+  }
+  /* the center view scrolls on its own; the PR tab's content already does */
+  .prv.page {
     flex: 1;
     min-height: 0;
     overflow: auto;
-    padding: 18px 22px;
+    padding: 18px 24px 32px;
+  }
+  .inner {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
+    max-width: 860px;
+    margin: 0 auto;
   }
-  .head {
-    display: flex;
-    flex-wrap: wrap; /* narrow panels: the buttons move to the next line */
-    align-items: center;
-    gap: 8px 10px;
+  .prv svg {
+    flex: none;
   }
-  .head > * {
-    white-space: nowrap;
+  button {
+    font: inherit;
+    cursor: pointer;
   }
-  .title {
-    font-size: var(--fs-15);
-    font-weight: 600;
-  }
-  .small {
-    font-size: var(--fs-12);
+  button:disabled {
+    cursor: default;
+    opacity: 0.4;
   }
   .grow {
     flex: 1;
   }
-  h3 {
-    margin: 0 0 8px;
-    font-size: var(--fs-12);
-    font-weight: 500;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+  .mono {
+    font-family: var(--mono);
   }
-  .line {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    font-size: var(--fs-13);
-  }
-  .row {
-    width: 100%;
-    padding: 6px 8px;
-    margin-left: -8px;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text);
-    text-align: left;
-  }
-  .row:hover {
-    background: var(--hover);
-  }
-  .name {
-    flex: 1;
-  }
-  .sub {
-    display: block;
-    margin: 0 0 4px 18px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--muted);
-    font-size: var(--fs-12);
-    text-align: left;
-  }
-  .sub:hover {
-    color: var(--text);
-    text-decoration: underline;
-  }
-  .sdot {
-    flex: none;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-  }
-  .d-done { background: var(--done-dot); }
-  .d-running { background: var(--running-dot); }
-  .d-failed { background: var(--approval-dot); }
-  .act {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    height: 24px;
-    padding: 0 9px;
-    border-radius: 4px;
-    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
-    background: transparent;
-    color: var(--text);
-    font-size: var(--fs-12);
-  }
-  .act:hover {
-    background: var(--hover);
-  }
-  .act:disabled,
-  .icon:disabled {
-    opacity: 0.5;
-  }
-  .h {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .h h3 {
-    margin: 0;
-  }
-  .state {
-    padding: 1px 7px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    font-size: var(--fs-11-5);
-    color: var(--muted);
-  }
-  .state.ready {
-    border-color: var(--done);
+  .c-pass {
     color: var(--done);
   }
-  .conflict {
-    margin-bottom: 8px;
+  .c-run {
+    color: var(--running);
+  }
+  .c-warn {
     color: var(--waiting);
   }
-  .h .act + .act {
-    margin-left: 6px;
-  }
-  .rowwrap {
-    gap: 4px;
-  }
-  .subrow {
+
+  /* like the TODOs tab's head */
+  .head {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin: 0 0 4px 18px;
+    gap: 8px;
+    min-width: 0;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
   }
-  .subrow .sub {
-    margin: 0;
+  .num {
+    font-weight: 600;
+    font-size: var(--fs-14);
   }
-  .icon {
-    flex: none;
-    width: 22px;
-    height: 22px;
+  .branch {
+    /* takes only the room left, so it is the one cut short */
+    flex: 1 1 0;
+    max-width: max-content;
+    min-width: 0;
+    margin-right: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: var(--fs-12);
+  }
+
+  section {
     display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sh {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 26px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+  .st {
+    color: var(--muted);
+    font-size: var(--fs-12);
+    font-weight: 600;
+  }
+  .cnt,
+  .hint {
+    color: var(--faint);
+    font-size: var(--fs-12);
+  }
+  .hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .empty {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--fs-12-5);
+  }
+
+  /* ghost buttons, the name dropped when narrow */
+  .tb,
+  .ib,
+  .ha {
+    flex: none;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     border: 0;
@@ -340,79 +221,230 @@ async function refresh() {
     background: transparent;
     color: var(--muted);
   }
-  .fb {
+  .tb {
+    gap: 5px;
+    height: 24px;
+    padding: 0 7px;
+    font-size: var(--fs-12);
+  }
+  .ib {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+  }
+  .tb:hover:not(:disabled),
+  .ib:hover:not(:disabled),
+  .ha:hover:not(:disabled) {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .tb.fix {
+    color: var(--text);
+  }
+  .tb.fix:hover:not(:disabled) {
+    color: var(--accent);
+  }
+  .sh .tb:last-child {
+    margin-right: -7px;
+  }
+  .head .ib:last-child {
+    margin-right: -4px;
+  }
+
+  /* a comment, like a todo */
+  .item {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    padding: 6px 0;
-    border-top: 1px solid var(--border);
+    gap: 9px;
+    margin: 0 -6px;
+    padding: 5px 6px;
+    border-radius: 5px;
+    line-height: 1.45;
   }
-  .fb:first-of-type {
-    border-top: 0;
+  .item:hover {
+    background: var(--hover);
   }
-  .fb input {
-    margin-top: 3px;
-  }
-  .fb .done {
-    margin-top: 2px;
+  .box {
     flex: none;
-    color: var(--muted);
-  }
-  .tag.rejected {
-    padding: 0 5px;
-    border: 1px solid currentColor;
+    display: grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    margin-top: 2px;
+    padding: 0;
+    border: 1.5px solid var(--faint);
     border-radius: 4px;
     background: transparent;
-    color: var(--approval);
-    font-size: var(--fs-11);
-    line-height: 16px;
-    cursor: pointer;
+    color: var(--button-text);
   }
-  .fb.resolved .ftext {
+  .box.on {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  .box.done {
+    border-color: var(--done-dot);
+    background: var(--done-dot);
+  }
+  .txt {
+    flex: 1;
+    min-width: 0;
+  }
+  .body {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .off .body {
     color: var(--muted);
   }
-  .more {
+  .meta {
     display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 6px;
+    margin-top: 1px;
+    color: var(--faint);
+    font-size: var(--fs-12);
+  }
+  .meta > :not(:first-child)::before {
+    content: '·';
+    margin-right: 6px;
+    color: var(--faint);
+  }
+  .meta .mono {
+    font-size: var(--fs-11-5);
+    color: var(--muted);
+  }
+  .rej {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--approval);
+    font-size: inherit;
+  }
+  .rej:hover {
+    text-decoration: underline;
+  }
+  .ha {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    visibility: hidden;
+  }
+  .item:is(:hover, :focus-within) .ha,
+  .row:is(:hover, :focus-within) .ha {
+    visibility: visible;
+  }
+  .more {
+    align-self: flex-start;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
-    margin-top: 4px;
-    padding: 2px 0;
+    margin: 4px 0 2px -2px;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--faint);
+    font-size: var(--fs-12);
   }
   .more:hover {
     color: var(--text);
   }
-  .fbody {
+
+  .note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 2px 0 6px;
+    color: var(--muted);
+    font-size: var(--fs-12-5);
+    line-height: 1.45;
+  }
+  .note > svg {
+    margin-top: 2px;
+  }
+  .ntext {
     flex: 1;
     min-width: 0;
   }
-  .fmeta {
+  .note .tb {
+    margin: -3px -7px 0 0;
+  }
+
+  /* a check, like a changed file */
+  .row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: var(--fs-12);
+    gap: 6px;
+    height: 26px;
+    margin: 0 -6px;
+    padding: 0 6px;
+    border-radius: 4px;
   }
-  .who {
-    font-weight: 500;
+  .row:hover {
+    background: var(--hover);
   }
-  .fmeta .mono {
-    font-family: var(--mono);
-    font-size: var(--fs-11-5);
+  .rname {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+  }
+  .nm {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .ftext {
-    margin-top: 2px;
-    font-size: var(--fs-12-5);
-    line-height: 1.45;
-    white-space: pre-wrap;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  .sd {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin: 0 4px;
+    border-radius: 50%;
   }
-  .icon:hover {
-    background: var(--hover);
-    color: var(--text);
+  .d-fail { background: var(--approval-dot); }
+  .d-run { background: var(--running-dot); }
+  .d-pass { background: var(--done-dot); }
+  .d-skip { background: var(--faint); }
+  .rmeta {
+    flex: none;
+    color: var(--faint);
+    font-size: var(--fs-12);
+  }
+  .row.sub {
+    height: 24px;
+    padding-left: 24px;
+  }
+  .row.sub .rname {
+    color: var(--muted);
+    font-size: var(--fs-12-5);
+  }
+  .row.sub .sd {
+    width: 5px;
+    height: 5px;
+    margin: 0 5px;
+  }
+
+  @container (max-width: 420px) {
+    .lbl {
+      display: none;
+    }
+    .tb {
+      padding: 0 5px;
+    }
+    .sh .tb:last-child {
+      margin-right: -5px;
+    }
   }
 </style>
