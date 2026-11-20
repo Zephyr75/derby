@@ -122,6 +122,9 @@ export interface FileDiff {
   diff: string
   binary: boolean
   truncated: boolean
+  old: string // the whole file before and after, '' where it did not exist
+  new: string
+  sources: boolean // false: too big, old and new are empty
 }
 
 /** A process outside derby running a session. */

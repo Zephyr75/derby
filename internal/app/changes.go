@@ -225,6 +225,12 @@ type FileDiff struct {
 	Diff      string `json:"diff"` // git's unified diff, headers included
 	Binary    bool   `json:"binary"`
 	Truncated bool   `json:"truncated"`
+	// The whole file before and after ("" when it did not exist), for
+	// highlighting: a diff's hunks alone can start or end inside a comment
+	// or a string. Sources is false when they are too big to send.
+	Old     string `json:"old"`
+	New     string `json:"new"`
+	Sources bool   `json:"sources"`
 }
 
 const maxDiff = 400 << 10
@@ -267,7 +273,39 @@ func (a *App) FileDiff(stepID, rel string) (FileDiff, error) {
 		cut := strings.LastIndexByte(out.Diff[:maxDiff], '\n')
 		out.Diff, out.Truncated = out.Diff[:max(cut, 0)], true
 	}
+	if err == nil {
+		out.Old, out.New = a.fileSides(p, t, ch, fc)
+		out.Sources = len(out.Old) <= maxDiff && len(out.New) <= maxDiff
+		if !out.Sources {
+			out.Old, out.New = "", ""
+		}
+	}
 	return out, err
+}
+
+// fileSides is a changed file before and after, from the same source as its
+// diff; "" for a side where it does not exist (added, deleted).
+func (a *App) fileSides(p settings.Project, t store.Task, ch Changes, fc *FileChange) (before, after string) {
+	wt := worktreePath(p, t)
+	at := func(dir, rev string) string {
+		s, _ := a.git.File(a.ctx, dir, rev, fc.Path)
+		return s
+	}
+	disk := func() string {
+		b, _ := os.ReadFile(filepath.Join(wt, fc.Path))
+		return string(b)
+	}
+	switch {
+	case ch.Source == "branch":
+		base, _ := a.git.Run(a.ctx, wt, "merge-base", ch.Base, "HEAD")
+		return at(wt, base), at(wt, "HEAD")
+	case ch.Source == "commit":
+		return at(p.Path, ch.SHA+"^"), at(p.Path, ch.SHA)
+	case fc.Status == "?":
+		return "", disk()
+	default:
+		return at(wt, "HEAD"), disk()
+	}
 }
 
 // untrackedDiff shows a new, untracked file as all added lines.

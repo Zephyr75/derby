@@ -1733,7 +1733,7 @@ func TestCopilotStepShowsWholeBranch(t *testing.T) {
 	os.WriteFile(filepath.Join(wt, "one.txt"), []byte("1\n"), 0o644)
 	run(t, wt, "git", "add", ".")
 	run(t, wt, "git", "commit", "-q", "-m", "one")
-	os.WriteFile(filepath.Join(wt, "two.txt"), []byte("2\n"), 0o644)
+	os.WriteFile(filepath.Join(wt, "two.txt"), []byte("\n2\n"), 0o644) // its leading blank line keeps the line numbers
 	run(t, wt, "git", "add", ".")
 	run(t, wt, "git", "commit", "-q", "-m", "two")
 	os.WriteFile(filepath.Join(repo, "base.txt"), []byte("b\n"), 0o644) // on the base since: not the branch's
@@ -1754,7 +1754,7 @@ func TestCopilotStepShowsWholeBranch(t *testing.T) {
 	if ch.Source != "branch" || ch.Base != p.BaseBranch || strings.Join(got, ",") != "A one.txt,A two.txt" {
 		t.Fatalf("%+v", ch)
 	}
-	if d, err := a.FileDiff(s.ID, "two.txt"); err != nil || !strings.Contains(d.Diff, "+2") {
+	if d, err := a.FileDiff(s.ID, "two.txt"); err != nil || !strings.Contains(d.Diff, "+2") || !d.Sources || d.Old != "" || d.New != "\n2\n" {
 		t.Fatalf("%v %+v", err, d)
 	}
 }

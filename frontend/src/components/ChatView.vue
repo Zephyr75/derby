@@ -277,12 +277,18 @@ const context = computed(() => {
   return { ratio, warn: ratio >= 0.85, tip: `Context window: ${k(s.contextUsed)} / ${k(size)} tokens (${Math.round(ratio * 100)}%)${s.contextSize ? '' : ', assuming a 200k window'}` }
 })
 const resetAt = (t: number) => (t ? new Date(t * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '')
+// When the 5-hour session ends, as 14h50 ("5h" while it is unknown).
+const endsAt = (t: number) => {
+  if (!t) return '5h'
+  const d = new Date(t * 1000)
+  return `${d.getHours()}h${String(d.getMinutes()).padStart(2, '0')}`
+}
 // The plan's 5-hour and weekly limits and the context window, each a ring
-// with its name before it.
+// with its name before it: the 5-hour one named by when it ends.
 const rings = computed(() => {
   const p = status.value?.plan
   const out: { label: string; ratio: number; warn: boolean; tip: string }[] = []
-  if (p?.at && p.fiveHour >= 0) out.push({ label: '5h', ratio: Math.min(p.fiveHour / 100, 1), warn: p.fiveHour >= 80, tip: `5-hour limit: ${Math.round(p.fiveHour)}% used, resets ${resetAt(p.fiveHourReset)}` })
+  if (p?.at && p.fiveHour >= 0) out.push({ label: endsAt(p.fiveHourReset), ratio: Math.min(p.fiveHour / 100, 1), warn: p.fiveHour >= 80, tip: `5-hour limit: ${Math.round(p.fiveHour)}% used, resets ${resetAt(p.fiveHourReset)}` })
   if (p?.at && p.week >= 0) out.push({ label: 'Week', ratio: Math.min(p.week / 100, 1), warn: p.week >= 80, tip: `Weekly limit: ${Math.round(p.week)}% used, resets ${resetAt(p.weekReset)}` })
   if (context.value) out.push({ label: 'Context', ...context.value })
   return out
@@ -346,7 +352,7 @@ async function checkAgain() {
               <Icon v-if="!confirming(e.tool)" :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
             </button>
             <template v-if="isOpen(e.id) || confirming(e.tool)">
-              <div v-if="e.tool.result?.diff" class="diffw"><Diff :diff="e.tool.result.diff" /></div>
+              <div v-if="e.tool.result?.diff" class="diffw"><Diff :diff="e.tool.result.diff" :path="String(e.tool.call.input?.file_path ?? '')" /></div>
               <!-- Claude's question form, answered here: Derby types the answers into Claude Code's form -->
               <div v-else-if="view(e.tool).body === 'question' && confirming(e.tool)" class="qs form">
                 <div v-for="(q, i) in questions(e.tool.call)" :key="i" class="qblock">

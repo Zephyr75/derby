@@ -33,6 +33,17 @@ func (g Git) bin() string {
 
 // Run runs git -C dir args... and returns trimmed stdout.
 func (g Git) Run(ctx context.Context, dir string, args ...string) (string, error) {
+	out, err := g.output(ctx, dir, args...)
+	return strings.TrimSpace(out), err
+}
+
+// File returns a file's content at a revision (path from the repository's
+// root), untrimmed: its lines keep their numbers.
+func (g Git) File(ctx context.Context, dir, rev, path string) (string, error) {
+	return g.output(ctx, dir, "cat-file", "-p", rev+":"+path)
+}
+
+func (g Git) output(ctx context.Context, dir string, args ...string) (string, error) {
 	full := append([]string{"-C", dir}, args...)
 	if g.Log != nil {
 		g.Log("$ git " + quoteArgs(full))
@@ -50,7 +61,7 @@ func (g Git) Run(ctx context.Context, dir string, args ...string) (string, error
 		}
 		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, msg)
 	}
-	return strings.TrimSpace(out.String()), nil
+	return out.String(), nil
 }
 
 func quoteArgs(a []string) string {

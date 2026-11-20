@@ -40,12 +40,13 @@ func Available(command string) bool {
 }
 
 // bundledCLI is the CLI inside Zed.app, which Zed's "Install CLI" links as
-// zed; it works without that link.
+// zed; it works without that link. zeditor, the CLI's name in Linux
+// packages, falls back to it too, so one config works on both.
 const bundledCLI = "/Applications/Zed.app/Contents/MacOS/cli"
 
 func lookPath(name string) (string, error) {
 	bin, err := exec.LookPath(name)
-	if err != nil && name == "zed" && runtime.GOOS == "darwin" {
+	if err != nil && (name == "zed" || name == "zeditor") && runtime.GOOS == "darwin" {
 		if b, e := exec.LookPath(bundledCLI); e == nil {
 			return b, nil
 		}

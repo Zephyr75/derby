@@ -3,11 +3,13 @@
 // file on the left, the new on the right, as Zed's split view). With
 // commentable, a + button shows on the hovered line: a click comments on that
 // line, a drag (or a shift-click on another line's +) on a range, marked by
-// a bar down the gutter. The comments show under their last line.
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+// a bar down the gutter. The comments show under their last line. With a
+// path in a language derby has a grammar for, the code is highlighted.
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { highlight, type Seg } from '../lib/highlight'
 import type { Note } from '../lib/types'
 
-const props = defineProps<{ diff: string; notes?: Note[]; commentable?: boolean; split?: boolean }>()
+const props = defineProps<{ diff: string; path?: string; sources?: { old: string; new: string }; notes?: Note[]; commentable?: boolean; split?: boolean }>()
 const emit = defineEmits<{ add: [n: Omit<Note, 'id' | 'path'>]; update: [id: string, text: string]; remove: [id: string] }>()
 
 interface Row {
@@ -40,6 +42,41 @@ const rows = computed(() => {
   }
   return out
 })
+
+// Highlighting: with sources, the whole files before and after are parsed
+// and each row takes its line's runs by number (a removed line the old
+// file's, the others the new one's), as a hunk can start or end inside a
+// comment or a string. Without, each hunk's sides are parsed on their own.
+const segs = ref(new Map<number, Seg[]>())
+let gen = 0
+watch(
+  () => [rows.value, props.path, props.sources] as const,
+  async ([rs, path, src]) => {
+    const g = ++gen
+    const m = new Map<number, Seg[]>()
+    if (path && src) {
+      const [old, cur] = await Promise.all([highlight(path, src.old), highlight(path, src.new)])
+      rs.forEach((r, i) => {
+        const line = r.kind === 'del' ? r.old !== null && old?.[r.old - 1] : r.kind !== 'hunk' && r.kind !== 'note' && r.new !== null && cur?.[r.new - 1]
+        // Only when the file's line is the row's (not a file changed since).
+        if (line && line.map((s) => s.t).join('') === r.text) m.set(i, line)
+      })
+    } else if (path) {
+      const hunks: number[][] = []
+      rs.forEach((r, i) => (r.kind === 'hunk' ? hunks.push([]) : hunks.at(-1)?.push(i)))
+      for (const h of hunks) {
+        for (const k of ['del', 'add'] as const) {
+          const ix = h.filter((i) => rs[i].kind === k || rs[i].kind === 'ctx')
+          const done = await highlight(path, ix.map((i) => rs[i].text).join('\n'))
+          if (done && k === 'del') ix.forEach((i, n) => rs[i].kind === 'del' && m.set(i, done[n]))
+          if (done && k === 'add') ix.forEach((i, n) => m.set(i, done[n]))
+        }
+      }
+    }
+    if (g === gen) segs.value = m
+  },
+  { immediate: true },
+)
 
 // What the table shows: one row per diff line, or, split, a removed line
 // beside the added line it became (-1: nothing on that side). idx: the
@@ -194,7 +231,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
             <td class="gut">
               <button v-if="commentable && lineRow(rows[u.left])" class="add-note" aria-label="Comment on this line" title="Comment on this line (drag, or shift-click another line's +, for several)" @mousedown="press(u.left, $event)">+</button>
             </td>
-            <td class="code"><span class="sign">{{ sign(rows[u.left]) }}</span>{{ rows[u.left].text }}</td>
+            <td class="code"><span class="sign">{{ sign(rows[u.left]) }}</span><template v-if="segs.get(u.left)"><span v-for="(s, k) in segs.get(u.left)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[u.left].text }}</template></td>
           </tr>
           <!-- split: the old file on the left, the new on the right -->
           <tr v-else class="srow">
@@ -204,7 +241,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
                 <td class="gut" :class="[rows[c.i].kind, marks(c.i), { hov: hov === c.i }]" @mouseenter="enter(c.i)">
                   <button v-if="commentable" class="add-note" aria-label="Comment on this line" title="Comment on this line (drag, or shift-click another line's +, for several)" @mousedown="press(c.i, $event)">+</button>
                 </td>
-                <td class="code" :class="[rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)"><span class="sign">{{ sign(rows[c.i]) }}</span>{{ rows[c.i].text }}</td>
+                <td class="code" :class="[rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)"><span class="sign">{{ sign(rows[c.i]) }}</span><template v-if="segs.get(c.i)"><span v-for="(s, k) in segs.get(c.i)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[c.i].text }}</template></td>
               </template>
               <td v-else class="blank" :class="c.side" colspan="3"></td>
             </template>

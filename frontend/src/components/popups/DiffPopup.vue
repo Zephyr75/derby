@@ -184,7 +184,7 @@ function key(e: KeyboardEvent) {
           <p v-else-if="diff.binary" class="empty">Binary file: no text diff.</p>
           <p v-else-if="!diff.diff" class="empty">No text changes (mode or whitespace only).</p>
           <template v-else>
-            <DiffView :diff="diff.diff" :notes="fileNotes" :split="splitView" commentable @add="addNote" @update="updateNote" @remove="removeNote" />
+            <DiffView :diff="diff.diff" :path="diff.path" :sources="diff.sources ? diff : undefined" :notes="fileNotes" :split="splitView" commentable @add="addNote" @update="updateNote" @remove="removeNote" />
             <p v-if="diff.truncated" class="empty">The diff is too long to show in full; open the file in Zed for the rest.</p>
           </template>
         </div>
