@@ -27,8 +27,6 @@ function meta(s: Step): { text: string; cls: string } {
   if (s.state === 'idle') return { text: 'waiting for you', cls: 'c-waiting' }
   if (s.state === 'failed') return { text: 'ended early', cls: 'c-approval' }
   if (unsuccessful(s)) return { text: 'failed', cls: 'c-approval' }
-  const task = t.value
-  if (task && s.state === 'done' && task.pr && derby.settings?.agents.find((a) => a.id === s.agent)?.openPR) return { text: 'PR #' + task.pr, cls: '' }
   return { text: '', cls: '' }
 }
 const dotCls = (s: Step) => (unsuccessful(s) ? 'd-failed' : s.state === 'done' ? 'd-done' : s.paused ? 'd-paused' : s.state === 'running' ? 'd-running' : s.state === 'failed' ? 'd-failed' : 'd-waiting')
@@ -112,14 +110,15 @@ async function archive() {
             </span>
           </button>
           <span class="acts">
-            <button v-if="s.revert" class="act" :class="{ danger: derby.confirmRevert === s.id }" :title="`Put the worktree back to how it was when ${s.name} started, and remove it and the steps after it`" @click="derby.revertStep(s)">
-              <Icon name="revert" :size="12" />{{ derby.confirmRevert === s.id ? 'Discard its changes?' : 'Revert' }}
+            <!-- the first click only asks, in words -->
+            <button v-if="s.revert" class="act" :class="derby.confirmRevert === s.id ? 'danger' : 'icon'" :aria-label="derby.confirmRevert === s.id ? 'Discard its changes?' : `Revert ${s.name}`" :title="`Revert: put the worktree back to how it was when ${s.name} started, and remove it and the steps after it`" @click="derby.revertStep(s)">
+              <Icon name="revert" :size="13" /><template v-if="derby.confirmRevert === s.id">Discard its changes?</template>
             </button>
             <template v-if="s.skip">
               <button v-if="!(s.state === 'done' && !unsuccessful(s))" class="act icon" :aria-label="`Skip ${s.name} as succeeded`" :title="`Skip ${s.name} as succeeded: end it now and move on (Derby does not commit or push for it)`" @click="derby.skipStep(s, true)"><Icon name="check" :size="13" /></button>
               <button v-if="!unsuccessful(s)" class="act icon" :aria-label="`Skip ${s.name} as failed`" :title="`Skip ${s.name} as failed: end it now and get the options for a failure`" @click="derby.skipStep(s, false)"><Icon name="close" :size="13" /></button>
             </template>
-            <button v-if="s.rerun" class="act" :title="`Run ${s.name} again in its own session, on the current worktree`" @click="derby.rerunStep(s)"><Icon name="rerun" :size="12" />Rerun</button>
+            <button v-if="s.rerun" class="act icon" :aria-label="`Rerun ${s.name}`" :title="`Rerun: run ${s.name} again in its own session, on the current worktree`" @click="derby.rerunStep(s)"><Icon name="rerun" :size="13" /></button>
           </span>
         </div>
         <div v-if="t.next.ghost" class="row ghost" :title="`Starts automatically if ${t.next.ghost.after} succeeds`">
@@ -173,6 +172,7 @@ async function archive() {
   .bar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 2px;
     min-width: 0;
     margin: 0 -7px; /* the icons line up with the title's reference */
