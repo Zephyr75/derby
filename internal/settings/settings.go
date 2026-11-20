@@ -96,7 +96,7 @@ type Agent struct {
 	Choose       bool     `toml:"choose,omitempty" json:"choose"`            // when its artifact lists Options, Next step asks which one to take
 	Builtin      bool     `toml:"builtin,omitempty" json:"builtin"`          // run by derby itself, not Claude: Copilot
 	IgnoreRules  bool     `toml:"ignore_rules,omitempty" json:"ignoreRules"` // the common rules (Settings > Context) are not given to it
-	ShowDiff     bool     `toml:"show_diff,omitempty" json:"showDiff"`       // its steps have a Diff button (open their changes in Zed)
+	ShowDiff     bool     `toml:"show_diff,omitempty" json:"showDiff"`       // makes changes: its steps are listed in the diff pop-up
 	Sisters      bool     `toml:"sisters,omitempty" json:"sisters"`          // its artifact can ask for sister tasks in other repositories
 	Allow        []string `toml:"allow,omitempty" json:"allow"`              // tool rules it runs without asking, e.g. Bash(make test-path:*)
 	Next         []string `toml:"next,omitempty" json:"next"`                // agents Next step offers after it succeeds, first one highlighted (default: the next manual agent)

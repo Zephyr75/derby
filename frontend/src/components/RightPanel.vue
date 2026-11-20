@@ -10,8 +10,6 @@ import { useCompact } from '../lib/compact'
 import { unsuccessful, type Step } from '../lib/types'
 
 const t = computed(() => derby.selTask)
-// Agents set to "Show a Diff button" (Implement and Test by default) get one.
-const diffs = (s: Step) => !!derby.settings?.agents.find((a) => a.id === s.agent)?.showDiff
 const openIssue = () => t.value && derby.attempt('Could not open the issue', () => api.OpenURL(`https://github.com/${t.value!.issueRepo || t.value!.repo}/issues/${t.value!.issue}`))
 const openPR = () => t.value && derby.attempt('Could not open the PR', () => api.OpenURL(t.value!.prUrl || `https://github.com/${t.value!.repo}/pull/${t.value!.pr}`))
 // GitHub's PR icons, as in the left panel: merged, closed, draft, open.
@@ -122,8 +120,6 @@ async function archive() {
               <button v-if="!unsuccessful(s)" class="act icon" :aria-label="`Skip ${s.name} as failed`" :title="`Skip ${s.name} as failed: end it now and get the options for a failure`" @click="derby.skipStep(s, false)"><Icon name="close" :size="13" /></button>
             </template>
             <button v-if="s.rerun" class="act" :title="`Run ${s.name} again in its own session, on the current worktree`" @click="derby.rerunStep(s)"><Icon name="rerun" :size="12" />Rerun</button>
-            <button v-if="s.external" class="act" :title="`Every change of the branch against ${t.baseBranch}, as PR #${t.pr} shows it`" @click="derby.openDiffPopup(s.id, '')"><Icon name="diff" :size="13" />Full diff</button>
-            <button v-else-if="s.diff && diffs(s)" class="act" aria-label="Open this step's changes in Zed" title="Open this step's changes in Zed: the commit it belongs to, or the uncommitted work" @click="derby.openDiff(s)"><Icon name="diff" :size="13" />Diff</button>
           </span>
         </div>
         <div v-if="t.next.ghost" class="row ghost" :title="`Starts automatically if ${t.next.ghost.after} succeeds`">

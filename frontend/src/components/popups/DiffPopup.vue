@@ -35,8 +35,8 @@ const stepId = computed(() => derby.diffOf?.step ?? '')
 const task = computed(() => derby.tasks.find((t) => t.steps.some((s) => s.id === stepId.value)))
 const step = computed(() => task.value?.steps.find((s) => s.id === stepId.value))
 const pickStep = (id: string) => derby.diffOf && (derby.diffOf = { step: id, path: '' })
-// Only steps of agents with a Diff (Implement and Test by default) make
-// changes. Full, last, is the whole branch: a Copilot step's changes, the
+// Only steps of agents set to "Makes changes" (Implement, Discuss and Test
+// by default) make changes. Full, last, is the whole branch: a Copilot step's changes, the
 // same for every one of them.
 const changers = computed(() => {
   const steps = task.value?.steps ?? []

@@ -67,8 +67,8 @@ watch(
 )
 
 const file = computed(() => art.value?.file || step.value?.artifact || '')
-// The four tabs always show, in equal parts; DIFF is off while the step
-// changed no files, PR while the task has none, and MD stands in for them.
+// The four tabs always show, in equal parts; Changes is off while the step
+// changed no files, PR while the task has none, and Report stands in for them.
 const task = computed(() => derby.selTask)
 const openTodos = computed(() => task.value?.todos.filter((x) => !x.done).length ?? 0)
 const hasChanges = computed(() => !!(step.value && changes.value?.files.length))
@@ -90,17 +90,17 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
 <template>
   <div class="wrap">
     <div ref="bar" class="bar" :class="{ compact }" role="tablist">
-      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the markdown this step wrote` : 'The markdown a step writes'" aria-label="MD" @click="derby.rightTab = 'preview'">
-        <span class="in"><Icon name="file" /><span class="label">MD</span></span>
+      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the report this step wrote` : 'The report a step writes'" aria-label="Report" @click="derby.rightTab = 'preview'">
+        <span class="in"><Icon name="file" class="swap" /><span class="label">Report</span></span>
       </button>
-      <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="DIFF" @click="hasChanges && (derby.rightTab = 'changes')">
-        <span class="in"><Icon name="diff" /><span class="label">DIFF</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
+      <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="Changes" @click="hasChanges && (derby.rightTab = 'changes')">
+        <span class="in"><Icon name="diff" class="swap" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}: its review comments and CI checks` : 'No PR yet: Commit and push opens one'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
-        <span class="in"><Icon name="pr" /><span class="label">PR</span></span>
+        <span class="in"><Icon name="pr" class="swap" /><span class="label">PR</span></span>
       </button>
-      <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="`The task's todos${openTodos ? `, ${openTodos} open` : ''}`" aria-label="TODO" @click="task && (derby.rightTab = 'todos')">
-        <span class="in"><Icon name="todo" /><span class="label">TODO</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
+      <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="`The task's todos${openTodos ? `, ${openTodos} open` : ''}`" aria-label="TODOs" @click="task && (derby.rightTab = 'todos')">
+        <span class="in"><Icon name="todo" class="swap" /><span class="label">TODOs</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
       </button>
     </div>
     <div class="content">
@@ -138,7 +138,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     border-top: 1px solid var(--border);
     min-height: 0;
   }
-  /* MD, DIFF, PR, TODO in four equal parts, like the left panel's tabs: the
+  /* Report, Changes, PR, TODOs in four equal parts, like the left panel's tabs: the
      open one has no line between it and its content */
   .bar {
     display: flex;
@@ -158,8 +158,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     background: var(--chrome);
     color: var(--muted);
     white-space: nowrap;
-    font-size: var(--fs-12);
-    letter-spacing: 0.04em;
+    font-size: var(--fs-13);
     cursor: default;
   }
   .tab + .tab {
@@ -182,13 +181,15 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     display: flex;
     align-items: center;
   }
+  /* the name, or its icon once the names no longer fit */
   .label {
-    margin-left: 6px; /* LABEL_GAP in lib/compact.ts */
     overflow: hidden;
   }
   .compact .label {
     max-width: 0;
-    margin-left: 0;
+  }
+  .bar:not(.compact) .swap {
+    display: none;
   }
   .count {
     margin-left: 6px;

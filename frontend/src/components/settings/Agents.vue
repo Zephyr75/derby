@@ -270,7 +270,7 @@ function pick(id: string) {
         </div>
         <div class="checks">
           <label title="The Rules in Settings > Context are not given to this agent"><input type="checkbox" :checked="A.ignoreRules" @change="set('ignoreRules', checked($event))" /> Ignore the common rules</label>
-          <label title="A Diff button on its steps opens their changes in Zed"><input type="checkbox" :checked="A.showDiff" @change="set('showDiff', checked($event))" /> Show a Diff button</label>
+          <label title="Its steps are listed in the diff pop-up's step picker (open it from a file in the Changes tab)"><input type="checkbox" :checked="A.showDiff" @change="set('showDiff', checked($event))" /> Makes changes</label>
           <label title="When the work also needs other repositories, its artifact ends with a Sister tasks section and Next step offers to create each one in a click"><input type="checkbox" :checked="A.sisters" @change="set('sisters', checked($event))" /> Can create sister tasks</label>
         </div>
       </template>
