@@ -476,10 +476,11 @@ class Derby {
     return time(b[key]) - time(a[key])
   }
 
-  /** panelFamilies: the sister families in the list, shown first under
-   *  Sisters, each with the big sister (the task that started the others)
-   *  first. A family stays there with a single task in the list, e.g. once
-   *  its sisters' PRs were merged and they moved to the Archive. */
+  /** panelFamilies: the sister families in the list, each shown first in
+   *  its own category, with the big sister (the task that started the
+   *  others) first. A family keeps its category with a single task in the
+   *  list, e.g. once its sisters' PRs were merged and they moved to the
+   *  Archive. */
   panelFamilies(): Task[][] {
     const listed = this.listed()
     const groups = this.sisterGroups
@@ -504,9 +505,15 @@ class Derby {
       .sort((a, b) => this.newest(a, b))
   }
 
+  /** familyKey: a sister family's category, collapsed like a project; the
+   *  same whichever of its tasks are listed. */
+  familyKey(t: Task): string {
+    return SISTERS + [...(this.sisterGroups.get(t.id) ?? [t.id])].sort()[0]
+  }
+
   /** The tasks in the left panel, in display order: the sister families, then each project's. */
   visibleTasks(): Task[] {
-    const families = this.isCollapsed(SISTERS) ? [] : this.panelFamilies().flat()
+    const families = this.panelFamilies().filter((f) => !this.isCollapsed(this.familyKey(f[0]))).flat()
     return [...families, ...this.groups.filter((p) => !this.isCollapsed(p.id)).flatMap((p) => this.panelTasks(p.id))]
   }
 
@@ -684,8 +691,8 @@ class Derby {
   todoBlocked(t: Task): string {
     if (t.archived) return 'The task is archived'
     if (t.worktreeRemoved) return 'The worktree was removed'
-    if (!this.todoAgent(t)) return 'No Implement agent in this project'
-    if (this.busy(t)) return 'A step of this task is still working or waiting for you'
+    if (!this.todoAgent(t)) return 'No Implement agent'
+    if (this.busy(t)) return 'A step is busy'
     return ''
   }
 
@@ -879,7 +886,7 @@ class Derby {
 export const taskName = (t: Pick<Task, 'name' | 'title'>) => t.name || t.title
 export const resumeCommand = (step: Step) => `claude --resume ${step.session}`
 
-/** The left panel's Sisters group, collapsed like a project. */
-export const SISTERS = ':sisters' // no project id has a colon
+/** The prefix of a sister family's category in the left panel. */
+export const SISTERS = ':sisters:' // no project id has a colon
 
 export const derby = reactive(new Derby())

@@ -19,12 +19,12 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
       <header class="head">
         <Icon :name="pr.ready === 'draft' ? 'pr-draft' : 'pr'" :size="14" :class="pr.ready === 'ready' ? 'c-pass' : 'muted'" />
         <span class="num">#{{ task.pr }}</span>
-        <span v-if="pr.ready" class="muted" :title="pr.ready === 'ready' ? 'Ready for review' : 'A draft: reviewers and repo bots leave it alone until it is marked ready'">{{ pr.ready === 'ready' ? 'Ready' : 'Draft' }}</span>
+        <span v-if="pr.ready" class="muted" :title="pr.ready === 'ready' ? 'Ready for review' : 'Draft'">{{ pr.ready === 'ready' ? 'Ready' : 'Draft' }}</span>
         <span class="branch" :title="`${task.branch} → ${task.baseBranch}`">{{ task.branch }} → {{ task.baseBranch }}</span>
-        <button v-if="pr.ready === 'draft'" class="tb" title="Turn the draft PR into one ready for review and add the ready label" aria-label="Mark ready" @click="pr.markReady"><Icon name="check" :size="13" /><span class="lbl">Mark ready</span></button>
-        <button v-if="pr.live" class="ib" :disabled="pr.refreshing" title="Check Copilot's review and the CI checks now instead of waiting for the next minute" aria-label="Refresh" @click="pr.refresh"><Icon name="rerun" :size="13" /></button>
-        <button v-if="task.prUrl" class="ib" :title="`Copy the link to PR #${task.pr}`" aria-label="Copy link" @click="pr.copyLink"><Icon name="copy" :size="13" /></button>
-        <button v-if="task.prUrl" class="ib" :title="`Open PR #${task.pr} on GitHub`" aria-label="Open PR" @click="pr.open(task.prUrl)"><Icon name="external" :size="13" /></button>
+        <button v-if="pr.ready === 'draft'" class="tb" title="Mark ready for review" aria-label="Mark ready" @click="pr.markReady"><Icon name="check" :size="13" /><span class="lbl">Mark ready</span></button>
+        <button v-if="pr.live" class="ib" :disabled="pr.refreshing" title="Refresh now" aria-label="Refresh" @click="pr.refresh"><Icon name="rerun" :size="13" /></button>
+        <button v-if="task.prUrl" class="ib" title="Copy link" aria-label="Copy link" @click="pr.copyLink"><Icon name="copy" :size="13" /></button>
+        <button v-if="task.prUrl" class="ib" title="Open on GitHub" aria-label="Open PR" @click="pr.open(task.prUrl)"><Icon name="external" :size="13" /></button>
       </header>
 
       <section v-if="task.feedback.length || pr.live">
@@ -33,9 +33,9 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
           <span v-if="pr.openFb.length" class="cnt">{{ pr.openFb.length }}</span>
           <span v-if="pr.waiting" class="hint" title="Waiting for Copilot's review"><Icon name="pending" :size="12" class="c-run" /><span class="lbl">waiting for Copilot</span></span>
           <span class="grow"></span>
-          <button v-if="pr.waiting" class="tb" title="Stop waiting for Copilot (Mark done)" aria-label="Stop waiting" @click="pr.stop"><Icon name="stop" :size="11" /><span class="lbl">Stop waiting</span></button>
-          <button v-if="pr.live" class="tb" title="Ask Copilot to review the PR as it is now; a Copilot step waits for the review" :aria-label="pr.waiting ? 'Ask Copilot again' : 'Ask Copilot'" @click="pr.askCopilot"><Icon name="agent" :size="13" /><span class="lbl">{{ pr.waiting ? 'Ask again' : 'Ask Copilot' }}</span></button>
-          <button v-if="pr.canFix && pr.openFb.length" class="tb fix" :disabled="!pr.picked.length" :title="`Start a ${pr.fixer!.name} step that addresses the ticked comments`" @click="pr.fixFeedback"><Icon name="pencil" :size="13" />Fix {{ pr.picked.length }}</button>
+          <button v-if="pr.waiting" class="tb" title="Stop waiting" aria-label="Stop waiting" @click="pr.stop"><Icon name="stop" :size="11" /><span class="lbl">Stop waiting</span></button>
+          <button v-if="pr.live" class="tb" title="Ask Copilot for a review" :aria-label="pr.waiting ? 'Ask Copilot again' : 'Ask Copilot'" @click="pr.askCopilot"><Icon name="agent" :size="13" /><span class="lbl">{{ pr.waiting ? 'Ask again' : 'Ask Copilot' }}</span></button>
+          <button v-if="pr.canFix && pr.openFb.length" class="tb fix" :disabled="!pr.picked.length" title="Fix the ticked comments" @click="pr.fixFeedback"><Icon name="pencil" :size="13" />Fix {{ pr.picked.length }}</button>
         </div>
         <p v-if="!pr.openFb.length" class="empty">No open comments.</p>
         <!-- open comments, then the resolved ones under their toggle -->
@@ -45,15 +45,15 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
           </button>
           <div v-for="f in list" :key="f.id" :class="['item', { off: f.resolvedBy || !pr.ticked(f) }]">
             <span v-if="f.resolvedBy" class="box done" title="Resolved"><Icon name="check" :size="11" :stroke="3" /></span>
-            <button v-else :class="['box', { on: pr.ticked(f) }]" role="checkbox" :aria-checked="pr.ticked(f)" :title="pr.ticked(f) ? 'Sent with Fix' : 'Left out of Fix'" :aria-label="'Send the comment of ' + f.author" @click="pr.toggle(f.id)"><Icon v-if="pr.ticked(f)" name="check" :size="11" :stroke="3" /></button>
+            <button v-else :class="['box', { on: pr.ticked(f) }]" role="checkbox" :aria-checked="pr.ticked(f)" :title="pr.ticked(f) ? 'In the fix' : 'Not in the fix'" :aria-label="'Send the comment of ' + f.author" @click="pr.toggle(f.id)"><Icon v-if="pr.ticked(f)" name="check" :size="11" :stroke="3" /></button>
             <div class="txt">
               <div class="body" :title="f.body">{{ f.body }}</div>
               <div class="meta">
-                <span class="mono" :title="f.path ? `${f.path}:${f.line}` : 'A comment on the whole PR'">{{ file(f) }}</span>
+                <span class="mono" :title="f.path ? `${f.path}:${f.line}` : 'On the whole PR'">{{ file(f) }}</span>
                 <span>{{ f.author }}</span>
                 <span v-if="f.resolvedBy">resolved by {{ f.resolvedBy }}</span>
-                <span v-else-if="f.outdated" title="The code it points at changed since">outdated</span>
-                <button v-if="!f.resolvedBy && pr.rejected(f)" class="rej" :title="`${pr.rejected(f)!.name} found it wrong or unnecessary and left the code as it is: open its artifact to see why`" @click="pr.openStep(pr.rejected(f)!.step)">rejected</button>
+                <span v-else-if="f.outdated" title="The code changed since">outdated</span>
+                <button v-if="!f.resolvedBy && pr.rejected(f)" class="rej" :title="`${pr.rejected(f)!.name} declined it: see why`" @click="pr.openStep(pr.rejected(f)!.step)">rejected</button>
                 <span v-if="f.replies.length" :title="`Last: ${f.replies[f.replies.length - 1].author}`">{{ f.replies.length }} {{ f.replies.length > 1 ? 'replies' : 'reply' }}</span>
               </div>
             </div>
@@ -68,13 +68,13 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
           <span class="st">Checks</span>
           <span v-if="pr.counts.total" class="cnt">{{ pr.counts.pass }}/{{ pr.counts.total }} passed</span>
           <span class="grow"></span>
-          <button v-if="pr.live && pr.anyActions" class="tb" :disabled="!!pr.rerunning" title="Run every check again (each workflow run once)" aria-label="Rerun all" @click="pr.rerun('', 'the checks')"><Icon name="rerun" :size="13" /><span class="lbl">{{ pr.rerunning === 'all' ? 'Rerunning…' : 'Rerun all' }}</span></button>
-          <button v-if="pr.canFix && pr.failing.length && !task.conflicting" class="tb fix" :title="`Start a ${pr.fixer!.name} step that reads the failing checks' logs and fixes them`" @click="pr.fixChecks"><Icon name="pencil" :size="13" />Fix</button>
+          <button v-if="pr.live && pr.anyActions" class="tb" :disabled="!!pr.rerunning" title="Rerun all checks" aria-label="Rerun all" @click="pr.rerun('', 'the checks')"><Icon name="rerun" :size="13" /><span class="lbl">{{ pr.rerunning === 'all' ? 'Rerunning…' : 'Rerun all' }}</span></button>
+          <button v-if="pr.canFix && pr.failing.length && !task.conflicting" class="tb fix" title="Fix the failing checks" @click="pr.fixChecks"><Icon name="pencil" :size="13" />Fix</button>
         </div>
         <div v-if="pr.live && task.conflicting" class="note">
           <Icon name="warn" :size="13" class="c-warn" />
           <span class="ntext">Conflicts with {{ task.baseBranch }}: GitHub runs no checks until they are resolved.</span>
-          <button v-if="pr.canFix" class="tb fix" :title="`Start a ${pr.fixer!.name} step that rebases the branch on origin/${task.baseBranch} and resolves the conflicts`" @click="pr.rebase"><Icon name="rebase" :size="13" />Rebase</button>
+          <button v-if="pr.canFix" class="tb fix" :title="`Rebase on origin/${task.baseBranch}`" @click="pr.rebase"><Icon name="rebase" :size="13" />Rebase</button>
         </div>
         <p v-if="!pr.workflows.length && !task.conflicting" class="empty">No checks reported yet (refreshed every minute).</p>
         <template v-for="w in pr.workflows" :key="w.name">
@@ -124,10 +124,6 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
   button {
     font: inherit;
     cursor: pointer;
-  }
-  button:disabled {
-    cursor: default;
-    opacity: 0.4;
   }
   .grow {
     flex: 1;

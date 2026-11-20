@@ -539,12 +539,14 @@ func (a *App) onHook(ev hooks.Event) {
 	}
 	var finish, shell bool
 	var verdict string
-	if ev.Name == "Stop" {
+	stop := ev.Name == "Stop" || ev.Name == "StopFailure"
+	if stop {
 		if s, err := a.db.Step(ev.StepID); err == nil {
 			finish, verdict = a.artifactDone(s)
 		}
 		shell = !finish && hooks.BackgroundShell(ev.PID)
 	}
+	idle := ev.Name == "Notification" && ev.IsIdle() && !hooks.BackgroundShell(ev.PID)
 	s, changed := a.updateStep(ev.StepID, func(s *store.Step) bool {
 		before := *s
 		if ev.SessionID != "" {
@@ -560,6 +562,8 @@ func (a *App) onHook(ev hooks.Event) {
 		case "Notification":
 			if ev.IsPermission() && s.State != store.Done {
 				s.State = store.Approval
+			} else if idle && (s.State == store.Running || s.State == store.Approval) {
+				s.State = store.Idle // it stopped without a Stop hook: an Esc in its terminal
 			}
 		case "PreToolUse":
 			if ev.ToolName == hooks.AskTool && s.State != store.Done {
@@ -569,7 +573,7 @@ func (a *App) onHook(ev hooks.Event) {
 			if s.State == store.Approval || s.State == store.Idle && ev.ToolName == hooks.AskTool {
 				s.State = store.Running
 			}
-		case "Stop":
+		case "Stop", "StopFailure":
 			if finish {
 				s.State, s.EndedAt = store.Done, time.Now()
 				s.Verdict = verdict

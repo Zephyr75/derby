@@ -43,7 +43,7 @@ function key(e: KeyboardEvent) {
 <template>
   <div ref="box" class="box popup" role="dialog" aria-label="Diagram" tabindex="-1" @keydown="key">
     <div class="head">
-      <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
+      <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show sidebar' : 'Hide sidebar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
       <Icon name="eye" />
       <span class="title">{{ cur?.title || derby.diagramOf?.file }}</span>
       <span class="muted small">{{ cur?.step }}{{ cur?.step ? ' · ' : '' }}<span class="mono">{{ derby.diagramOf?.file }}</span></span>

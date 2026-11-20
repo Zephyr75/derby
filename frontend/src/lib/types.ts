@@ -13,6 +13,19 @@ export interface Project {
   commonIssues: boolean // its issues live in the common issues repository (config.issuesRepo)
 }
 
+// A project's checkout (git worktree list), its own first.
+export interface Worktree {
+  path: string
+  branch: string // '' when detached
+  main: boolean
+}
+
+// A project's local branch and the checkout it is in ('' when none).
+export interface Branch {
+  name: string
+  path: string
+}
+
 export interface Agent {
   id: string
   name: string

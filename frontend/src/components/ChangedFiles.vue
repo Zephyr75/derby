@@ -18,7 +18,7 @@ export const split = (p: string) => {
   return { dir: i >= 0 ? p.slice(0, i + 1) : '', name: i >= 0 ? p.slice(i + 1) : p }
 }
 export const statusCls = (s: string) => ({ A: 'c-add', '?': 'c-add', D: 'c-del', M: 'c-mod' })[s] ?? 'c-mod'
-export const statusTitle = (s: string) => ({ A: 'Added', '?': 'New, not committed yet', D: 'Deleted', M: 'Modified' })[s] ?? s
+export const statusTitle = (s: string) => ({ A: 'Added', '?': 'New', D: 'Deleted', M: 'Modified' })[s] ?? s
 export const sourceLabel = (c: Changes) =>
   c.source === 'branch' ? `The whole branch against ${c.base}` : c.source === 'worktree' ? 'Uncommitted in the worktree' : c.via ? `Committed by ${c.via} · ${c.sha}` : `Commit ${c.sha}`
 </script>

@@ -63,9 +63,6 @@ defineProps<{ title: string; meta?: string; tip?: string }>()
     background: var(--hover);
     color: var(--text);
   }
-  .ph > :slotted(button:disabled) {
-    opacity: 0.4;
-  }
   .ph > :slotted(button:last-child) {
     margin-right: -5px;
   }

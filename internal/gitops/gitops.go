@@ -331,3 +331,50 @@ func (g Git) Restore(ctx context.Context, worktree, tree, index string) error {
 	}
 	return nil
 }
+
+// Worktree is one of a repository's checkouts.
+type Worktree struct {
+	Path   string `json:"path"`
+	Branch string `json:"branch"` // "" when detached
+	Main   bool   `json:"main"`   // the repository's own checkout
+}
+
+// Worktrees lists repo's checkouts, its own first, skipping bare and missing
+// ones.
+func (g Git) Worktrees(ctx context.Context, repo string) ([]Worktree, error) {
+	out, err := g.Run(ctx, repo, "worktree", "list", "--porcelain")
+	if err != nil {
+		return nil, err
+	}
+	var list []Worktree
+	for i, block := range strings.Split(out, "\n\n") {
+		var w Worktree
+		skip := false
+		for _, line := range strings.Split(block, "\n") {
+			key, val, _ := strings.Cut(line, " ")
+			switch key {
+			case "worktree":
+				w.Path = val
+			case "branch":
+				w.Branch = strings.TrimPrefix(val, "refs/heads/")
+			case "bare", "prunable":
+				skip = true
+			}
+		}
+		if w.Path == "" || skip {
+			continue
+		}
+		w.Main = i == 0
+		list = append(list, w)
+	}
+	return list, nil
+}
+
+// Branches lists repo's local branches, most recently committed first.
+func (g Git) Branches(ctx context.Context, repo string) ([]string, error) {
+	out, err := g.Run(ctx, repo, "for-each-ref", "--sort=-committerdate", "--format=%(refname:short)", "refs/heads")
+	if err != nil || out == "" {
+		return nil, err
+	}
+	return strings.Split(out, "\n"), nil
+}

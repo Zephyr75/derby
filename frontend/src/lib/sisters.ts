@@ -1,6 +1,6 @@
 // Sister tasks: the same work in several repositories. The left panel shows
-// each family together under Sisters (derby.panelFamilies); this names a
-// task's sisters for a tooltip.
+// each family in its own category (derby.panelFamilies); this names a task's
+// sisters for a tooltip.
 
 import { computed } from 'vue'
 import { derby } from './state'

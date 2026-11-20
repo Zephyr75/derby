@@ -528,8 +528,22 @@ func (a *App) InterruptStep(stepID string) error {
 	if !ok {
 		return errors.New("the session is not running")
 	}
-	_, err := sess.Write([]byte("\x1b"))
-	return err
+	if _, err := sess.Write([]byte("\x1b")); err != nil {
+		return err
+	}
+	// Claude Code sends no Stop hook for an interrupt: it now waits for the user.
+	s, changed := a.updateStep(stepID, func(s *store.Step) bool {
+		if s.State != store.Running && s.State != store.Approval {
+			return false
+		}
+		s.State = store.Idle
+		return true
+	})
+	if changed {
+		a.emitTask(s.TaskID)
+		a.emit(EvStep, map[string]string{"taskId": s.TaskID, "stepId": s.ID, "state": s.State})
+	}
+	return nil
 }
 
 // SessionStatus is what a session's statusline tells: its model, effort and

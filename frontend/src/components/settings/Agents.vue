@@ -180,7 +180,7 @@ function pick(id: string) {
   <div class="split">
     <div class="list">
       <button v-for="a in agents" :key="a.id" class="list-btn" :class="{ on: a.id === A?.id }" @click="pick(a.id)">
-        <span class="name">{{ a.name }}<span v-if="a.id === firstId" class="badge" title="The first agent starts every task and every sister task"><Icon name="play" :size="9" />first</span><span v-if="a.builtin" class="badge">built in</span></span>
+        <span class="name">{{ a.name }}<span v-if="a.id === firstId" class="badge" title="Starts every task"><Icon name="play" :size="9" />first</span><span v-if="a.builtin" class="badge">built in</span></span>
         <span class="sub">{{ sub(a) }}</span>
       </button>
       <input v-if="adding" v-model="newName" v-focus class="input new-name" placeholder="Name, then Enter" @keydown.enter="addAgent" @blur="adding = false" />
@@ -251,11 +251,11 @@ function pick(id: string) {
         <div class="field">
           <span>When its step succeeds, Derby</span>
           <div class="checks">
-            <label title="Its artifact's title line and body are the commit message"><input type="checkbox" :checked="A.commit" @change="setGit('commit', checked($event))" /> commits</label>
+            <label title="Commits with its report's title and body"><input type="checkbox" :checked="A.commit" @change="setGit('commit', checked($event))" /> commits</label>
             <span class="muted" aria-hidden="true">→</span>
-            <label title="Pushes the branch to origin (needs the commit)"><input type="checkbox" :checked="A.push" @change="setGit('push', checked($event))" /> pushes</label>
+            <label title="Pushes the branch (needs Commit)"><input type="checkbox" :checked="A.push" @change="setGit('push', checked($event))" /> pushes</label>
             <span class="muted" aria-hidden="true">→</span>
-            <label title="Opens the draft PR, or updates it, with its artifact's title line and body (needs the push)"><input type="checkbox" :checked="A.openPR" @change="setGit('openPR', checked($event))" /> opens the PR</label>
+            <label title="Opens or updates the draft PR (needs Push)"><input type="checkbox" :checked="A.openPR" @change="setGit('openPR', checked($event))" /> opens the PR</label>
           </div>
           <span class="hint">In that order, stopping at the first that fails; Next step then says why and offers to run it again.</span>
         </div>
@@ -269,9 +269,9 @@ function pick(id: string) {
           <span class="hint">When its artifact has an Options section, Next step asks you to name the option to take in the guidance.</span>
         </div>
         <div class="checks">
-          <label title="The Rules in Settings > Context are not given to this agent"><input type="checkbox" :checked="A.ignoreRules" @change="set('ignoreRules', checked($event))" /> Ignore the common rules</label>
-          <label title="Its steps are listed in the diff pop-up's step picker (open it from a file in the Changes tab)"><input type="checkbox" :checked="A.showDiff" @change="set('showDiff', checked($event))" /> Makes changes</label>
-          <label title="When the work also needs other repositories, its artifact ends with a Sister tasks section and Next step offers to create each one in a click"><input type="checkbox" :checked="A.sisters" @change="set('sisters', checked($event))" /> Can create sister tasks</label>
+          <label title="Leaves out the common rules"><input type="checkbox" :checked="A.ignoreRules" @change="set('ignoreRules', checked($event))" /> Ignore the common rules</label>
+          <label title="Listed in the diff pop-up"><input type="checkbox" :checked="A.showDiff" @change="set('showDiff', checked($event))" /> Makes changes</label>
+          <label title="Offers sister tasks for other repositories"><input type="checkbox" :checked="A.sisters" @change="set('sisters', checked($event))" /> Can create sister tasks</label>
         </div>
       </template>
       <div v-for="[k, label] in ([['next', A.builtin ? 'When it passes, Next step offers' : 'After its step succeeds, Next step offers'], ['onFail', A.builtin ? 'When there is something to fix (and while it waits), Next step offers' : 'After its step fails, Next step offers']] as [ListKey, string][])" :key="k" class="field">

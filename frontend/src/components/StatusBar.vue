@@ -24,13 +24,13 @@ const right = computed(() => {
   if (derby.selStep) parts.unshift(modelLabel(derby.selStep.model))
   return parts.filter(Boolean).join(' · ')
 })
-const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show' : 'Hide'} the ${what} (${label(derby.settings?.keymap[action]?.[0])})`
+const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show' : 'Hide'} ${what} (${label(derby.settings?.keymap[action]?.[0])})`
 const autoReview = computed(() => derby.settings?.agents.some((a) => a.trigger.startsWith('after:')) ?? false)
 </script>
 
 <template>
   <footer>
-    <button class="dock" :class="{ off: derby.leftHidden }" :title="tip('task list', derby.leftHidden, 'toggleLeft')" @click="derby.togglePanel('left')">
+    <button class="dock" :class="{ off: derby.leftHidden }" :title="tip('tasks', derby.leftHidden, 'toggleLeft')" @click="derby.togglePanel('left')">
       <Icon :name="derby.leftHidden ? 'panel-left-off' : 'panel-left'" :size="19" />
     </button>
     <button v-if="counts.running + counts.waiting + counts.approval" class="activity" :class="{ on: derby.overlay === 'activity' }" title="Show running tasks" @click="derby.openOverlay(derby.overlay === 'activity' ? 'none' : 'activity')">
@@ -42,7 +42,7 @@ const autoReview = computed(() => derby.settings?.agents.some((a) => a.trigger.s
     <span class="grow"></span>
     <span>{{ right }}</span>
     <span v-if="autoReview">auto-review on</span>
-    <button class="dock" :class="{ off: derby.rightHidden }" :title="tip('steps and preview', derby.rightHidden, 'toggleRight')" @click="derby.togglePanel('right')">
+    <button class="dock" :class="{ off: derby.rightHidden }" :title="tip('steps', derby.rightHidden, 'toggleRight')" @click="derby.togglePanel('right')">
       <Icon :name="derby.rightHidden ? 'panel-right-off' : 'panel-right'" :size="19" />
     </button>
   </footer>

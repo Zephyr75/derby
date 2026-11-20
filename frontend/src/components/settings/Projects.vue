@@ -123,10 +123,10 @@ const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.
     </div>
     <div class="grid4">
       <label class="field">GitHub repo<input class="input mono" :value="p.repo" placeholder="owner/name" @input="set(p, 'repo', $event)" /></label>
-      <label class="field" title="New task worktrees start from origin/<this branch> (fetched first); pull requests target it">Base branch<input class="input mono" :value="p.baseBranch" @input="set(p, 'baseBranch', $event)" /></label>
+      <label class="field" title="Worktrees start from it; PRs target it">Base branch<input class="input mono" :value="p.baseBranch" @input="set(p, 'baseBranch', $event)" /></label>
       <label class="field">Worktrees folder<input class="input mono" :value="p.worktreesDir + '/'" @input="set(p, 'worktreesDir', $event)" /></label>
     </div>
-    <label class="issues" :title="issuesRepo ? '' : 'Set the Issues repository above first'">
+    <label class="issues" :title="issuesRepo ? '' : 'Set the issues repository first'">
       <input type="checkbox" :checked="p.commonIssues" :disabled="!issuesRepo" @change="setCommon(p, $event)" />
       Issues come from {{ issuesRepo || 'the issues repository' }}<span class="muted">, not {{ p.repo || 'its own repo' }}: New task lists them and its PRs close them there</span>
     </label>

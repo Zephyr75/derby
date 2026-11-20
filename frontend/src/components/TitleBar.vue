@@ -40,21 +40,21 @@ function dblclick(e: MouseEvent) {
       <Icon name="menu" :size="15" />
     </button>
     <template v-if="derby.view === 'board' && t">
-      <button class="crumb project" :class="{ on: scopeOpen('project') }" @click="derby.openOverlay('scope', 'project')">
+      <button class="crumb project" title="Open a project in Zed" :class="{ on: scopeOpen('project') }" @click="derby.openOverlay('scope', 'project')">
         {{ t.projectName }}<Icon name="chevron" :size="12" />
       </button>
       <span class="sep" aria-hidden="true">/</span>
-      <button class="crumb" :class="{ on: scopeOpen('worktree') }" @click="derby.openOverlay('scope', 'worktree')">
+      <button class="crumb" title="Open a worktree in Zed" :class="{ on: scopeOpen('worktree') }" @click="derby.openOverlay('scope', 'worktree')">
         <Icon name="worktree" :size="12" /><span class="ct">{{ t.worktreeRel }}</span>
       </button>
       <span class="sep" aria-hidden="true">/</span>
-      <button class="crumb" :class="{ on: scopeOpen('branch') }" @click="derby.openOverlay('scope', 'branch')">
+      <button class="crumb" title="Open a branch in Zed" :class="{ on: scopeOpen('branch') }" @click="derby.openOverlay('scope', 'branch')">
         <Icon name="branch" :size="12" /><span class="ct">{{ t.branch }}</span>
       </button>
     </template>
     <span v-else-if="derby.view === 'settings'" class="muted label">Settings</span>
     <span class="grow"></span>
-    <button class="todos" :class="{ on: derby.overlay === 'todos' }" :title="`Todo lists${todosKey ? ' (' + todosKey + ')' : ''}`" @click="derby.command('todos')">
+    <button class="todos" :class="{ on: derby.overlay === 'todos' }" :title="`Todos${todosKey ? ' (' + todosKey + ')' : ''}`" @click="derby.command('todos')">
       <Icon name="todo" :size="15" /><span v-if="openTodos" class="tcount">{{ openTodos }}</span>
     </button>
     <button class="search" @click="derby.openOverlay('palette')">

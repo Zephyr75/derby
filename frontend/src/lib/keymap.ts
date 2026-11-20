@@ -70,7 +70,7 @@ export function label(binding: string | undefined): string {
 /** first returns the label of an action's first binding. */
 export const actions: { id: string; action: string; where: string }[] = [
   { id: 'palette', action: 'Go to task (all projects)', where: 'anywhere' },
-  { id: 'scope', action: 'Switch task in this project, worktree or branch', where: 'board' },
+  { id: 'scope', action: 'Open a project in Zed', where: 'board' },
   { id: 'newTask', action: 'New task', where: 'anywhere' },
   { id: 'runPrimary', action: 'Run the primary next step', where: 'board' },
   { id: 'toggleArchive', action: 'Toggle Tasks and Archive', where: 'board' },

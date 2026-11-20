@@ -13,8 +13,8 @@ defineProps<{ task: Task; family?: boolean; big?: boolean }>()
 
 const prTitle = (t: Task) => {
   const b = derby.prBadge(t)!
-  const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'no CI checks yet', Conflict: 'conflicts with its base' }[b.label] ?? b.label.toLowerCase()
-  return `PR #${t.pr}: ${what}` + (b.ready === 'draft' ? ', a draft' : b.ready === 'ready' ? ', ready for review' : '')
+  const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'No CI yet', Conflict: 'Conflicts' }[b.label] ?? b.label
+  return `PR #${t.pr} · ${what}` + (b.ready === 'draft' ? ' · Draft' : b.ready === 'ready' ? ' · Ready' : '')
 }
 
 // GitHub's PR icons: draft, open (ready for review), merged, closed.
@@ -24,7 +24,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
 <template>
   <button class="card" :class="{ on: task.id === derby.sel }" :title="family ? task.part : undefined" @click="derby.pickTask(task.id)">
     <span class="row">
-      <span v-if="big" class="big" title="The big sister: it started the other tasks"><Icon name="flag" :size="11" /></span>
+      <span v-if="big" class="big" title="Started the sister tasks"><Icon name="flag" :size="11" /></span>
       <TaskRef :issue="task.issue" :task="task.id" />
       <span class="title">{{ taskName(task) }}</span>
       <span v-if="family" class="proj">{{ task.projectName }}</span>

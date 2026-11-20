@@ -1283,6 +1283,26 @@ func TestCreateTaskAttachments(t *testing.T) {
 	}
 }
 
+// Claude stops without a Stop hook on an API error (StopFailure) or an Esc
+// in its terminal (idle_prompt a minute later): the step waits for the user.
+func TestStopsWithoutStopHook(t *testing.T) {
+	a, _ := newTestApp(t)
+	tv, _ := a.CreateTask("core", "", "stop without a stop hook", "", true, nil)
+	id := store.StepID(tv.ID, "plan-1")
+	waitFor(t, "plan", func() bool { return stepState(a, id) == store.Done })
+	os.WriteFile(filepath.Join(tv.RunDir, "PLAN-1.md"), []byte("---\ntitle: plan\n---\nnot finished\n"), 0o644)
+	for _, ev := range []hooks.Event{
+		{Name: "StopFailure", StepID: id},
+		{Name: "Notification", StepID: id, NotificationType: "idle_prompt"},
+	} {
+		a.updateStep(id, func(s *store.Step) bool { s.State = store.Running; return true })
+		a.onHook(ev)
+		if got := stepState(a, id); got != store.Idle {
+			t.Fatalf("%s %s: state %s, want idle", ev.Name, ev.NotificationType, got)
+		}
+	}
+}
+
 func TestEditsOutsideTheWorktree(t *testing.T) {
 	a, repo := newTestApp(t)
 	tv, _ := a.CreateTask("core", "", "edit outside the worktree", "", true, nil)

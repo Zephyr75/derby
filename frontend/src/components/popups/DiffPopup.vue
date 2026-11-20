@@ -147,12 +147,12 @@ function key(e: KeyboardEvent) {
 <template>
   <div ref="box" class="box popup" role="dialog" aria-label="Changes" tabindex="-1" @keydown="key">
     <div class="head">
-      <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
-      <Dropdown class="picker" :items="stepItems" :value="stepId" :placeholder="step ? label(step) : 'Step'" strong title="Show the changes of another step" @pick="chooseStep" />
+      <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show sidebar' : 'Hide sidebar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
+      <Dropdown class="picker" :items="stepItems" :value="stepId" :placeholder="step ? label(step) : 'Step'" strong title="Other steps" @pick="chooseStep" />
       <span class="title">changes</span>
       <span class="grow"></span>
-      <button v-if="!derby.artifactOf" class="other" title="Open this step's artifact beside the changes" @click="derby.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
-      <button class="x" aria-label="Close" title="Close (Esc closes both)" @click="close"><Icon name="close" :size="14" /></button>
+      <button v-if="!derby.artifactOf" class="other" title="Show report" @click="derby.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
+      <button class="x" aria-label="Close" title="Close (Esc)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div v-if="!sb.hidden.value" class="side-wrap" :style="{ width: sb.width.value + 'px' }">
@@ -176,7 +176,7 @@ function key(e: KeyboardEvent) {
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.6" y="3" width="4.4" height="10" rx="1" fill="currentColor" fill-opacity="0.5" /><rect x="9" y="3" width="4.4" height="10" rx="1" /></svg>
             </button>
           </span>
-          <button class="zed" :title="changes?.source === 'commit' ? `Open commit ${changes.sha} in Zed's diff view` : 'Open the worktree in Zed, where it shows the uncommitted changes'" @click="openInZed"><Icon name="diff" :size="13" />Diff</button>
+          <button class="zed" title="Open in Zed" @click="openInZed"><Icon name="diff" :size="13" />Diff</button>
         </div>
         <div class="scroll">
           <p v-if="error" class="empty err">{{ error }}</p>

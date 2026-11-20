@@ -54,16 +54,16 @@ function key(e: KeyboardEvent) {
 <template>
   <div ref="box" class="box popup" role="dialog" aria-label="Artifacts" tabindex="-1" @keydown="key">
     <div class="head">
-      <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
+      <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show sidebar' : 'Hide sidebar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
       <Icon name="file" />
       <span class="title">{{ prompt ? 'Prompt' : art?.file || step?.artifact || 'Artifact' }}</span>
       <span class="muted small">{{ step?.name }}</span>
       <span class="grow"></span>
-      <button class="other" :title="prompt ? 'Back to the artifact' : 'What Derby sent this step\'s agent: the command, its instructions and the system prompt'" @click="prompt = !prompt">
+      <button class="other" :title="prompt ? 'Back to the report' : 'Show the prompt'" @click="prompt = !prompt">
         <Icon :name="prompt ? 'file' : 'terminal'" :size="13" />{{ prompt ? 'Artifact' : 'Prompt' }}
       </button>
-      <button v-if="!derby.diffOf" class="other" title="Open this step's changes beside the artifact" @click="derby.showDiffToo(derby.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
-      <button class="x" aria-label="Close" title="Close (Esc closes both)" @click="close"><Icon name="close" :size="14" /></button>
+      <button v-if="!derby.diffOf" class="other" title="Show changes" @click="derby.showDiffToo(derby.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
+      <button class="x" aria-label="Close" title="Close (Esc)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div v-if="!sb.hidden.value" class="side-wrap" :style="{ width: sb.width.value + 'px' }">

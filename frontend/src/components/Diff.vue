@@ -229,7 +229,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
             <td class="ln">{{ rows[u.left].old ?? '' }}</td>
             <td class="ln">{{ rows[u.left].new ?? '' }}</td>
             <td class="gut">
-              <button v-if="commentable && lineRow(rows[u.left])" class="add-note" aria-label="Comment on this line" title="Comment on this line (drag, or shift-click another line's +, for several)" @mousedown="press(u.left, $event)">+</button>
+              <button v-if="commentable && lineRow(rows[u.left])" class="add-note" aria-label="Comment on this line" title="Comment (drag for several lines)" @mousedown="press(u.left, $event)">+</button>
             </td>
             <td class="code"><span class="sign">{{ sign(rows[u.left]) }}</span><template v-if="segs.get(u.left)"><span v-for="(s, k) in segs.get(u.left)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[u.left].text }}</template></td>
           </tr>
@@ -239,7 +239,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
               <template v-if="c.i >= 0">
                 <td class="ln" :class="[c.side, rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)">{{ (c.side === 'l' ? rows[c.i].old : rows[c.i].new) ?? '' }}</td>
                 <td class="gut" :class="[rows[c.i].kind, marks(c.i), { hov: hov === c.i }]" @mouseenter="enter(c.i)">
-                  <button v-if="commentable" class="add-note" aria-label="Comment on this line" title="Comment on this line (drag, or shift-click another line's +, for several)" @mousedown="press(c.i, $event)">+</button>
+                  <button v-if="commentable" class="add-note" aria-label="Comment on this line" title="Comment (drag for several lines)" @mousedown="press(c.i, $event)">+</button>
                 </td>
                 <td class="code" :class="[rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)"><span class="sign">{{ sign(rows[c.i]) }}</span><template v-if="segs.get(c.i)"><span v-for="(s, k) in segs.get(c.i)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[c.i].text }}</template></td>
               </template>
@@ -272,7 +272,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
         </template>
         <tr v-for="n in placed.lost" :key="n.id" class="note-row">
           <td :colspan="cols">
-            <div class="note" title="Its lines are no longer in this diff" @click="edit(n)">
+            <div class="note" title="Lines no longer in this diff" @click="edit(n)">
               <span class="where">{{ span(n) }}, no longer in the diff</span>
               <span class="text">{{ n.text }}</span>
               <button class="x" aria-label="Remove the comment" title="Remove the comment" @click.stop="emit('remove', n.id)">Ã—</button>
@@ -475,9 +475,6 @@ tr:hover .add-note,
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-}
-.b:disabled {
-  opacity: 0.5;
 }
 /* split: two halves of the width, long lines wrapped, a rule between them */
 .diff.split {

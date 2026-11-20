@@ -61,11 +61,6 @@ const p = computed(() => derby.project(project.value))
 const nIssue = computed(() => issue.value.trim())
 const nDesc = computed(() => desc.value.trim())
 const mode = computed(() => (nIssue.value && nDesc.value ? 'both' : nIssue.value ? 'issue' : nDesc.value ? 'local' : 'none'))
-const slug = computed(() => {
-  if (nIssue.value) return nIssue.value
-  const words = nDesc.value.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean).slice(0, 3)
-  return 'local-' + (words.join('-') || 'task')
-})
 // The branch: the prefix from Settings, then words from the issue title or
 // the description, until the user edits it.
 const prefix = computed(() => derby.settings?.config.branchPrefix ?? 'ar-')
@@ -92,7 +87,6 @@ const hint = computed(
       none: 'Pick an issue, describe the task, or both',
     })[mode.value],
 )
-const worktree = computed(() => `${p.value?.worktreesDir ?? '.worktrees'}/${slug.value}`)
 const keys = isMac() ? '⌘⏎' : 'Ctrl+⏎'
 const first = computed(() => derby.settings?.agents.find((a) => !a.builtin)?.name ?? 'Plan')
 const valid = computed(() => mode.value !== 'none' && !!p.value && !busy.value && branchOk.value)
@@ -155,7 +149,7 @@ const mineItems = computed(() =>
   })),
 )
 const mineTip = computed(() =>
-  mine.value === null ? 'Loading the issues assigned to you…' : mineError.value ? 'Could not list your issues: ' + mineError.value : mine.value.length ? `${mine.value.length} open issues assigned to you, most urgent first` : 'No open issues assigned to you',
+  mine.value === null ? 'Loading…' : mineError.value ? 'Could not load: ' + mineError.value : mine.value.length ? 'Most urgent first' : 'None assigned to you',
 )
 const mineLabel = computed(() => (mine.value === null ? 'Assigned to you…' : mine.value.length ? `Assigned to you · ${mine.value.length}` : 'None assigned'))
 function pickMine(v: string) {
@@ -176,7 +170,7 @@ async function addFiles() {
 
 // The project, picked in the header; its last item adds one.
 const ADD = '\u0000add'
-const projectItems = computed(() => [...derby.projects.map((pr) => ({ value: pr.id, label: pr.name, title: pr.path })), { value: ADD, label: 'Add project…', title: 'Pick a git repository to add as a project' }])
+const projectItems = computed(() => [...derby.projects.map((pr) => ({ value: pr.id, label: pr.name, title: pr.path })), { value: ADD, label: 'Add project…', title: 'Add a git repository' }])
 const onProject = (v: string) => (v === ADD ? void addProject() : pickProject(v))
 
 // Adds a project without leaving the pop-up, then selects it.
@@ -261,9 +255,9 @@ function key(e: KeyboardEvent) {
       </div>
     </div>
     <div class="details">
-      <button class="btn ghost quiet" title="Screenshots, logs, specs…: Claude reads them with the task" @click="addFiles"><Icon name="plus" :size="13" />Attach files</button>
+      <button class="btn ghost quiet" title="Attach files" @click="addFiles"><Icon name="plus" :size="13" />Attach files</button>
       <span class="grow"></span>
-      <label class="branch" :class="{ bad: mode !== 'none' && !branchOk }" :title="`Branch, starting with ${prefix}. Worktree ${worktree}`">
+      <label class="branch" :class="{ bad: mode !== 'none' && !branchOk }" :title="`Starts with ${prefix}`">
         <Icon name="branch" :size="13" />
         <input id="nfbranch" v-model="branch" aria-label="Branch" autocomplete="off" spellcheck="false" :style="{ width: branch.length + 1 + 'ch' }" />
       </label>
@@ -274,7 +268,7 @@ function key(e: KeyboardEvent) {
       <span class="hint" :class="{ local: mode === 'local' }">{{ hint }}</span>
       <span class="grow"></span>
       <button class="btn ghost" @click="derby.overlay = 'none'">Cancel</button>
-      <button class="btn primary" :disabled="!valid" :title="`Create the task and run ${first} (${keys})`" @click="create()">Create and run {{ first }}<span class="keys">{{ keys }}</span></button>
+      <button class="btn primary" :disabled="!valid" :title="keys" @click="create()">Create and run {{ first }}<span class="keys">{{ keys }}</span></button>
     </div>
   </div>
 </template>

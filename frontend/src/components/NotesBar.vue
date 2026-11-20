@@ -27,7 +27,7 @@ function clear() {
     <span class="count"><Icon name="pencil" :size="12" />{{ n }} {{ n > 1 ? 'comments' : 'comment' }} on the diff</span>
     <span class="grow"></span>
     <template v-if="derby.canFix(task)">
-      <button v-for="a in derby.fixers(task)" :key="a.id" class="b" :title="`Start a ${a.name} step with your comments as guidance; they are cleared once it starts`" @click="send(a)">Send to {{ a.name }}</button>
+      <button v-for="a in derby.fixers(task)" :key="a.id" class="b" :title="`Send to ${a.name}`" @click="send(a)">Send to {{ a.name }}</button>
     </template>
     <span v-else class="muted">a step is running</span>
     <button class="b ghost" :class="{ danger: confirmClear }" @blur="confirmClear = false" @click="clear">{{ confirmClear ? 'Delete them?' : 'Clear' }}</button>

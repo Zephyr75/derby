@@ -496,6 +496,18 @@ export const api: Api = {
     return ok([`$ zed ${p.path}/.worktrees/${t.slug}`])
   },
   OpenProjectInZed: () => ok(undefined),
+  ProjectWorktrees: (id) => {
+    const p = proj(id)
+    const open = T.filter((t) => t.project === p.id && !t.archived)
+    return ok([{ path: p.path, branch: p.baseBranch, main: true }, ...open.map((t) => ({ path: `${p.path}/.worktrees/${t.slug}`, branch: t.branch ?? 'ar-' + t.slug, main: false }))])
+  },
+  ProjectBranches: (id) => {
+    const p = proj(id)
+    const own = T.filter((t) => t.project === p.id && !t.removed)
+    return ok([...own.map((t) => ({ name: t.branch ?? 'ar-' + t.slug, path: t.archived ? '' : `${p.path}/.worktrees/${t.slug}` })), { name: p.baseBranch, path: p.path }])
+  },
+  OpenWorktreeInZed: () => ok(undefined),
+  OpenBranchInZed: () => ok(undefined),
   ReadArtifact: (sid) => ok(mockArtifact(sid)),
   StepPrompt: (sid) => ok({ path: '', file: sid + '.md', exists: true, front: null, body: '# Command\n\n`/derby:implement 9970`' }),
   TerminalURL: (sid) => ok('mock:' + sid),

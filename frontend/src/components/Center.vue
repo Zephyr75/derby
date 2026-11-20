@@ -61,18 +61,18 @@ const chip = computed(() => {
         <span v-if="derby.sessionView === 'chat' && derby.chatTitles[step.id]" class="small ttl" :title="derby.chatTitles[step.id]">{{ derby.chatTitles[step.id] }}</span>
         <span v-else class="muted small">{{ agent?.name ?? step.agent }} agent · {{ model(step.model) }}</span>
         <span class="pill views" role="radiogroup" aria-label="Session view">
-          <button role="radio" :aria-checked="derby.sessionView === 'terminal'" :class="{ on: derby.sessionView === 'terminal' }" title="Show the session as Claude Code's terminal" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" /></button>
-          <button role="radio" :aria-checked="derby.sessionView === 'chat'" :class="{ on: derby.sessionView === 'chat' }" title="Show the session as a chat" @click="derby.setSessionView('chat')"><Icon name="chat" :size="13" /></button>
+          <button role="radio" :aria-checked="derby.sessionView === 'terminal'" :class="{ on: derby.sessionView === 'terminal' }" title="Terminal view" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" /></button>
+          <button role="radio" :aria-checked="derby.sessionView === 'chat'" :class="{ on: derby.sessionView === 'chat' }" title="Chat view" @click="derby.setSessionView('chat')"><Icon name="chat" :size="13" /></button>
         </span>
         <span class="tbs">
-          <button v-if="step.live" class="tb" :title="'Stop Claude in Derby and copy ' + resumeCommand(step) + ', e.g. to continue in Zed'" @click="derby.stopAndCopy(step)">
+          <button v-if="step.live" class="tb" title="Stop and copy the resume command" @click="derby.stopAndCopy(step)">
             <Icon name="stop" :size="14" />Stop and copy <span class="mono-s">claude --resume {{ step.session.slice(0, 8) }}</span>
           </button>
           <template v-else>
             <button class="tb" :title="'Copy ' + resumeCommand(step)" @click="derby.copyResume(step)">
               <Icon name="copy" :size="14" />Copy <span class="mono-s">claude --resume {{ step.session.slice(0, 8) }}</span>
             </button>
-            <button v-if="step.paused" class="tb" title="Resume this session in Derby" @click="derby.resumeStep(step)"><Icon name="play" :size="13" />Resume</button>
+            <button v-if="step.paused" class="tb" title="Resume" @click="derby.resumeStep(step)"><Icon name="play" :size="13" />Resume</button>
           </template>
         </span>
       </div>

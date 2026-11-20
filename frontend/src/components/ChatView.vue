@@ -93,8 +93,14 @@ function fold(id: string, text: string) {
 }
 
 // ---- the session's state ----
-const running = computed(() => props.step.live && props.step.state === 'running')
-const approval = computed(() => props.step.live && props.step.state === 'approval')
+// An Esc in Claude's terminal sends no hook (Derby learns of it a minute
+// later): its transcript ends on the interruption.
+const interrupted = computed(() => {
+  const last = items.value[items.value.length - 1]
+  return last?.kind === 'note' && last.text === 'Interrupted'
+})
+const running = computed(() => props.step.live && props.step.state === 'running' && !interrupted.value)
+const approval = computed(() => props.step.live && props.step.state === 'approval' && !interrupted.value)
 // The tool call Claude waits on: the last one without a result.
 const pending = computed(() => {
   const l = list.value
@@ -337,7 +343,7 @@ const context = computed(() => {
   if (!s?.contextUsed) return null
   const size = s.contextSize || 200000
   const ratio = Math.min(s.contextUsed / size, 1)
-  return { ratio, warn: ratio >= 0.85, tip: `Context window: ${k(s.contextUsed)} / ${k(size)} tokens (${Math.round(ratio * 100)}%)${s.contextSize ? '' : ', assuming a 200k window'}` }
+  return { ratio, warn: ratio >= 0.85, tip: `Context ${k(s.contextUsed)} / ${k(size)} (${Math.round(ratio * 100)}%)` }
 })
 const resetAt = (t: number) => (t ? new Date(t * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '')
 // When the 5-hour session ends, as 14h50 ("5h" while it is unknown).
@@ -351,8 +357,8 @@ const endsAt = (t: number) => {
 const rings = computed(() => {
   const p = status.value?.plan
   const out: { label: string; ratio: number; warn: boolean; tip: string }[] = []
-  if (p?.at && p.fiveHour >= 0) out.push({ label: endsAt(p.fiveHourReset), ratio: Math.min(p.fiveHour / 100, 1), warn: p.fiveHour >= 80, tip: `5-hour limit: ${Math.round(p.fiveHour)}% used, resets ${resetAt(p.fiveHourReset)}` })
-  if (p?.at && p.week >= 0) out.push({ label: 'Week', ratio: Math.min(p.week / 100, 1), warn: p.week >= 80, tip: `Weekly limit: ${Math.round(p.week)}% used, resets ${resetAt(p.weekReset)}` })
+  if (p?.at && p.fiveHour >= 0) out.push({ label: endsAt(p.fiveHourReset), ratio: Math.min(p.fiveHour / 100, 1), warn: p.fiveHour >= 80, tip: `5h limit ${Math.round(p.fiveHour)}% · resets ${resetAt(p.fiveHourReset)}` })
+  if (p?.at && p.week >= 0) out.push({ label: 'Week', ratio: Math.min(p.week / 100, 1), warn: p.week >= 80, tip: `Week limit ${Math.round(p.week)}% · resets ${resetAt(p.weekReset)}` })
   if (context.value) out.push({ label: 'Context', ...context.value })
   return out
 })
@@ -364,7 +370,7 @@ const modelText = computed(() => (props.step.modelSet ? models.find(([id]) => id
 const effort = computed(() => props.step.effortSet || status.value?.effort || agentOf.value?.effort || 'xhigh')
 const menu = ref<'' | 'model' | 'effort'>('')
 const working = computed(() => running.value || approval.value)
-const pickTip = computed(() => (working.value ? 'Claude is working: change it once it waits for you' : props.step.live ? 'Derby restarts Claude with it, keeping the conversation' : 'Used when the session resumes'))
+const pickTip = computed(() => (working.value ? 'locked while Claude works' : props.step.live ? 'restarts Claude, keeps the chat' : 'used on resume'))
 async function pick(model: string, eff: string) {
   menu.value = ''
   await derby.attempt('Could not change the model', () => api.SetStepModel(props.step.id, model, eff))
@@ -399,7 +405,7 @@ async function checkAgain() {
             <pre v-if="isOpen(e.id) && e.tool.result" class="output">{{ e.tool.result.text || 'No output.' }}</pre>
             <div v-if="confirming(e.tool)" class="perm">
               <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
-              <button class="pb" title="Decline, as Esc does in the terminal; then tell Claude what to do instead" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
+              <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
               <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
             </div>
           </div>
@@ -438,12 +444,12 @@ async function checkAgain() {
             <div v-if="confirming(e.tool)" class="perm">
               <template v-if="e.tool.call.tool !== 'AskUserQuestion'">
                 <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
-                <button class="pb" title="Decline, as Esc does in the terminal; then tell Claude what to do instead" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
+                <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
                 <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
               </template>
               <template v-else>
                 <button class="pb" :disabled="!answered(e.tool) || answering" @click="submitAnswers(e.tool)"><Icon name="check" :size="13" class="ok" />{{ answering ? 'Sending…' : 'Submit answers' }}</button>
-                <button class="pb" title="Cancel the form, as Esc does in the terminal; then tell Claude what you want instead" @click="interrupt"><Icon name="close" :size="13" class="bad" />Skip</button>
+                <button class="pb" title="Skip the form (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Skip</button>
               </template>
             </div>
           </div>
@@ -494,9 +500,9 @@ async function checkAgain() {
 
           <!-- a turn's end: copy its answer, back to its message; at the bottom, to the top -->
           <div v-else-if="e.kind === 'end' && !(e.bottom && (running || approval))" class="controls">
-            <button class="ib" title="Copy This Agent Response" aria-label="Copy This Agent Response" @click="copyTurn(e.turn)"><Icon name="copy" :size="14" /></button>
-            <button class="ib" title="Scroll to User Message" aria-label="Scroll to User Message" @click="toUser(e.turn)"><Icon name="user-up" :size="14" /></button>
-            <button v-if="e.bottom" class="ib" title="Scroll to Top" aria-label="Scroll to Top" @click="toTop"><Icon name="arrow-up" :size="14" /></button>
+            <button class="ib" title="Copy response" aria-label="Copy response" @click="copyTurn(e.turn)"><Icon name="copy" :size="14" /></button>
+            <button class="ib" title="Go to your message" aria-label="Go to your message" @click="toUser(e.turn)"><Icon name="user-up" :size="14" /></button>
+            <button v-if="e.bottom" class="ib" title="Go to top" aria-label="Go to top" @click="toTop"><Icon name="arrow-up" :size="14" /></button>
           </div>
         </template>
 
@@ -552,27 +558,27 @@ async function checkAgain() {
         </div>
         <textarea ref="box" v-model="draft" rows="4" :class="{ bash }" :placeholder="placeholder" :disabled="blocked" data-own-escape @keydown="key" @paste="paste" @input="sync" @click="sync" @keyup="sync"></textarea>
         <div class="tools">
-          <button class="ib" title="Attach files: Derby copies them to the run folder and mentions them in your message" aria-label="Attach files" :disabled="blocked" @click="attach"><Icon name="plus" :size="14" /></button>
-          <span v-if="bash" class="bashpill" title="A message starting with ! runs as a shell command in the worktree; its output joins the conversation">! Bash mode</span>
+          <button class="ib" title="Attach files" aria-label="Attach files" :disabled="blocked" @click="attach"><Icon name="plus" :size="14" /></button>
+          <span v-if="bash" class="bashpill" title="Runs in the worktree's shell">! Bash mode</span>
           <span v-else class="sel who"><Icon name="agent" :size="13" />{{ agentName }}</span>
           <span class="grow"></span>
           <span v-for="r in rings" :key="r.label" class="ring" :class="{ warn: r.warn }" :title="r.tip">
             {{ r.label }}<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke-width="2" class="track" /><circle cx="8" cy="8" r="6" fill="none" stroke-width="2" class="fill" :stroke-dasharray="`${r.ratio * 37.7} 37.7`" transform="rotate(-90 8 8)" /></svg>
           </span>
           <span class="dd">
-            <button class="sel pick" :disabled="working" :title="'Model. ' + pickTip" @click="menu = menu === 'model' ? '' : 'model'">{{ modelText }}<Icon name="chevron" :size="12" /></button>
+            <button class="sel pick" :disabled="working" :title="'Model · ' + pickTip" @click="menu = menu === 'model' ? '' : 'model'">{{ modelText }}<Icon name="chevron" :size="12" /></button>
             <div v-if="menu === 'model'" class="menu">
               <button v-for="[id, name] in models" :key="id" :class="{ on: id === modelId }" @click="pick(id, '')">{{ name }}<Icon v-if="id === modelId" name="check" :size="12" /></button>
             </div>
           </span>
           <span class="dd">
-            <button class="sel pick" :disabled="working" :title="'Effort. ' + pickTip" @click="menu = menu === 'effort' ? '' : 'effort'">{{ effort }}<Icon name="chevron" :size="12" /></button>
+            <button class="sel pick" :disabled="working" :title="'Effort · ' + pickTip" @click="menu = menu === 'effort' ? '' : 'effort'">{{ effort }}<Icon name="chevron" :size="12" /></button>
             <div v-if="menu === 'effort'" class="menu">
               <button v-for="e in efforts" :key="e" :class="{ on: e === effort }" @click="pick('', e)">{{ e }}<Icon v-if="e === effort" name="check" :size="12" /></button>
             </div>
           </span>
-          <button v-if="(running || approval) && !draft.trim()" class="send stop" title="Stop Generation" aria-label="Stop Generation" @click="interrupt"><Icon name="stop" :size="13" /></button>
-          <button v-else class="send" :disabled="!draft.trim() || sending || blocked" :title="!draft.trim() ? 'Type to Send' : running ? 'Queue and Send' : step.live ? 'Send Message' : 'Resume the session with this message'" aria-label="Send" @click="send">
+          <button v-if="(running || approval) && !draft.trim()" class="send stop" title="Stop" aria-label="Stop" @click="interrupt"><Icon name="stop" :size="13" /></button>
+          <button v-else class="send" :disabled="!draft.trim() || sending || blocked" :title="!draft.trim() ? 'Type a message' : running ? 'Queue' : step.live ? 'Send' : 'Resume with this message'" aria-label="Send" @click="send">
             <Icon :name="running && draft.trim() ? 'queue' : 'send-msg'" :size="14" />
           </button>
         </div>
@@ -1063,9 +1069,6 @@ button:hover > .disc,
 .other:focus {
   border-color: var(--accent);
 }
-.pb:disabled {
-  opacity: 0.5;
-}
 .trust {
   display: flex;
   flex-direction: column;
@@ -1099,7 +1102,7 @@ button:hover > .disc,
   color: var(--text);
   font-size: var(--fs-12);
 }
-.pb:hover {
+.pb:hover:not(:disabled) {
   background: var(--hover);
 }
 .todos {
@@ -1178,7 +1181,7 @@ button:hover > .disc,
   background: transparent;
   color: var(--muted);
 }
-.ib:hover {
+.ib:hover:not(:disabled) {
   background: var(--hover);
   color: var(--text);
 }
@@ -1293,9 +1296,6 @@ textarea:disabled {
   color: var(--muted);
   white-space: nowrap;
 }
-.tools .ib:disabled {
-  opacity: 0.5;
-}
 /* plan usage and the context window, as Zed's context ring: 16px, 2px stroke,
    warning past 80% (85% for the context) */
 .ring {
@@ -1330,9 +1330,6 @@ textarea:disabled {
 .pick:hover:not(:disabled) {
   background: var(--hover);
   color: var(--text);
-}
-.pick:disabled {
-  opacity: 0.55;
 }
 .menu {
   position: absolute;
@@ -1478,9 +1475,6 @@ textarea.bash {
 }
 .send:hover:not(:disabled) {
   background: var(--hover);
-}
-.send:disabled {
-  color: var(--faint);
 }
 .send.stop {
   background: var(--del-bg);

@@ -16,7 +16,7 @@ import (
 
 // Event is one hook call, decoded from Claude Code's JSON payload.
 type Event struct {
-	Name             string // SessionStart, UserPromptSubmit, Notification, PreToolUse, PostToolUse, Stop
+	Name             string // SessionStart, UserPromptSubmit, Notification, PreToolUse, PostToolUse, Stop, StopFailure
 	StepID           string // <task id>/<step key>
 	PID              int    // the claude process that ran the hook (0 if unknown)
 	SessionID        string `json:"session_id"`
@@ -33,6 +33,13 @@ func (e Event) IsPermission() bool {
 		return e.NotificationType == "permission_prompt"
 	}
 	return strings.Contains(strings.ToLower(e.Message), "permission")
+}
+
+// IsIdle reports whether a Notification says Claude has waited a minute for
+// the user's input: it stopped, even without a Stop hook (e.g. an Esc in its
+// terminal).
+func (e Event) IsIdle() bool {
+	return e.NotificationType == "idle_prompt"
 }
 
 // Receiver handles POST /hook.
@@ -95,8 +102,9 @@ func Replay(dir string, on func(Event)) {
 	}
 }
 
-// Events derby listens to.
-var Events = []string{"SessionStart", "UserPromptSubmit", "Notification", "PreToolUse", "PostToolUse", "Stop"}
+// Events derby listens to. StopFailure replaces Stop when a turn ends on an
+// API error (a usage limit, billing, authentication, an outage).
+var Events = []string{"SessionStart", "UserPromptSubmit", "Notification", "PreToolUse", "PostToolUse", "Stop", "StopFailure"}
 
 // AskTool is Claude Code's question form: while it is open, the step waits
 // for the user. PreToolUse is only sent for it.

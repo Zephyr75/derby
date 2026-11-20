@@ -81,10 +81,10 @@ const tab = computed(() =>
   derby.rightTab === 'todos' && task.value ? 'todos' : derby.rightTab === 'pr' && task.value?.pr ? 'pr' : hasChanges.value && derby.rightTab === 'changes' ? 'changes' : 'preview',
 )
 const diffTitle = computed(() => {
-  if (!step.value) return 'Open a step to see the files it changed'
-  if (changes.value && !changes.value.files.length) return `${step.value.name} changed no files`
-  if (step.value.external) return `Every change of the branch against ${task.value?.baseBranch}, as the PR shows it`
-  return `The files ${step.value.name} changed`
+  if (!step.value) return 'No step open'
+  if (changes.value && !changes.value.files.length) return 'No changes'
+  if (step.value.external) return `Branch vs ${task.value?.baseBranch}`
+  return `${step.value.name}'s changes`
 })
 
 // The tabs keep only their icons when one of their names doesn't fit.
@@ -95,23 +95,23 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
 <template>
   <div class="wrap">
     <div ref="bar" class="bar" :class="{ compact }" role="tablist">
-      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the report this step wrote` : 'The report a step writes'" aria-label="Report" @click="derby.rightTab = 'preview'">
+      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file || 'Report'" aria-label="Report" @click="derby.rightTab = 'preview'">
         <span class="in"><Icon name="file" /><span class="label">Report</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="Changes" @click="hasChanges && (derby.rightTab = 'changes')">
         <span class="in"><Icon name="diff" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
-      <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}: its review comments and CI checks` : 'No PR yet: Commit and push opens one'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
+      <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}` : 'No PR yet'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
         <span class="in"><Icon name="pr" /><span class="label">PR<span v-if="task?.pr" class="count">#{{ task.pr }}</span></span></span>
       </button>
-      <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="`The task's todos${openTodos ? `, ${openTodos} open` : ''}`" aria-label="TODOs" @click="task && (derby.rightTab = 'todos')">
+      <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="openTodos ? `${openTodos} open` : 'Todos'" aria-label="TODOs" @click="task && (derby.rightTab = 'todos')">
         <span class="in"><Icon name="todo" /><span class="label">TODOs</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
       </button>
     </div>
     <div class="content">
       <template v-if="tab === 'todos' && task">
         <PaneHead :title="`${openTodos} open`" :meta="`${task.todos.length - openTodos} done`" tip="The task's todos">
-          <button v-if="task.todos.length > openTodos" :title="derby.hideDone ? 'Show the done todos' : 'Hide the done todos'" @click="derby.hideDone = !derby.hideDone">{{ derby.hideDone ? 'Show done' : 'Hide done' }}</button>
+          <button v-if="task.todos.length > openTodos" :title="derby.hideDone ? 'Show done' : 'Hide done'" @click="derby.hideDone = !derby.hideDone">{{ derby.hideDone ? 'Show done' : 'Hide done' }}</button>
         </PaneHead>
         <TodoList :todos="task.todos" :hide-done="derby.hideDone" @change="derby.setTodos(task, $event)" :run="derby.todoAgent(task)?.name ?? 'Implement'" :blocked="derby.todoBlocked(task)" @run="derby.runTodo(task, $event)" />
       </template>
@@ -120,7 +120,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
       <template v-else>
         <PaneHead :title="file || 'Report'" :tip="art?.path">
-          <button v-if="art?.exists" title="Open the whole report in a large pop-up" aria-label="Open the whole report" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
+          <button v-if="art?.exists" title="Expand" aria-label="Open the whole report" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
         </PaneHead>
         <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
         <p v-else-if="!parts.length" class="empty">The report is empty.</p>
@@ -177,9 +177,6 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     background: var(--bg);
     color: var(--text);
     font-weight: 500;
-  }
-  .tab.off {
-    color: var(--faint);
   }
   .in {
     flex: none;

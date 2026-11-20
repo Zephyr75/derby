@@ -85,8 +85,8 @@ onUpdated(fit)
 
     <div v-for="o in nx.sisters" :key="o.repo" class="sister">
       <p :title="o.scope"><b>The plan also needs {{ o.repo }}</b>: {{ o.part || o.scope }}</p>
-      <button v-if="o.project" class="btn primary" :title="`Create a task in ${o.repo} for the same issue, with its own worktree, plan and PR, linked to this one under Sisters`" @click="createSister(o.repo)"><Icon name="plus" :size="13" /><span>Create sister task</span></button>
-      <button v-else class="btn" :title="`${o.repo} is not a Derby project yet: pick its folder, then create the sister task`" @click="addProject"><Icon name="plus" :size="13" /><span>Add as a project</span></button>
+      <button v-if="o.project" class="btn primary" :title="`Create a sister task in ${o.repo}`" @click="createSister(o.repo)"><Icon name="plus" :size="13" /><span>Create sister task</span></button>
+      <button v-else class="btn" :title="`Add ${o.repo} to Derby first`" @click="addProject"><Icon name="plus" :size="13" /><span>Add as a project</span></button>
     </div>
 
     <template v-if="runnable">
@@ -104,7 +104,7 @@ onUpdated(fit)
       <template v-if="runnable">
         <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" :title="o.label" @click="derby.run(o)"><Icon name="play" :size="13" /><span>{{ o.label }}</span></button>
       </template>
-      <button v-if="markReady" class="btn" title="Turn the draft PR into one ready for review and add the ready label" @click="derby.markReady(t)"><Icon name="check" :size="13" /><span>Mark PR ready for review</span></button>
+      <button v-if="markReady" class="btn" title="Mark ready for review" @click="derby.markReady(t)"><Icon name="check" :size="13" /><span>Mark PR ready for review</span></button>
       <button v-if="nx.approval" class="btn allow" @click="allow(nx.approval)"><span>Allow once</span></button>
       <button v-if="nx.markDone" class="btn" @click="markDone(nx.markDone)"><span>Mark done</span></button>
       <template v-if="t.archived">
@@ -112,7 +112,7 @@ onUpdated(fit)
         <button
           class="btn"
           :class="{ danger: derby.confirmDelete === t.id }"
-          title="Forget the task in Derby, and remove its worktree, local branch and run files (the pushed branch and the PR stay on GitHub)"
+          title="The PR stays on GitHub"
           @click="deleteTask"
         >
           <span>{{ derby.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}</span>

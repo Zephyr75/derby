@@ -120,7 +120,7 @@ const dropCls = (t: Todo) => (over.value?.id === t.id && dragging.value !== t.id
         <button v-if="run" class="go" :disabled="t.done || !!blocked" :aria-label="'Start ' + run + ' on it'" :title="goTitle(t)" @click="emit('run', t)">
           <Icon name="play-outline" :size="13" />
         </button>
-        <button class="urg" :aria-pressed="!!t.urgent" :aria-label="t.urgent ? 'Urgent: unmark it' : 'Mark as urgent'" :title="t.urgent ? 'Urgent: click to unmark' : 'Mark as urgent'" @click="patch(t.id, { urgent: !t.urgent })">
+        <button class="urg" :aria-pressed="!!t.urgent" :aria-label="t.urgent ? 'Urgent: unmark it' : 'Mark as urgent'" :title="t.urgent ? 'Unmark urgent' : 'Mark urgent'" @click="patch(t.id, { urgent: !t.urgent })">
           <Icon name="warn" :size="13" />
         </button>
         <button class="x" aria-label="Delete" title="Delete" @click="save(todos.filter((x) => x.id !== t.id))"><Icon name="close" :size="12" /></button>
@@ -260,9 +260,6 @@ const dropCls = (t: Todo) => (over.value?.id === t.id && dragging.value !== t.id
 }
 .go:not(:disabled):hover {
   color: var(--accent);
-}
-.go:disabled {
-  opacity: 0.4;
 }
 .urg:hover {
   color: var(--urgent);

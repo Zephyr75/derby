@@ -82,9 +82,6 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
   .chip.on {
     background: var(--hover);
   }
-  .chip:disabled {
-    color: var(--muted);
-  }
   .label {
     flex: 1;
     min-width: 0;
@@ -129,16 +126,10 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     font-weight: 600;
     line-height: 17px;
   }
-  .item:disabled .tag {
-    opacity: 0.6;
-  }
   .item:hover:not(:disabled) {
     background: var(--hover);
   }
   .item.cur {
     background: var(--sel);
-  }
-  .item:disabled {
-    color: var(--faint);
   }
 </style>
