@@ -5,6 +5,7 @@ import {
   Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, Folder, FolderOpen, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Split, Square, SquareTerminal, TriangleAlert, Undo2, X,
   ArrowDown, ArrowUp, Bot, Brain, Flag, UsersRound, ChevronUp, Hammer, Lightbulb, ListPlus, SendHorizontal, UserRound, CircleX, Globe, ListChecks, LoaderCircle, MessageSquare, ShieldAlert, Sparkles, Wrench,
+  Monitor, Moon, Sun,
 } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: number }>(), { size: 14, stroke: 2 })
@@ -71,6 +72,10 @@ const icons: Record<string, Component> = {
   'panel-left-off': PanelLeftOpen,
   'panel-right': PanelRightClose,
   'panel-right-off': PanelRightOpen,
+  // a theme's modes (Settings > Appearance)
+  dark: Moon,
+  light: Sun,
+  system: Monitor,
 }
 const filled = ['play', 'stop'] // solid, like media buttons
 const turned = ['worktree']

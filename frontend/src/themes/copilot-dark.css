@@ -1,0 +1,68 @@
+/* GitHub Copilot Dark, from the GitHub Copilot app's Primer tokens (GitHub
+   dark default): canvas #0d1117, inset #010409 for the bars and side panels. */
+[data-theme='copilot-dark'] {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --chrome: #010409;
+  --panel: #010409; /* bgColor-inset: the app's sidebar */
+  --surface: #151b23;
+  --elev: #151b23;
+  --border: #3d444d;
+  --text: #f0f6fc;
+  --muted: #9198a1;
+  --faint: #656c76;
+  --sel: rgba(56, 139, 253, 0.15);
+  --toggle-sel: rgba(56, 139, 253, 0.25);
+  --toggle-text: #4493f8;
+  --hover: #262c36;
+  --button: #238636; /* Primer's primary button */
+  --button-text: #ffffff;
+  --overlay: rgba(1, 4, 9, 0.6);
+  --shadow: 0 16px 40px rgba(1, 4, 9, 0.75);
+  --accent: #4493f8;
+  --code-kw: #ff7b72;
+  --decision: #d29922;
+
+  --running: #4493f8;
+  --running-dot: #4493f8;
+  --running-bg: #13233a;
+  --waiting: #d29922;
+  --waiting-dot: #d29922;
+  --waiting-bg: #272215;
+  --approval: #f85149;
+  --approval-dot: #f85149;
+  --approval-bg: #301b1f;
+  --idle: #9198a1;
+  --idle-dot: #9198a1;
+  --idle-bg: #212830;
+  --done: #3fb950;
+  --done-dot: #3fb950;
+  --done-bg: #12261e;
+
+  --local: #ab7df8;
+  --local-bg: rgba(171, 125, 248, 0.15);
+  --local-border: rgba(171, 125, 248, 0.4);
+
+  --add: #3fb950;
+  --del: #f85149;
+  /* diffs as GitHub shows them: green at 15% and red at 10% behind the line */
+  --vc-add: #2ea043;
+  --vc-del: #f85149;
+  --add-bg: color-mix(in srgb, var(--vc-add) 15%, var(--bg));
+  --del-bg: color-mix(in srgb, var(--vc-del) 10%, var(--bg));
+
+  /* todos marked urgent */
+  --urgent: #f85149;
+
+  /* terminal ANSI palette, Primer's */
+  --ansi-black: #2f3742;
+  --ansi-red: #ff7b72;
+  --ansi-green: #3fb950;
+  --ansi-yellow: #d29922;
+  --ansi-blue: #58a6ff;
+  --ansi-magenta: #be8fff;
+  --ansi-cyan: #39c5cf;
+  --ansi-white: #f0f6fc;
+  --ansi-bright-black: #656c76;
+  --ansi-selection: rgba(31, 111, 235, 0.45);
+}

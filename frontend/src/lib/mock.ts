@@ -50,7 +50,7 @@ let others: Todo[] = [{ id: 'o1', text: 'Update the Slack profile picture', done
 
 const settings: Settings = {
   config: {
-    appearance: { theme: 'dark', uiFont: 'Geist', uiFontSize: 13, termFont: 'Geist Mono', termFontSize: 12.5, sessionView: 'terminal' },
+    appearance: { theme: 'fleet', mode: 'dark', uiFont: 'Geist', uiFontSize: 13, termFont: 'Geist Mono', termFontSize: 12.5, sessionView: 'terminal' },
     zedCommand: 'zed', claudeCommand: 'claude', maxLiveSessions: 6, notifications: true, maxTabs: 5, branchPrefix: 'ar-', issuesRepo: '',
     rules: 'Never edit generated files under gen/.\nRun the tests you touched before writing the artifact.', projects,
   },
@@ -532,7 +532,7 @@ export const api: Api = {
   AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.derby/runs/core/4356/attachments/' + f.split('/').pop())),
   SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false }); return ok(undefined) },
   InterruptStep: () => ok(undefined),
-  SetTheme: (theme) => { settings.config.appearance.theme = theme as any; emit('settings:changed', settings); return ok(undefined) },
+  SetTheme: (theme, mode) => { Object.assign(settings.config.appearance, { theme, mode }); emit('settings:changed', settings); return ok(undefined) },
   SaveAppearance: (a, z) => { settings.config.appearance = a; settings.config.zedCommand = z; emit('settings:changed', settings); return ok(undefined) },
   CheckPrerequisites: () => ok([
     { project: '', ok: true, label: 'Zed CLI', detail: '"zed" on PATH' },

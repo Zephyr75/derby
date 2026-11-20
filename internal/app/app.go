@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -475,14 +476,16 @@ func (a *App) AddProjectPath(dir string) (*settings.Project, error) {
 	return &p, nil
 }
 
-// SetTheme sets dark, light, system, mocha or latte.
-func (a *App) SetTheme(theme string) error {
-	switch theme {
-	case "dark", "light", "system", "mocha", "latte":
-	default:
+// SetTheme sets the theme (fleet, catppuccin or copilot) and its mode: dark,
+// light, or system (follows the OS).
+func (a *App) SetTheme(theme, mode string) error {
+	if !slices.Contains(settings.Themes, theme) {
 		return fmt.Errorf("unknown theme %q", theme)
 	}
-	return a.updateConfig(func(c *settings.Config) { c.Appearance.Theme = theme })
+	if !slices.Contains(settings.Modes, mode) {
+		return fmt.Errorf("unknown theme mode %q", mode)
+	}
+	return a.updateConfig(func(c *settings.Config) { c.Appearance.Theme, c.Appearance.Mode = theme, mode })
 }
 
 // SetSessionView shows steps' sessions as a terminal or as a chat.
@@ -496,10 +499,13 @@ func (a *App) SetSessionView(view string) error {
 // SaveAppearance saves fonts and the Zed command.
 func (a *App) SaveAppearance(ap settings.Appearance, zedCommand string) error {
 	return a.updateConfig(func(c *settings.Config) {
-		theme, view := c.Appearance.Theme, c.Appearance.SessionView
+		theme, mode, view := c.Appearance.Theme, c.Appearance.Mode, c.Appearance.SessionView
 		c.Appearance = ap
 		if ap.Theme == "" {
 			c.Appearance.Theme = theme
+		}
+		if ap.Mode == "" {
+			c.Appearance.Mode = mode
 		}
 		if ap.SessionView == "" {
 			c.Appearance.SessionView = view

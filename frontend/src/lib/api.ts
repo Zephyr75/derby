@@ -62,7 +62,7 @@ export interface Api {
   RemoveProject(id: string): Promise<void>
   AddProject(): Promise<Project | null>
   AddProjectPath(dir: string): Promise<Project | null>
-  SetTheme(theme: string): Promise<void>
+  SetTheme(theme: string, mode: string): Promise<void>
   SetSessionView(view: string): Promise<void>
   StepChat(step: string, offset: number): Promise<Chat>
   SendToStep(step: string, text: string): Promise<void>

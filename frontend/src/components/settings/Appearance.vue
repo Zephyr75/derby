@@ -1,32 +1,40 @@
 <script setup lang="ts">
-// Settings > Appearance: Dark (Fleet Dark), Light (Flatwhite), System, or
-// Catppuccin Mocha and Latte, then fonts and the Zed command.
+// Settings > Appearance: one row per theme (Fleet, Catppuccin, GitHub
+// Copilot), each with Dark, Light or System, then fonts and the Zed command.
 import { computed } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import { derby } from '../../lib/state'
+import { themes, type ThemeDef } from '../../lib/themes'
+import type { ThemeMode, ThemeName } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 
-type Mode = 'dark' | 'light' | 'system' | 'mocha' | 'latte'
 const ap = computed(() => derby.settings?.config.appearance)
-const cards = computed<{ id: Mode; name: string; note: string; panes: string[] }[]>(() => [
-  { id: 'dark', name: 'Dark', note: 'Fleet Dark', panes: ['fleet-dark'] },
-  { id: 'light', name: 'Light', note: 'Flatwhite', panes: ['flatwhite'] },
-  { id: 'system', name: 'System', note: `now ${derby.systemLight ? 'Light' : 'Dark'}, follows the OS`, panes: ['fleet-dark', 'flatwhite'] },
-  { id: 'mocha', name: 'Mocha', note: 'Catppuccin, dark', panes: ['mocha'] },
-  { id: 'latte', name: 'Latte', note: 'Catppuccin, light', panes: ['latte'] },
-])
+const modes: { id: ThemeMode; name: string }[] = [
+  { id: 'dark', name: 'Dark' },
+  { id: 'light', name: 'Light' },
+  { id: 'system', name: 'System' },
+]
+
+/** The theme's note; in use with System, the variant the OS picks now. */
+function note(t: ThemeDef) {
+  if (derby.themeName !== t.id || derby.themeMode !== 'system') return t.note
+  return `${t.note}, now ${derby.systemLight ? t.lightName : t.darkName}`
+}
+const chosen = (t: ThemeDef, m: ThemeMode) => derby.themeName === t.id && derby.themeMode === m
 
 const views = [
   { id: 'terminal', name: 'Terminal' },
   { id: 'chat', name: 'Chat' },
 ] as const
 
-async function pick(id: Mode) {
-  if (!derby.settings) return
-  derby.settings.config.appearance.theme = id
+async function pick(theme: ThemeName, mode: ThemeMode) {
+  const a = derby.settings?.config.appearance
+  if (!a) return
+  a.theme = theme
+  a.mode = mode
   derby.edited()
-  await derby.attempt('Could not save the theme', () => api.SetTheme(id))
+  await derby.attempt('Could not save the theme', () => api.SetTheme(theme, mode))
 }
 
 const save = debounce(() => {
@@ -79,13 +87,13 @@ function setZed(e: Event) {
 <template>
   <div class="intro">
     <h1>Appearance</h1>
-    <p>Dark uses Fleet Dark and Light uses Flatwhite, the themes you use in Zed. System follows your OS setting. Mocha and Latte are Catppuccin's dark and light flavours.</p>
+    <p>Each theme has a dark and a light variant; System follows your OS setting. Fleet is Fleet Dark and Flatwhite, the themes you use in Zed, Catppuccin is Mocha and Latte, and GitHub Copilot has the GitHub Copilot app's colours.</p>
   </div>
 
-  <div class="cards">
-    <button v-for="c in cards" :key="c.id" class="tcard" :class="{ on: derby.themeMode === c.id }" @click="pick(c.id)">
+  <div class="themes card" role="radiogroup" aria-label="Theme">
+    <div v-for="t in themes" :key="t.id" class="theme" :class="{ on: derby.themeName === t.id }">
       <span class="shot">
-        <span v-for="th in c.panes" :key="th" class="pane" :data-theme="th">
+        <span v-for="th in [t.dark, t.light]" :key="th" class="pane" :data-theme="th" :title="th === t.dark ? t.darkName : t.lightName">
           <span class="pchrome"></span>
           <span class="pbody">
             <span class="pside">
@@ -104,11 +112,13 @@ function setZed(e: Event) {
         </span>
       </span>
       <span class="label">
-        <span class="radio" :class="{ on: derby.themeMode === c.id }"></span>
-        <span class="name">{{ c.name }}</span>
-        <span class="muted small">{{ c.note }}</span>
+        <span class="name">{{ t.name }}</span>
+        <span class="muted small">{{ note(t) }}</span>
       </span>
-    </button>
+      <span class="pill modes">
+        <button v-for="m in modes" :key="m.id" role="radio" :aria-checked="chosen(t, m.id)" :aria-label="`${t.name} ${m.name}`" :class="{ on: chosen(t, m.id) }" @click="pick(t.id, m.id)"><Icon :name="m.id" :size="13" />{{ m.name }}</button>
+      </span>
+    </div>
   </div>
 
   <div v-if="ap" class="rows card">
@@ -142,30 +152,30 @@ function setZed(e: Event) {
 </template>
 
 <style scoped>
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 14px;
-    max-width: 1000px;
-  }
-  .tcard {
+  .themes {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: left;
-    font-size: var(--fs-13);
-    color: var(--text);
-    border: 1px solid var(--border);
-    background: transparent;
+    max-width: 720px;
+    overflow: hidden;
   }
-  .tcard.on {
+  .theme {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    font-size: var(--fs-13);
+  }
+  .theme + .theme {
+    border-top: 1px solid var(--border);
+  }
+  .theme.on {
     background: var(--sel);
   }
   .shot {
+    flex: none;
     display: flex;
-    height: 130px;
+    width: 168px;
+    height: 64px;
     border-radius: 6px;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -178,7 +188,7 @@ function setZed(e: Event) {
     background: var(--bg);
   }
   .pchrome {
-    height: 16px;
+    height: 9px;
     background: var(--chrome);
     border-bottom: 1px solid var(--border);
   }
@@ -189,43 +199,40 @@ function setZed(e: Event) {
   .pside {
     width: 34%;
     border-right: 1px solid var(--border);
-    padding: 8px;
+    background: var(--panel);
+    padding: 5px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
   .pmain {
     flex: 1;
-    padding: 8px;
+    padding: 5px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
   .bar {
-    height: 6px;
-    border-radius: 3px;
+    height: 4px;
+    border-radius: 2px;
   }
   .blk {
-    height: 8px;
+    height: 6px;
     border-radius: 2px;
   }
   .label {
+    flex: 1;
+    min-width: 0;
     display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .radio {
-    flex: none;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 1px solid var(--muted);
-  }
-  .radio.on {
-    border: 4px solid var(--text);
+    flex-direction: column;
+    gap: 2px;
   }
   .name {
     font-weight: 600;
+  }
+  .modes {
+    flex: none;
+    width: 246px;
   }
   .small {
     font-size: var(--fs-12);

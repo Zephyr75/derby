@@ -45,8 +45,12 @@ export interface Context {
   knowledge: string // a knowledge base folder sessions can read
 }
 
+export type ThemeName = 'fleet' | 'catppuccin' | 'copilot'
+export type ThemeMode = 'dark' | 'light' | 'system'
+
 export interface Appearance {
-  theme: 'dark' | 'light' | 'system' | 'mocha' | 'latte'
+  theme: ThemeName
+  mode: ThemeMode // the theme's dark or light variant, or the OS's (system)
   uiFont: string
   uiFontSize: number
   termFont: string

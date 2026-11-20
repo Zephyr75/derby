@@ -27,9 +27,18 @@ type Project struct {
 	CommonIssues bool   `toml:"common_issues,omitempty" json:"commonIssues"` // its issues live in the common issues repository (Config.IssuesRepo)
 }
 
+// Themes are derby's themes, each with a dark and a light variant: Fleet
+// (Fleet Dark and Flatwhite), Catppuccin (Mocha and Latte) and GitHub Copilot.
+var Themes = []string{"fleet", "catppuccin", "copilot"}
+
+// Modes pick a theme's variant: dark, light, or the OS's (system).
+var Modes = []string{"dark", "light", "system"}
+
 // Appearance holds the theme and fonts.
 type Appearance struct {
-	Theme        string  `toml:"theme" json:"theme"` // dark | light | system | mocha | latte
+	Theme        string  `toml:"theme" json:"theme"` // one of Themes
+	Mode         string  `toml:"mode" json:"mode"`   // one of Modes
+
 	UIFont       string  `toml:"ui_font" json:"uiFont"`
 	UIFontSize   float64 `toml:"ui_font_size" json:"uiFontSize"`
 	TermFont     string  `toml:"terminal_font" json:"termFont"`
@@ -260,10 +269,20 @@ func migrateKeymap(old string, cfg *Config, cfgPath string) error {
 
 func fillConfig(c *Config) {
 	d := DefaultConfig()
-	switch c.Appearance.Theme {
-	case "dark", "light", "system", "mocha", "latte":
-	default: // empty, or a theme derby no longer has
-		c.Appearance.Theme = d.Appearance.Theme
+	ap := &c.Appearance
+	switch ap.Theme { // before each theme had its dark and light variants
+	case "dark", "light", "system":
+		ap.Theme, ap.Mode = "fleet", ap.Theme
+	case "mocha":
+		ap.Theme, ap.Mode = "catppuccin", "dark"
+	case "latte":
+		ap.Theme, ap.Mode = "catppuccin", "light"
+	}
+	if !slices.Contains(Themes, ap.Theme) { // empty, or a theme derby no longer has
+		ap.Theme = d.Appearance.Theme
+	}
+	if !slices.Contains(Modes, ap.Mode) {
+		ap.Mode = d.Appearance.Mode
 	}
 	if c.Appearance.UIFont == "" {
 		c.Appearance.UIFont = d.Appearance.UIFont

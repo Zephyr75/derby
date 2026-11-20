@@ -10,7 +10,8 @@ import (
 func DefaultConfig() Config {
 	return Config{
 		Appearance: Appearance{
-			Theme:        "dark",
+			Theme:        "fleet",
+			Mode:         "dark",
 			UIFont:       "Geist",
 			UIFontSize:   13,
 			TermFont:     "Geist Mono",

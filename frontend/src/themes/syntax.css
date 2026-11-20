@@ -2,7 +2,8 @@
    theme key Zed would pick). Generated from Zed's themes: Fleet Dark
    (skarline/zed-fleet-themes), Catppuccin Mocha and Latte (catppuccin/zed),
    and for Flatwhite from doom-flatwhite-theme: text in a colour on a pale
-   wash of it. */
+   wash of it. GitHub Copilot Dark and Light use the GitHub Copilot app's
+   Primer syntax colours, mapped as GitHub's VS Code themes do. */
 
 [data-theme='fleet-dark'] .hl-attribute { color: #af9cff; }
 [data-theme='fleet-dark'] .hl-boolean { color: #82d2ce; }
@@ -168,3 +169,91 @@
 [data-theme='latte'] .hl-variable { color: #4c4f69; }
 [data-theme='latte'] .hl-variable-builtin { color: #d20f39; }
 [data-theme='latte'] .hl-variable-parameter { color: #e64553; }
+
+[data-theme='copilot-dark'] .hl-attribute { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-boolean { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-comment { color: #9198a1; }
+[data-theme='copilot-dark'] .hl-constant { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-constant-builtin { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-constant-macro { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-constructor { color: #d2a8ff; }
+[data-theme='copilot-dark'] .hl-emphasis { color: #f0f6fc; font-style: italic; }
+[data-theme='copilot-dark'] .hl-emphasis-strong { color: #f0f6fc; font-weight: 700; }
+[data-theme='copilot-dark'] .hl-function { color: #d2a8ff; }
+[data-theme='copilot-dark'] .hl-function-builtin { color: #d2a8ff; }
+[data-theme='copilot-dark'] .hl-function-call { color: #d2a8ff; }
+[data-theme='copilot-dark'] .hl-function-method { color: #d2a8ff; }
+[data-theme='copilot-dark'] .hl-function-special { color: #d2a8ff; }
+[data-theme='copilot-dark'] .hl-keyword { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-keyword-conditional { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-keyword-exception { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-keyword-function { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-keyword-import { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-keyword-operator { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-keyword-repeat { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-label { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-link_text { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-link_uri { color: #a5d6ff; }
+[data-theme='copilot-dark'] .hl-number { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-operator { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-property { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-punctuation-bracket { color: #f0f6fc; }
+[data-theme='copilot-dark'] .hl-punctuation-delimiter { color: #f0f6fc; }
+[data-theme='copilot-dark'] .hl-punctuation-special { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-string { color: #a5d6ff; }
+[data-theme='copilot-dark'] .hl-string-escape { color: #7ee787; }
+[data-theme='copilot-dark'] .hl-string-regex { color: #7ee787; }
+[data-theme='copilot-dark'] .hl-string-special { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-tag { color: #7ee787; }
+[data-theme='copilot-dark'] .hl-tag-doctype { color: #ff7b72; }
+[data-theme='copilot-dark'] .hl-text-literal { color: #a5d6ff; }
+[data-theme='copilot-dark'] .hl-title { color: #79c0ff; font-weight: 700; }
+[data-theme='copilot-dark'] .hl-type { color: #ffa657; }
+[data-theme='copilot-dark'] .hl-type-builtin { color: #ffa657; }
+[data-theme='copilot-dark'] .hl-variable { color: #f0f6fc; }
+[data-theme='copilot-dark'] .hl-variable-builtin { color: #79c0ff; }
+[data-theme='copilot-dark'] .hl-variable-parameter { color: #f0f6fc; }
+
+[data-theme='copilot-light'] .hl-attribute { color: #0550ae; }
+[data-theme='copilot-light'] .hl-boolean { color: #0550ae; }
+[data-theme='copilot-light'] .hl-comment { color: #59636e; }
+[data-theme='copilot-light'] .hl-constant { color: #0550ae; }
+[data-theme='copilot-light'] .hl-constant-builtin { color: #0550ae; }
+[data-theme='copilot-light'] .hl-constant-macro { color: #0550ae; }
+[data-theme='copilot-light'] .hl-constructor { color: #6639ba; }
+[data-theme='copilot-light'] .hl-emphasis { color: #1f2328; font-style: italic; }
+[data-theme='copilot-light'] .hl-emphasis-strong { color: #1f2328; font-weight: 700; }
+[data-theme='copilot-light'] .hl-function { color: #6639ba; }
+[data-theme='copilot-light'] .hl-function-builtin { color: #6639ba; }
+[data-theme='copilot-light'] .hl-function-call { color: #6639ba; }
+[data-theme='copilot-light'] .hl-function-method { color: #6639ba; }
+[data-theme='copilot-light'] .hl-function-special { color: #6639ba; }
+[data-theme='copilot-light'] .hl-keyword { color: #cf222e; }
+[data-theme='copilot-light'] .hl-keyword-conditional { color: #cf222e; }
+[data-theme='copilot-light'] .hl-keyword-exception { color: #cf222e; }
+[data-theme='copilot-light'] .hl-keyword-function { color: #cf222e; }
+[data-theme='copilot-light'] .hl-keyword-import { color: #cf222e; }
+[data-theme='copilot-light'] .hl-keyword-operator { color: #cf222e; }
+[data-theme='copilot-light'] .hl-keyword-repeat { color: #cf222e; }
+[data-theme='copilot-light'] .hl-label { color: #0550ae; }
+[data-theme='copilot-light'] .hl-link_text { color: #0550ae; }
+[data-theme='copilot-light'] .hl-link_uri { color: #0a3069; }
+[data-theme='copilot-light'] .hl-number { color: #0550ae; }
+[data-theme='copilot-light'] .hl-operator { color: #cf222e; }
+[data-theme='copilot-light'] .hl-property { color: #0550ae; }
+[data-theme='copilot-light'] .hl-punctuation-bracket { color: #1f2328; }
+[data-theme='copilot-light'] .hl-punctuation-delimiter { color: #1f2328; }
+[data-theme='copilot-light'] .hl-punctuation-special { color: #cf222e; }
+[data-theme='copilot-light'] .hl-string { color: #0a3069; }
+[data-theme='copilot-light'] .hl-string-escape { color: #116329; }
+[data-theme='copilot-light'] .hl-string-regex { color: #116329; }
+[data-theme='copilot-light'] .hl-string-special { color: #0550ae; }
+[data-theme='copilot-light'] .hl-tag { color: #0550ae; }
+[data-theme='copilot-light'] .hl-tag-doctype { color: #cf222e; }
+[data-theme='copilot-light'] .hl-text-literal { color: #0a3069; }
+[data-theme='copilot-light'] .hl-title { color: #0550ae; font-weight: 700; }
+[data-theme='copilot-light'] .hl-type { color: #953800; }
+[data-theme='copilot-light'] .hl-type-builtin { color: #953800; }
+[data-theme='copilot-light'] .hl-variable { color: #1f2328; }
+[data-theme='copilot-light'] .hl-variable-builtin { color: #0550ae; }
+[data-theme='copilot-light'] .hl-variable-parameter { color: #1f2328; }

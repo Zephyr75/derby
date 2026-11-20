@@ -108,6 +108,26 @@ func TestKeymapMovesToConfig(t *testing.T) {
 	}
 }
 
+// Themes from before dark and light variants become a theme and a mode.
+func TestOlderThemes(t *testing.T) {
+	for old, want := range map[string][2]string{
+		"dark": {"fleet", "dark"}, "light": {"fleet", "light"}, "system": {"fleet", "system"},
+		"mocha": {"catppuccin", "dark"}, "latte": {"catppuccin", "light"}, "solarized": {"fleet", "dark"},
+	} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[appearance]\ntheme = \""+old+"\"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		s, err := Open(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ap := s.Snapshot().Config.Appearance; ap.Theme != want[0] || ap.Mode != want[1] {
+			t.Errorf("theme %q: got %s %s, want %s %s", old, ap.Theme, ap.Mode, want[0], want[1])
+		}
+	}
+}
+
 func TestCopilotCannotBeStartedByHand(t *testing.T) {
 	s, err := Open(t.TempDir())
 	if err != nil {

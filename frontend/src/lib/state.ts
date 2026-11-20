@@ -6,7 +6,8 @@ import { reactive } from 'vue'
 import { api, errorText, isDesktop, on } from './api'
 import { actionFor } from './keymap'
 import { copyText } from './window'
-import { unsuccessful, type Option, type Proc, type Settings, type Step, type TabRef, type Task, type Agent, type Note, type Todo, type StatusKind, fill } from './types'
+import { modes, themeDef, themes } from './themes'
+import { unsuccessful, type Option, type Proc, type Settings, type Step, type TabRef, type Task, type Agent, type Note, type Todo, type StatusKind, type ThemeMode, fill } from './types'
 
 export type Overlay = 'none' | 'palette' | 'scope' | 'new' | 'activity' | 'views' | 'todos'
 export type ScopeMode = 'project' | 'worktree' | 'branch'
@@ -108,12 +109,21 @@ class Derby {
     if (!tb || !this.selTask) return null
     return this.selTask.steps.find((s) => s.id === tb.step) ?? null
   }
-  get themeMode() {
-    return this.settings?.config.appearance.theme ?? 'dark'
+  /** themeName and themeMode: the theme picked in Settings > Appearance and
+   *  its variant; theme is the data-theme in use. */
+  get themeName() {
+    return themeDef(this.settings?.config.appearance.theme).id
+  }
+  get themeMode(): ThemeMode {
+    return this.settings?.config.appearance.mode ?? 'dark'
   }
   get theme() {
-    if (this.themeMode === 'mocha' || this.themeMode === 'latte') return this.themeMode
-    return this.themeMode === 'light' || (this.themeMode === 'system' && this.systemLight) ? 'flatwhite' : 'fleet-dark'
+    const t = themeDef(this.themeName)
+    return this.light ? t.light : t.dark
+  }
+  /** light: the theme in use is a light variant (the mode, or the OS's for system). */
+  get light() {
+    return this.themeMode === 'light' || (this.themeMode === 'system' && this.systemLight)
   }
   /** sessionView: how the center shows a step's session (Settings > Appearance). */
   get sessionView(): 'terminal' | 'chat' {
@@ -127,7 +137,7 @@ class Derby {
   }
   /** dark: the theme in use is a dark one (diagrams, mermaid and the logo follow it). */
   get dark() {
-    return this.theme !== 'flatwhite' && this.theme !== 'latte'
+    return !this.light
   }
 
   task(id: string) {
@@ -190,7 +200,7 @@ class Derby {
 
   /** In the browser mock, URL params pick a screen like the preview's
    *  artboards: ?sel=core:4349&left=archive&overlay=palette&q=unlock&
-   *  view=settings&tab=appearance&theme=light&scope=branch&step=plan-1 */
+   *  view=settings&tab=appearance&theme=copilot&mode=light&scope=branch&step=plan-1 */
   private applyPreviewParams() {
     const q = new URLSearchParams(location.search)
     const sel = q.get('sel')
@@ -201,8 +211,10 @@ class Derby {
     }
     const left = q.get('left')
     if (left === 'archive' || left === 'tasks') this.left = left
-    const theme = q.get('theme')
-    if (theme && this.settings && (theme === 'dark' || theme === 'light' || theme === 'system' || theme === 'mocha' || theme === 'latte')) this.settings.config.appearance.theme = theme
+    const theme = themes.find((t) => t.id === q.get('theme'))
+    if (theme && this.settings) this.settings.config.appearance.theme = theme.id
+    const mode = modes.find((m) => m === q.get('mode'))
+    if (mode && this.settings) this.settings.config.appearance.mode = mode
     if (q.get('view') === 'settings') {
       this.view = 'settings'
       this.settingsTab = (q.get('tab') as SettingsTab) || 'context'
