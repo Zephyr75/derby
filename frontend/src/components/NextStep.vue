@@ -3,10 +3,18 @@ import { computed } from 'vue'
 import { api } from '../lib/api'
 import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
-import TaskRef from './ui/TaskRef.vue'
 
 const t = computed(() => derby.selTask)
 const nx = computed(() => t.value?.next)
+const markReady = computed(() => !!t.value && derby.prReady(t.value) === 'draft' && derby.copilotClean(t.value))
+const runnable = computed(() => !!t.value && !t.value.archived && !!nx.value?.options.length)
+// Nothing to act on, e.g. while an agent runs: the box hides.
+const show = computed(() => {
+  const task = t.value
+  const n = nx.value
+  if (!task || !n) return false
+  return task.archived || task.projectGone || runnable.value || markReady.value || !!n.sisters.length || !!n.approval || !!n.markDone
+})
 
 async function restore() {
   const task = t.value
@@ -38,13 +46,7 @@ const addProject = () => derby.attempt('Could not add the project', () => api.Ad
 </script>
 
 <template>
-  <div v-if="t && nx" class="box">
-    <div class="top">
-      <span class="muted small">Next step</span>
-      <span class="grow"></span>
-      <TaskRef :issue="t.issue" :task="t.id" class="tref" />
-      <span class="ref">· {{ t.projectName }}</span>
-    </div>
+  <div v-if="t && nx && show" class="box">
 
     <div v-for="o in nx.sisters" :key="o.repo" class="sister">
       <p :title="o.scope"><b>The plan also needs {{ o.repo }}</b>: {{ o.part || o.scope }}</p>
@@ -52,36 +54,36 @@ const addProject = () => derby.attempt('Could not add the project', () => api.Ad
       <button v-else class="btn" :title="`${o.repo} is not a Derby project yet: pick its folder, then create the sister task`" @click="addProject"><Icon name="plus" :size="13" /><span>Add as a project</span></button>
     </div>
 
-    <template v-if="nx.options.length && !t.archived">
+    <template v-if="runnable">
       <label for="guide" class="sr-only">Guidance for Claude</label>
       <p v-if="nx.warning" class="warn"><Icon name="warn" :size="14" />{{ nx.warning }}</p>
       <p v-if="nx.elsewhere.length" class="warn">
         <Icon name="warn" :size="14" />Steps also edited files outside the worktree, in {{ nx.elsewhere.join(', ') }}. Derby only commits {{ t.branch }}: check those edits yourself.
       </p>
       <textarea id="guide" v-model="derby.guidance" rows="3" :class="{ need: nx.warning && !derby.guidance.trim() }" :placeholder="nx.warning ? 'Which option? e.g. take option B, because…' : 'Guidance for Claude (optional)'"></textarea>
-      <div class="opts">
-        <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" @click="derby.run(o)"><Icon name="play" :size="13" />{{ o.label }}</button>
-      </div>
     </template>
 
-    <p v-if="nx.text">{{ nx.text }}</p>
-    <button v-if="derby.prReady(t) === 'draft' && derby.copilotClean(t)" class="btn" title="Turn the draft PR into one ready for review and add the ready label" @click="derby.markReady(t)"><Icon name="check" :size="13" />Mark PR #{{ t.pr }} ready for review</button>
-    <p v-else-if="derby.prReady(t) === 'ready'" class="muted small">PR #{{ t.pr }} is ready for review.</p>
-
-    <button v-if="nx.approval" class="btn allow" @click="allow(nx.approval)">Allow once</button>
-    <button v-if="nx.markDone" class="btn ghost-border" @click="markDone(nx.markDone)">Mark done</button>
-
     <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so Derby cannot restore this task or touch its repository. Delete task only removes it from derby.</p>
-    <div v-if="t.archived" class="row">
-      <button v-if="!t.worktreeRemoved && !t.projectGone" class="btn" @click="restore">Restore to Tasks</button>
-      <button
-        class="btn"
-        :class="derby.confirmDelete === t.id ? 'danger' : 'transparent'"
-        title="Forget the task in Derby, and remove its worktree, local branch and run files (the pushed branch and the PR stay on GitHub)"
-        @click="deleteTask"
-      >
-        {{ derby.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}
-      </button>
+
+    <!-- Each button takes half the width, or a full line when its label needs more. -->
+    <div class="opts">
+      <template v-if="runnable">
+        <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" :title="o.label" @click="derby.run(o)"><Icon name="play" :size="13" /><span>{{ o.label }}</span></button>
+      </template>
+      <button v-if="markReady" class="btn" title="Turn the draft PR into one ready for review and add the ready label" @click="derby.markReady(t)"><Icon name="check" :size="13" /><span>Mark PR ready for review</span></button>
+      <button v-if="nx.approval" class="btn allow" @click="allow(nx.approval)"><span>Allow once</span></button>
+      <button v-if="nx.markDone" class="btn" @click="markDone(nx.markDone)"><span>Mark done</span></button>
+      <template v-if="t.archived">
+        <button v-if="!t.worktreeRemoved && !t.projectGone" class="btn" @click="restore"><span>Restore to Tasks</span></button>
+        <button
+          class="btn"
+          :class="{ danger: derby.confirmDelete === t.id }"
+          title="Forget the task in Derby, and remove its worktree, local branch and run files (the pushed branch and the PR stay on GitHub)"
+          @click="deleteTask"
+        >
+          <span>{{ derby.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}</span>
+        </button>
+      </template>
     </div>
   </div>
 </template>
@@ -94,23 +96,6 @@ const addProject = () => derby.attempt('Could not add the project', () => api.Ad
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.small {
-  font-size: var(--fs-12);
-}
-.ref,
-.tref {
-  font-family: var(--mono);
-  font-size: var(--fs-11);
-  color: var(--muted);
-}
-.grow {
-  flex: 1;
 }
 textarea {
   resize: none;
@@ -145,12 +130,28 @@ textarea.need {
 textarea:focus {
   outline: none;
 }
-.opts,
-.row {
+.opts {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  align-items: center;
+}
+.opts:empty {
+  display: none;
+}
+/* Half the width each; a label wider than that keeps its width (the automatic
+   minimum), wraps to its own line, and grows to fill it. */
+.opts .btn {
+  flex: 1 1 calc(50% - 3px);
+  max-width: 100%;
+  justify-content: center;
+}
+.opts .btn:not(.primary):not(.danger):not(.allow) {
+  border-color: var(--border);
+}
+.opts .btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 p {
   margin: 0;
@@ -159,17 +160,9 @@ p {
   color: var(--muted);
 }
 .allow {
-  align-self: flex-start;
   border-color: var(--approval-dot);
   background: var(--approval-bg);
   color: var(--approval);
-}
-.ghost-border {
-  align-self: flex-start;
-  background: transparent;
-}
-.transparent {
-  background: transparent;
 }
 .sister {
   display: flex;

@@ -8,7 +8,6 @@ import { api, errorText } from '../lib/api'
 import { derby, resumeCommand } from '../lib/state'
 import type { Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
-import Working from './ui/Working.vue'
 
 // A paused step (stopped with Stop) is not reconnected: the user may be
 // running the same session elsewhere, e.g. claude --resume in Zed.
@@ -179,7 +178,6 @@ watch(
 <template>
   <div class="wrap">
     <div ref="el" class="term"></div>
-    <Working v-if="step.live && step.state === 'running' && !ended" class="busy" label="Working" />
     <div v-if="others()" class="paused">
       <span class="ico warn"><Icon name="warn" :size="22" /></span>
       <span class="title">Claude is still running this session elsewhere</span>
@@ -221,17 +219,6 @@ watch(
   display: flex;
   padding: 8px 4px 4px 12px;
   background: var(--bg);
-}
-.busy {
-  position: absolute;
-  right: 16px;
-  bottom: 10px;
-  z-index: 2;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--elev);
-  pointer-events: none;
 }
 .term {
   flex: 1;
