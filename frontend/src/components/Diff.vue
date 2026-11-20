@@ -374,7 +374,7 @@ tr:hover .add-note,
 .sel td {
   box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--accent) 10%, transparent);
 }
-/* the selected lines: one continuous bar down the gutter */
+/* the selected lines: one thin continuous line down the gutter, under the + */
 .gut {
   position: relative;
 }
@@ -388,23 +388,21 @@ tr:hover .add-note,
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
-  width: 16px; /* as wide as the + button */
+  left: 6.5px; /* centred under the 16px + button */
+  width: 3px;
   background: var(--accent);
 }
 .sel-top .gut::before,
 .gut.sel-top::before {
-  top: 1px;
-  border-radius: 3px 3px 0 0;
+  top: 4px;
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
 }
 .sel-end .gut::before,
 .gut.sel-end::before {
-  bottom: 1px;
-  border-radius: 0 0 3px 3px;
-}
-.sel-top.sel-end .gut::before,
-.gut.sel-top.sel-end::before {
-  border-radius: 3px;
+  bottom: 4px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
 }
 .note-row td {
   padding: 4px 12px 6px 60px;
