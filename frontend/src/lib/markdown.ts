@@ -57,6 +57,82 @@ export function render(src: string, env: RenderEnv = {}): string {
   return md.render(src, { ...env })
 }
 
+// A report's blocks: paragraphs, lists and fenced code split on blank lines,
+// each heading a block of its own.
+function blocks(src: string): string[] {
+  const out: string[] = []
+  let cur: string[] = []
+  let fence = ''
+  const flush = () => {
+    if (cur.length) out.push(cur.join('\n'))
+    cur = []
+  }
+  for (const l of src.replace(/\r/g, '').split('\n')) {
+    const f = /^\s*(`{3,}|~{3,})/.exec(l)?.[1]
+    if (fence) {
+      cur.push(l)
+      if (f && f[0] === fence[0] && f.length >= fence.length) fence = ''
+    } else if (f) {
+      fence = f
+      cur.push(l)
+    } else if (/^#{1,6}\s/.test(l)) {
+      flush()
+      out.push(l)
+    } else if (!l.trim()) flush()
+    else cur.push(l)
+  }
+  flush()
+  return out
+}
+
+const sumName = (s: string) => (/^tl;?\s?dr$/i.test(s) ? 'TL;DR' : /^eli5$/i.test(s) ? 'ELI5' : '')
+const sumLead = /^(?:\*\*|__)\s*(tl;?\s?dr|eli5)\s*[:.]?\s*(?:\*\*|__)\s*[:.]?\s*|^(tl;?\s?dr|eli5)\s*:\s*/i
+
+const heading = (b: string) => /^#{1,6}\s/.test(b)
+const led = (b: string) => {
+  const m = sumLead.exec(b)
+  return m ? sumName(m[1] ?? m[2]) : ''
+}
+// a block worth showing on its own: no heading, code, rule or bare HTML comment
+const prose = (b: string) => !heading(b) && !/^\s*(`{3,}|~{3,})/.test(b) && !/^\s*([-*_])(\s*\1){2,}\s*$/.test(b) && !/^\s*<!--[\s\S]*-->\s*$/.test(b)
+
+/**
+ * summary is a report's TL;DR and ELI5, as the Writing prompt asks every
+ * artifact to open with: a heading (## TLDR) with its blocks up to the next
+ * heading, or a paragraph led by a bold label (**TLDR**: …), with the next
+ * paragraph when the label stands alone. Without a TL;DR, the report's first
+ * block stands in, unlabelled.
+ */
+export function summary(src: string): { label: string; md: string }[] {
+  const bs = blocks(src)
+  const found = new Map<string, string>()
+  const used = new Set<number>()
+  for (let i = 0; i < bs.length; i++) {
+    const h = /^#{1,6}\s+(.*?)[\s#]*$/.exec(bs[i])
+    if (h) {
+      const name = sumName(h[1].replace(/[*_`]/g, '').replace(/[:.]\s*$/, '').trim())
+      if (!name || found.has(name)) continue
+      const body: string[] = []
+      // up to the next heading, or the other label's paragraph (an ELI5 inside the TL;DR section)
+      while (i + 1 < bs.length && !heading(bs[i + 1]) && !led(bs[i + 1])) body.push(bs[++i])
+      if (body.length) found.set(name, body.join('\n\n'))
+      continue
+    }
+    const name = led(bs[i])
+    if (!name || found.has(name)) continue
+    used.add(i)
+    let body = bs[i].slice(sumLead.exec(bs[i])![0].length).trim()
+    if (!body && i + 1 < bs.length && !heading(bs[i + 1])) used.add(++i), (body = bs[i])
+    if (body) found.set(name, body)
+  }
+  const out = ['TL;DR', 'ELI5'].filter((k) => found.has(k)).map((k) => ({ label: k, md: found.get(k)! }))
+  if (!found.has('TL;DR')) {
+    const first = bs.findIndex((b, i) => prose(b) && !used.has(i))
+    if (first >= 0 && (!found.has('ELI5') || first < Math.min(...used))) out.unshift({ label: '', md: bs[first] })
+  }
+  return out
+}
+
 /** renderInline renders one line of markdown, without a paragraph. */
 export function renderInline(src: string): string {
   return md.renderInline(src)

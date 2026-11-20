@@ -1,19 +1,18 @@
 <script setup lang="ts">
-// The files a step changed, with a summary line: used by the Changes tab and
-// the diff pop-up. A click picks a file.
+// The files a step changed, with a summary line (bare leaves it out: the
+// Changes tab has its title line): used by the Changes tab and the diff
+// pop-up. A click picks a file.
 import { computed } from 'vue'
 import type { Changes } from '../lib/types'
 
-const props = defineProps<{ changes: Changes; selected?: string }>()
+const props = defineProps<{ changes: Changes; selected?: string; bare?: boolean }>()
 defineEmits<{ pick: [path: string] }>()
 
-const totals = computed(() => {
-  const f = props.changes.files
-  return { n: f.length, add: f.reduce((s, x) => s + x.added, 0), del: f.reduce((s, x) => s + x.deleted, 0) }
-})
+const totals = computed(() => totalsOf(props.changes))
 </script>
 
 <script lang="ts">
+export const totalsOf = (c: Changes) => ({ n: c.files.length, add: c.files.reduce((s, x) => s + x.added, 0), del: c.files.reduce((s, x) => s + x.deleted, 0) })
 export const split = (p: string) => {
   const i = p.lastIndexOf('/')
   return { dir: i >= 0 ? p.slice(0, i + 1) : '', name: i >= 0 ? p.slice(i + 1) : p }
@@ -25,7 +24,7 @@ export const sourceLabel = (c: Changes) =>
 </script>
 
 <template>
-  <div class="sum">
+  <div v-if="!bare" class="sum">
     <span>{{ sourceLabel(changes) }}</span>
     <span class="muted">· {{ totals.n }} file{{ totals.n === 1 ? '' : 's' }}</span>
     <span class="grow"></span>

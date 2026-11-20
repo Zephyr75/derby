@@ -3,11 +3,13 @@ import { computed, ref, watch } from 'vue'
 import { api } from '../lib/api'
 import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
+import PaneHead from './ui/PaneHead.vue'
 import ChangesView from './Changes.vue'
-import PRTracker from './PRTracker.vue'
+import PRSummary from './PRSummary.vue'
 import ArtifactView from './ArtifactView.vue'
 import TodoList from './TodoList.vue'
 import { useCompact } from '../lib/compact'
+import { summary } from '../lib/markdown'
 import type { Artifact, Changes } from '../lib/types'
 
 const step = computed(() => derby.selStep)
@@ -67,6 +69,9 @@ watch(
 )
 
 const file = computed(() => art.value?.file || step.value?.artifact || '')
+// The report's TL;DR and ELI5 only (its first paragraph without them): the
+// expand button opens the whole of it.
+const parts = computed(() => (art.value?.exists ? summary(art.value.body).map((p) => ({ ...p, art: { ...art.value!, body: p.md } })) : []))
 // The four tabs always show, in equal parts; Changes is off while the step
 // changed no files, PR while the task has none, and Report stands in for them.
 const task = computed(() => derby.selTask)
@@ -90,13 +95,9 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
 <template>
   <div class="wrap">
     <div ref="bar" class="bar" :class="{ compact }" role="tablist">
-      <!-- a div, not a button: it holds the button that opens the report in a pop-up -->
-      <div class="tab" role="tab" tabindex="0" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the report this step wrote` : 'The report a step writes'" aria-label="Report" @click="derby.rightTab = 'preview'" @keydown.enter.space.prevent="derby.rightTab = 'preview'">
-        <span class="in"
-          ><Icon name="file" /><span class="label">Report</span
-          ><button v-if="step && art?.exists" class="expand" aria-label="Open the report in a large pop-up" title="Open the report in a large pop-up" @click.stop="derby.openArtifactPopup(step.id)" @keydown.stop><Icon name="maximize" :size="12" /></button
-        ></span>
-      </div>
+      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the report this step wrote` : 'The report a step writes'" aria-label="Report" @click="derby.rightTab = 'preview'">
+        <span class="in"><Icon name="file" /><span class="label">Report</span></span>
+      </button>
       <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="Changes" @click="hasChanges && (derby.rightTab = 'changes')">
         <span class="in"><Icon name="diff" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
@@ -109,21 +110,24 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     </div>
     <div class="content">
       <template v-if="tab === 'todos' && task">
-        <div class="todo-head">
-          <span class="todo-title">Todos for this task</span>
-          <span class="muted small">{{ openTodos }} open · {{ task.todos.length - openTodos }} done</span>
-          <span class="grow"></span>
-          <label class="hide-done"><input v-model="derby.hideDone" type="checkbox" />Hide done</label>
-        </div>
+        <PaneHead :title="`${openTodos} open`" :meta="`${task.todos.length - openTodos} done`" tip="The task's todos">
+          <button v-if="task.todos.length > openTodos" :title="derby.hideDone ? 'Show the done todos' : 'Hide the done todos'" @click="derby.hideDone = !derby.hideDone">{{ derby.hideDone ? 'Show done' : 'Hide done' }}</button>
+        </PaneHead>
         <TodoList :todos="task.todos" :hide-done="derby.hideDone" @change="derby.setTodos(task, $event)" :run="derby.todoAgent(task)?.name ?? 'Implement'" :blocked="derby.todoBlocked(task)" @run="derby.runTodo(task, $event)" />
       </template>
-      <PRTracker v-else-if="tab === 'pr' && task" :task="task" />
+      <PRSummary v-else-if="tab === 'pr' && task" :task="task" />
       <ChangesView v-else-if="tab === 'changes'" :changes="changes" />
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
-      <p v-else-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
       <template v-else>
-        <div class="md-file">{{ file }}</div>
-        <ArtifactView :art="art" :task="step.taskId" />
+        <PaneHead :title="file || 'Report'" :tip="art?.path">
+          <button v-if="art?.exists" title="Open the whole report in a large pop-up" aria-label="Open the whole report" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
+        </PaneHead>
+        <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
+        <p v-else-if="!parts.length" class="empty">The report is empty.</p>
+        <section v-for="p in parts" :key="p.label" class="part">
+          <div v-if="p.label" class="plabel">{{ p.label }}</div>
+          <ArtifactView :art="p.art" :task="step.taskId" />
+        </section>
       </template>
     </div>
   </div>
@@ -198,34 +202,15 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
   .on .count {
     color: var(--muted);
   }
-  /* opens the report in a pop-up; sized and coloured like a count */
-  .expand {
-    display: flex;
-    margin: 0 -2px 0 4px;
-    padding: 2px;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--faint);
-  }
-  .on .expand {
-    color: var(--muted);
-  }
-  .tab .expand:hover {
-    background: var(--hover);
-    color: var(--text);
-  }
-  .grow {
-    flex: 1;
-  }
-  /* the artifact's file name */
-  .md-file {
-    margin-top: -2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  /* a summary part's label, like the PR view's section names */
+  .plabel {
+    margin-bottom: 4px;
     color: var(--muted);
     font-size: var(--fs-12);
+    font-weight: 600;
+  }
+  .part :deep(.md > :last-child) {
+    margin-bottom: 0;
   }
   .content {
     flex: 1;
@@ -235,27 +220,6 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     display: flex;
     flex-direction: column;
     gap: 10px;
-  }
-  .todo-head {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    padding: 0 6px 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .todo-title {
-    font-weight: 600;
-    font-size: var(--fs-14);
-  }
-  .small {
-    font-size: var(--fs-12);
-  }
-  .hide-done {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: var(--fs-12);
-    color: var(--muted);
   }
   .empty {
     margin: 0;
