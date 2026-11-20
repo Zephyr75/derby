@@ -445,7 +445,6 @@ export const api: Api = {
   RerunChecks: () => ok(undefined),
   ResolveThread: () => ok(undefined),
   RequestCopilotReview: () => ok(undefined),
-  RefreshIssue: () => ok(undefined),
   Diagrams: () => ok([]),
   CreateSister: () => Promise.reject('Sister tasks need the desktop app'),
   OpenURL: () => ok(undefined),

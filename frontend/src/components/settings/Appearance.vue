@@ -1,19 +1,20 @@
 <script setup lang="ts">
-// Settings > Appearance: Dark (Fleet Dark), Light (Flatwhite), System or
-// Pony, then fonts and the Zed command.
+// Settings > Appearance: Dark (Fleet Dark), Light (Flatwhite), System, or
+// Catppuccin Mocha and Latte, then fonts and the Zed command.
 import { computed } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import { derby } from '../../lib/state'
 import Icon from '../ui/Icon.vue'
 
-type Mode = 'dark' | 'light' | 'system' | 'zed'
+type Mode = 'dark' | 'light' | 'system' | 'mocha' | 'latte'
 const ap = computed(() => derby.settings?.config.appearance)
 const cards = computed<{ id: Mode; name: string; note: string; panes: string[] }[]>(() => [
   { id: 'dark', name: 'Dark', note: 'Fleet Dark', panes: ['fleet-dark'] },
   { id: 'light', name: 'Light', note: 'Flatwhite', panes: ['flatwhite'] },
   { id: 'system', name: 'System', note: `now ${derby.systemLight ? 'Light' : 'Dark'}, follows the OS`, panes: ['fleet-dark', 'flatwhite'] },
-  { id: 'zed', name: 'Zed', note: "One Dark, Zed's default", panes: ['one-dark'] },
+  { id: 'mocha', name: 'Mocha', note: 'Catppuccin, dark', panes: ['mocha'] },
+  { id: 'latte', name: 'Latte', note: 'Catppuccin, light', panes: ['latte'] },
 ])
 
 const views = [
@@ -78,7 +79,7 @@ function setZed(e: Event) {
 <template>
   <div class="intro">
     <h1>Appearance</h1>
-    <p>Dark uses Fleet Dark and Light uses Flatwhite, the themes you use in Zed. System follows your OS setting. Zed has the colours of Zed's default theme, One Dark.</p>
+    <p>Dark uses Fleet Dark and Light uses Flatwhite, the themes you use in Zed. System follows your OS setting. Mocha and Latte are Catppuccin's dark and light flavours.</p>
   </div>
 
   <div class="cards">
@@ -143,9 +144,9 @@ function setZed(e: Event) {
 <style scoped>
   .cards {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 14px;
-    max-width: 900px;
+    max-width: 1000px;
   }
   .tcard {
     display: flex;

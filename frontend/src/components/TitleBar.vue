@@ -41,15 +41,15 @@ function dblclick(e: MouseEvent) {
     </button>
     <template v-if="derby.view === 'board' && t">
       <button class="crumb project" :class="{ on: scopeOpen('project') }" @click="derby.openOverlay('scope', 'project')">
-        {{ t.projectName }}<Icon name="chevron" :size="13" />
+        {{ t.projectName }}<Icon name="chevron" :size="12" />
       </button>
       <span class="sep" aria-hidden="true">/</span>
       <button class="crumb" :class="{ on: scopeOpen('worktree') }" @click="derby.openOverlay('scope', 'worktree')">
-        <Icon name="worktree" /><span class="ct">{{ t.worktreeRel }}</span>
+        <Icon name="worktree" :size="12" /><span class="ct">{{ t.worktreeRel }}</span>
       </button>
       <span class="sep" aria-hidden="true">/</span>
       <button class="crumb" :class="{ on: scopeOpen('branch') }" @click="derby.openOverlay('scope', 'branch')">
-        <Icon name="branch" /><span class="ct">{{ t.branch }}</span>
+        <Icon name="branch" :size="12" /><span class="ct">{{ t.branch }}</span>
       </button>
     </template>
     <span v-else-if="derby.view === 'settings'" class="muted label">Settings</span>
@@ -112,7 +112,7 @@ button {
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-size: var(--fs-13);
+  font-size: var(--fs-12); /* Zed's titlebar: LabelSize::Small, XSmall icons */
   white-space: nowrap;
   min-width: 0; /* long worktree and branch names shrink first */
   overflow: hidden;

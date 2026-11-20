@@ -146,6 +146,7 @@ watch(
     display: flex;
     align-items: center;
     gap: 8px;
+    margin: 0; /* not the mermaid caption's gap, which showed the figure's grey under the diagram */
     padding: 6px 8px 6px 12px;
     border-top: 1px solid var(--border);
     font-size: var(--fs-12);

@@ -2,8 +2,7 @@ package app
 
 // ISSUE.md: derby copies the task's GitHub issue, comments included, to the
 // run directory, so every agent reads the same text without calling GitHub.
-// It is copied when the task is created, before each run of the first agent,
-// and with Refresh issue.
+// It is copied when the task is created and before each run of the first agent.
 
 import (
 	"errors"
@@ -61,26 +60,6 @@ func (a *App) writeIssueFile(p settings.Project, t store.Task) error {
 		return err
 	}
 	return os.WriteFile(path, []byte(issueMarkdown(d, a.issueRepo(t))), 0o644)
-}
-
-// RefreshIssue copies the task's issue again (Refresh issue in its header).
-func (a *App) RefreshIssue(taskID string) error {
-	t, err := a.db.Task(taskID)
-	if err != nil {
-		return err
-	}
-	if t.Issue == "" {
-		return fmt.Errorf("this task has no GitHub issue")
-	}
-	p := a.projectOf(t)
-	if err := a.writeIssueFile(p, t); err != nil {
-		return fmt.Errorf("could not copy issue #%s: %w", t.Issue, err)
-	}
-	if err := a.writeTaskFile(p, t); err != nil {
-		return err
-	}
-	a.emitTask(t.ID)
-	return nil
 }
 
 // IssuePreview is an issue as New task shows it before there is a task:

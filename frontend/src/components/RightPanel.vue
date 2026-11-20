@@ -11,10 +11,6 @@ import { unsuccessful, type Step } from '../lib/types'
 const t = computed(() => derby.selTask)
 // Agents set to "Show a Diff button" (Implement and Test by default) get one.
 const diffs = (s: Step) => !!derby.settings?.agents.find((a) => a.id === s.agent)?.showDiff
-const refreshIssue = async () => {
-  const task = t.value
-  if (task && (await derby.attempt('Could not refresh the issue', () => api.RefreshIssue(task.id).then(() => true)))) derby.toast('Issue #' + task.issue + ' copied again', 'ISSUE.md is up to date.')
-}
 const openIssue = () => t.value && derby.attempt('Could not open the issue', () => api.OpenURL(`https://github.com/${t.value!.issueRepo || t.value!.repo}/issues/${t.value!.issue}`))
 
 function meta(s: Step): { text: string; cls: string } {
@@ -77,8 +73,7 @@ async function archive() {
         <div class="title-row">
           <TaskRef :issue="t.issue" :task="t.id" />
           <span class="title">{{ t.title }}</span>
-          <button v-if="t.issue && (t.issueRepo || t.repo)" class="act" :title="`Open issue #${t.issue} on GitHub`" @click="openIssue"><Icon name="external" :size="12" />Open issue</button>
-          <button v-if="t.issue && !t.archived" class="act" :title="`Copy issue #${t.issue} and its comments to ISSUE.md again (Derby also does it before each run of the first agent)`" @click="refreshIssue"><Icon name="rerun" :size="12" />Issue</button>
+          <button v-if="t.issue && (t.issueRepo || t.repo)" class="act" :title="`Open issue #${t.issue} on GitHub`" @click="openIssue"><Icon name="external" :size="12" />Issue</button>
           <button v-if="!t.archived && !t.worktreeRemoved" class="act" title="Open the task's worktree in Zed to edit it by hand" @click="derby.openWorktree()"><Icon name="pencil" :size="12" />Edit</button>
           <button v-if="!t.archived" class="icon-btn" aria-label="Archive task" title="Archive task" @click="archive"><Icon name="archive" :size="16" /></button>
         </div>

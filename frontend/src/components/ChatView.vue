@@ -277,12 +277,15 @@ const context = computed(() => {
   return { ratio, warn: ratio >= 0.85, tip: `Context window: ${k(s.contextUsed)} / ${k(size)} tokens (${Math.round(ratio * 100)}%)${s.contextSize ? '' : ', assuming a 200k window'}` }
 })
 const resetAt = (t: number) => (t ? new Date(t * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '')
-const plan = computed(() => {
+// The plan's 5-hour and weekly limits and the context window, each a ring
+// with its name before it.
+const rings = computed(() => {
   const p = status.value?.plan
-  if (!p?.at || (p.fiveHour < 0 && p.week < 0)) return null
-  const parts = [p.fiveHour >= 0 ? `5h ${Math.round(p.fiveHour)}%` : '', p.week >= 0 ? `7d ${Math.round(p.week)}%` : ''].filter(Boolean)
-  const tip = [p.fiveHour >= 0 ? `5-hour limit: ${Math.round(p.fiveHour)}% used, resets ${resetAt(p.fiveHourReset)}` : '', p.week >= 0 ? `Weekly limit: ${Math.round(p.week)}% used, resets ${resetAt(p.weekReset)}` : ''].filter(Boolean).join('\n')
-  return { text: parts.join(' · '), tip, warn: Math.max(p.fiveHour, p.week) >= 80 }
+  const out: { label: string; ratio: number; warn: boolean; tip: string }[] = []
+  if (p?.at && p.fiveHour >= 0) out.push({ label: '5h', ratio: Math.min(p.fiveHour / 100, 1), warn: p.fiveHour >= 80, tip: `5-hour limit: ${Math.round(p.fiveHour)}% used, resets ${resetAt(p.fiveHourReset)}` })
+  if (p?.at && p.week >= 0) out.push({ label: 'Week', ratio: Math.min(p.week / 100, 1), warn: p.week >= 80, tip: `Weekly limit: ${Math.round(p.week)}% used, resets ${resetAt(p.weekReset)}` })
+  if (context.value) out.push({ label: 'Context', ...context.value })
+  return out
 })
 const models: [string, string][] = [['fable', 'Fable'], ['opus', 'Opus'], ['sonnet', 'Sonnet'], ['haiku', 'Haiku']]
 const efforts = ['low', 'medium', 'high', 'xhigh', 'max']
@@ -306,7 +309,7 @@ async function checkAgain() {
 </script>
 
 <template>
-  <div class="chat" :style="{ '--code-blue': derby.dark ? '#b1b9f9' : '#5769f7', '--bash': derby.dark ? '#fd5db1' : '#ff0087', '--input-bg': derby.dark ? 'color-mix(in srgb, var(--bg) 60%, #000)' : 'color-mix(in srgb, var(--bg) 94%, #000)' }">
+  <div class="chat" :style="{ '--code-blue': derby.dark ? '#b1b9f9' : '#5769f7', '--bash': derby.dark ? '#fd5db1' : '#ff0087' }">
     <div ref="thread" class="thread">
       <div class="inner">
         <p v-if="loaded && !found" class="empty">Claude Code has not saved this session's conversation yet. It shows here as soon as Claude starts.</p>
@@ -472,9 +475,8 @@ async function checkAgain() {
           <span v-if="bash" class="bashpill" title="A message starting with ! runs as a shell command in the worktree; its output joins the conversation">! Bash mode</span>
           <span v-else class="sel who"><Icon name="agent" :size="13" />{{ agentName }}</span>
           <span class="grow"></span>
-          <span v-if="plan" class="usage" :class="{ warn: plan.warn }" :title="plan.tip">{{ plan.text }}</span>
-          <span v-if="context" class="ring" :class="{ warn: context.warn }" :title="context.tip">
-            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke-width="2" class="track" /><circle cx="8" cy="8" r="6" fill="none" stroke-width="2" class="fill" :stroke-dasharray="`${context.ratio * 37.7} 37.7`" transform="rotate(-90 8 8)" /></svg>
+          <span v-for="r in rings" :key="r.label" class="ring" :class="{ warn: r.warn }" :title="r.tip">
+            {{ r.label }}<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke-width="2" class="track" /><circle cx="8" cy="8" r="6" fill="none" stroke-width="2" class="fill" :stroke-dasharray="`${r.ratio * 37.7} 37.7`" transform="rotate(-90 8 8)" /></svg>
           </span>
           <span class="dd">
             <button class="sel pick" :disabled="working" :title="'Model. ' + pickTip" @click="menu = menu === 'model' ? '' : 'model'">{{ modelText }}<Icon name="chevron" :size="12" /></button>
@@ -1115,12 +1117,12 @@ button:hover > .disc,
   87% { content: '⠈'; }
 }
 
-/* the message editor: py-2, top border, editor background; its toolbar under the text */
+/* the message editor: py-2, top border, on the chat's own background; its toolbar under the text */
 .foot {
   flex: none;
   padding: 8px 0;
   border-top: 1px solid var(--border);
-  background: var(--input-bg);
+  background: var(--bg);
 }
 .col {
   padding: 0 8px;
@@ -1184,19 +1186,19 @@ textarea:disabled {
 .tools .ib:disabled {
   opacity: 0.5;
 }
-.usage {
+/* plan usage and the context window, as Zed's context ring: 16px, 2px stroke,
+   warning past 80% (85% for the context) */
+.ring {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
   font-size: var(--fs-11-5);
   color: var(--muted);
   white-space: nowrap;
-  padding: 0 4px;
 }
-.usage.warn {
+.ring.warn {
   color: var(--waiting);
-}
-/* the context window, as Zed's ring: 16px, 2px stroke, warning past 85% */
-.ring {
-  display: flex;
-  padding: 0 4px;
 }
 .ring .track {
   stroke: var(--border);

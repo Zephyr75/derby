@@ -1,0 +1,67 @@
+/* Catppuccin Latte (github.com/catppuccin/palette), the light flavour. */
+[data-theme='latte'] {
+  color-scheme: light;
+  --bg: #eff1f5; /* base */
+  --chrome: #e6e9ef; /* mantle */
+  --panel: #e6e9ef; /* mantle: side panels a shade off the editor */
+  --surface: #f7f8fa;
+  --elev: #f7f8fa;
+  --border: #ccd0da; /* surface0 */
+  --text: #4c4f69;
+  --muted: #5c5f77; /* subtext1: subtext0 is under 4.5:1 on mantle */
+  --faint: #9ca0b0; /* overlay0 */
+  --sel: rgba(30, 102, 245, 0.09);
+  --toggle-sel: rgba(30, 102, 245, 0.16);
+  --toggle-text: #1e66f5;
+  --hover: #dce0e8; /* crust */
+  --button: #1e66f5; /* blue */
+  --button-text: #ffffff;
+  --overlay: rgba(76, 79, 105, 0.22);
+  --shadow: 0 16px 40px rgba(76, 79, 105, 0.22);
+  --accent: #1e66f5;
+  --code-kw: #8839ef; /* mauve */
+  --decision: #df8e1d;
+
+  --running: #1e66f5;
+  --running-dot: #1e66f5;
+  --running-bg: rgba(30, 102, 245, 0.1);
+  --waiting: #a36312; /* yellow, darkened to pass 4.5:1 */
+  --waiting-dot: #df8e1d;
+  --waiting-bg: rgba(223, 142, 29, 0.14);
+  --approval: #d20f39; /* red */
+  --approval-dot: #d20f39;
+  --approval-bg: rgba(210, 15, 57, 0.1);
+  --idle: #5c5f77;
+  --idle-dot: #9ca0b0;
+  --idle-bg: #dce0e8;
+  --done: #2f7a1f; /* green, darkened to pass 4.5:1 */
+  --done-dot: #40a02b;
+  --done-bg: rgba(64, 160, 43, 0.12);
+
+  --local: #8839ef;
+  --local-bg: rgba(136, 57, 239, 0.1);
+  --local-border: rgba(136, 57, 239, 0.35);
+
+  --add: #2f7a1f;
+  --del: #d20f39;
+  /* diffs: green and red for the bar left of a changed line, at 16% behind it */
+  --vc-add: #40a02b;
+  --vc-del: #d20f39;
+  --add-bg: color-mix(in srgb, var(--vc-add) 16%, var(--bg));
+  --del-bg: color-mix(in srgb, var(--vc-del) 16%, var(--bg));
+
+  /* todos marked urgent */
+  --urgent: #d20f39;
+
+  /* terminal ANSI palette: Catppuccin's own */
+  --ansi-black: #5c5f77;
+  --ansi-red: #d20f39;
+  --ansi-green: #40a02b;
+  --ansi-yellow: #df8e1d;
+  --ansi-blue: #1e66f5;
+  --ansi-magenta: #ea76cb;
+  --ansi-cyan: #179299;
+  --ansi-white: #acb0be;
+  --ansi-bright-black: #6c6f85;
+  --ansi-selection: rgba(124, 127, 147, 0.25);
+}

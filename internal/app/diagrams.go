@@ -103,6 +103,17 @@ func withTheme(b []byte, theme string) []byte {
 	return slices.Concat(b[:at], []byte(` data-theme="`+theme+`"`), b[at:])
 }
 
+// presetAttr is the visual style archify writes on the page's <html> and its
+// diagram's <svg>; its viewer reads it from there.
+var presetAttr = regexp.MustCompile(`(<(?:html|svg)\b[^>]*?\sdata-preset=")[^"]*"`)
+
+// withSignalFlow shows a page in archify's Signal Flow style, whichever the
+// agent picked: the prompt asks for it, but agents mostly keep the classic
+// default.
+func withSignalFlow(b []byte) []byte {
+	return presetAttr.ReplaceAll(b, []byte(`${1}signal-flow"`))
+}
+
 // embedFit lets an embedded page size its iframe to the diagram, so no empty
 // band shows under it: the canvas is cut to the content with a small equal
 // margin above and below, then its aspect ratio (an explainer page: its height) goes to
@@ -147,6 +158,7 @@ func (a *App) RunFiles() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		b = withSignalFlow(b)
 		if th := r.URL.Query().Get("theme"); th == "dark" || th == "light" {
 			b = withTheme(b, th)
 		}

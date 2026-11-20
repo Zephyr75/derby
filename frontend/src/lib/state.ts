@@ -112,7 +112,7 @@ class Derby {
     return this.settings?.config.appearance.theme ?? 'dark'
   }
   get theme() {
-    if (this.themeMode === 'zed') return 'one-dark'
+    if (this.themeMode === 'mocha' || this.themeMode === 'latte') return this.themeMode
     return this.themeMode === 'light' || (this.themeMode === 'system' && this.systemLight) ? 'flatwhite' : 'fleet-dark'
   }
   /** sessionView: how the center shows a step's session (Settings > Appearance). */
@@ -127,7 +127,7 @@ class Derby {
   }
   /** dark: the theme in use is a dark one (diagrams, mermaid and the logo follow it). */
   get dark() {
-    return this.theme !== 'flatwhite'
+    return this.theme !== 'flatwhite' && this.theme !== 'latte'
   }
 
   task(id: string) {
@@ -202,7 +202,7 @@ class Derby {
     const left = q.get('left')
     if (left === 'archive' || left === 'tasks') this.left = left
     const theme = q.get('theme')
-    if (theme && this.settings && (theme === 'dark' || theme === 'light' || theme === 'system' || theme === 'zed')) this.settings.config.appearance.theme = theme
+    if (theme && this.settings && (theme === 'dark' || theme === 'light' || theme === 'system' || theme === 'mocha' || theme === 'latte')) this.settings.config.appearance.theme = theme
     if (q.get('view') === 'settings') {
       this.view = 'settings'
       this.settingsTab = (q.get('tab') as SettingsTab) || 'context'

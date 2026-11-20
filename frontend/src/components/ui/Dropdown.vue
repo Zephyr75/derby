@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// derby's dropdown: a dashed chip that opens a small menu. The chip shows the
+// derby's dropdown: a chip that opens a small menu. The chip shows the
 // picked item, or the slot's content (e.g. "+ Add").
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Icon from './Icon.vue'
@@ -69,7 +69,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     height: 26px;
     padding: 0 8px 0 10px;
     border-radius: 4px;
-    border: 1px dashed var(--border);
+    border: 1px solid var(--border);
     background: transparent;
     color: var(--text);
     font-size: var(--fs-12-5);
@@ -80,7 +80,6 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
   }
   .chip:hover:not(:disabled),
   .chip.on {
-    border-style: solid;
     background: var(--hover);
   }
   .chip:disabled {

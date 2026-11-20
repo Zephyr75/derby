@@ -475,10 +475,10 @@ func (a *App) AddProjectPath(dir string) (*settings.Project, error) {
 	return &p, nil
 }
 
-// SetTheme sets dark, light, system or zed.
+// SetTheme sets dark, light, system, mocha or latte.
 func (a *App) SetTheme(theme string) error {
 	switch theme {
-	case "dark", "light", "system", "zed":
+	case "dark", "light", "system", "mocha", "latte":
 	default:
 		return fmt.Errorf("unknown theme %q", theme)
 	}

@@ -46,7 +46,7 @@ export interface Context {
 }
 
 export interface Appearance {
-  theme: 'dark' | 'light' | 'system' | 'zed'
+  theme: 'dark' | 'light' | 'system' | 'mocha' | 'latte'
   uiFont: string
   uiFontSize: number
   termFont: string

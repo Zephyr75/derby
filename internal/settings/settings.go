@@ -29,7 +29,7 @@ type Project struct {
 
 // Appearance holds the theme and fonts.
 type Appearance struct {
-	Theme        string  `toml:"theme" json:"theme"` // dark | light | system | zed
+	Theme        string  `toml:"theme" json:"theme"` // dark | light | system | mocha | latte
 	UIFont       string  `toml:"ui_font" json:"uiFont"`
 	UIFontSize   float64 `toml:"ui_font_size" json:"uiFontSize"`
 	TermFont     string  `toml:"terminal_font" json:"termFont"`
@@ -261,7 +261,7 @@ func migrateKeymap(old string, cfg *Config, cfgPath string) error {
 func fillConfig(c *Config) {
 	d := DefaultConfig()
 	switch c.Appearance.Theme {
-	case "dark", "light", "system", "zed":
+	case "dark", "light", "system", "mocha", "latte":
 	default: // empty, or a theme derby no longer has
 		c.Appearance.Theme = d.Appearance.Theme
 	}

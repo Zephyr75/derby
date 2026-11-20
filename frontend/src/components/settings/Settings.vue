@@ -13,6 +13,9 @@ const nav: [SettingsTab, string][] = [['about', 'About'], ['context', 'Context']
 const file = computed(
   () => ({ agents: 'agents.toml', context: 'context/ and prompts.toml', projects: 'config.toml', appearance: 'config.toml', shortcuts: 'config.toml', about: '' })[derby.settingsTab],
 )
+const dir = computed(() => derby.settings?.dir ?? '~/.derby')
+// The home folder as ~, so the path fits the panel.
+const short = computed(() => dir.value.replace(/^\/(?:Users|home)\/[^/]+(?=\/)/, '~'))
 </script>
 
 <template>
@@ -20,7 +23,7 @@ const file = computed(
     <span class="head">Settings</span>
     <button v-for="[id, label] in nav" :key="id" class="item" :class="{ on: derby.settingsTab === id }" @click="derby.settingsTab = id">{{ label }}</button>
     <span class="grow"></span>
-    <span v-if="file" class="path">{{ derby.settings?.dir ?? '~/.derby' }}/{{ file }}</span>
+    <span v-if="file" class="path" :title="`${dir}/${file}`">{{ short }}/{{ file }}</span>
     <button class="back" @click="derby.view = 'board'">Back to board</button>
   </aside>
 
@@ -77,7 +80,7 @@ const file = computed(
     font-family: var(--mono);
     font-size: var(--fs-11);
     color: var(--muted);
-    word-break: break-all;
+    overflow-wrap: anywhere;
   }
   .back {
     display: flex;

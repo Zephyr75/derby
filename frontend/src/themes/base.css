@@ -271,6 +271,49 @@ select.input {
   background-repeat: no-repeat;
   background-position: right 8px center;
 }
+/* Checkboxes are Zed's Switch: a round thumb in a pill, at derby's 13px
+   for Zed's 16px (32x20 there). */
+input[type='checkbox'] {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 26px;
+  height: 16px;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+input[type='checkbox']::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.12s, background 0.12s;
+}
+input[type='checkbox']:checked {
+  background: var(--button);
+  border-color: var(--button);
+}
+input[type='checkbox']:checked::before {
+  transform: translateX(10px);
+  background: var(--button-text);
+}
+input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 .input.mono,
 .area.mono {
   font-family: var(--mono);

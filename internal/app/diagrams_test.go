@@ -46,6 +46,11 @@ func TestDiagrams(t *testing.T) {
 	if got := string(withTheme([]byte(`<html data-theme="light">`), "dark")); got != `<html data-theme="light">` {
 		t.Fatal(got)
 	}
+	page := `<html lang="en" data-preset="classic"><style>svg[data-preset="classic"] .n{}</style><svg viewBox="0 0 1 1" data-preset="classic" role="img">`
+	want := `<html lang="en" data-preset="signal-flow"><style>svg[data-preset="classic"] .n{}</style><svg viewBox="0 0 1 1" data-preset="signal-flow" role="img">`
+	if got := string(withSignalFlow([]byte(page))); got != want {
+		t.Fatal(got)
+	}
 	for _, bad := range []string{"PLAN.md", "..%2F..%2Fsecret.html", ".hidden.html", "missing.html"} {
 		if w := get(bad); w.Code != 404 {
 			t.Errorf("%s: %d", bad, w.Code)

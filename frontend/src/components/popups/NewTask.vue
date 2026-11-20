@@ -183,12 +183,12 @@ function pickProject(id: string) {
   void fetchTitle()
 }
 
-async function create(run: boolean) {
+async function create() {
   if (!valid.value) return
   busy.value = true
   error.value = ''
   try {
-    const t = await api.CreateTask(project.value, nIssue.value, nDesc.value, branch.value, run, files.value)
+    const t = await api.CreateTask(project.value, nIssue.value, nDesc.value, branch.value, true, files.value)
     derby.overlay = 'none'
     // The task:changed event may arrive after the call returns.
     if (!derby.task(t.id)) derby.tasks.push(t)
@@ -204,7 +204,7 @@ function key(e: KeyboardEvent) {
   const mod = isMac() ? e.metaKey : e.ctrlKey
   if (e.key === 'Enter' && mod) {
     e.preventDefault()
-    void create(true)
+    void create()
   }
 }
 </script>
@@ -284,8 +284,7 @@ function key(e: KeyboardEvent) {
       <span class="muted small">Starts with the {{ first }} agent</span>
       <span class="grow"></span>
       <button class="btn ghost" @click="derby.overlay = 'none'">Cancel</button>
-      <button class="btn" :disabled="!valid" @click="create(false)">Create</button>
-      <button class="btn primary run" :disabled="!valid" @click="create(true)">
+      <button class="btn primary run" :disabled="!valid" @click="create()">
         <Icon name="play" :size="13" />Create and run {{ first }}
       </button>
     </div>

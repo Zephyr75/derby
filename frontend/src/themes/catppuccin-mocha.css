@@ -1,0 +1,67 @@
+/* Catppuccin Mocha (github.com/catppuccin/palette), the dark flavour. */
+[data-theme='mocha'] {
+  color-scheme: dark;
+  --bg: #1e1e2e; /* base */
+  --chrome: #181825; /* mantle */
+  --panel: #181825; /* mantle: side panels a shade off the editor */
+  --surface: #313244; /* surface0 */
+  --elev: #24273a;
+  --border: #45475a; /* surface1 */
+  --text: #cdd6f4;
+  --muted: #a6adc8; /* subtext0 */
+  --faint: #7f849c; /* overlay1 */
+  --sel: rgba(137, 180, 250, 0.14);
+  --toggle-sel: rgba(137, 180, 250, 0.24);
+  --toggle-text: #89b4fa;
+  --hover: #2a2b3c;
+  --button: #89b4fa; /* blue */
+  --button-text: #11111b; /* crust */
+  --overlay: rgba(17, 17, 27, 0.6);
+  --shadow: 0 16px 40px rgba(17, 17, 27, 0.6);
+  --accent: #89b4fa;
+  --code-kw: #cba6f7; /* mauve */
+  --decision: #f9e2af;
+
+  --running: #89b4fa;
+  --running-dot: #89b4fa;
+  --running-bg: rgba(137, 180, 250, 0.14);
+  --waiting: #f9e2af; /* yellow */
+  --waiting-dot: #f9e2af;
+  --waiting-bg: rgba(249, 226, 175, 0.12);
+  --approval: #f38ba8; /* red */
+  --approval-dot: #f38ba8;
+  --approval-bg: rgba(243, 139, 168, 0.14);
+  --idle: #a6adc8;
+  --idle-dot: #7f849c;
+  --idle-bg: rgba(205, 214, 244, 0.06);
+  --done: #a6e3a1; /* green */
+  --done-dot: #a6e3a1;
+  --done-bg: rgba(166, 227, 161, 0.12);
+
+  --local: #cba6f7;
+  --local-bg: rgba(203, 166, 247, 0.14);
+  --local-border: rgba(203, 166, 247, 0.4);
+
+  --add: #a6e3a1;
+  --del: #f38ba8;
+  /* diffs: green and red for the bar left of a changed line, at 12% behind it */
+  --vc-add: #a6e3a1;
+  --vc-del: #f38ba8;
+  --add-bg: color-mix(in srgb, var(--vc-add) 12%, var(--bg));
+  --del-bg: color-mix(in srgb, var(--vc-del) 12%, var(--bg));
+
+  /* todos marked urgent */
+  --urgent: #f38ba8;
+
+  /* terminal ANSI palette: Catppuccin's own */
+  --ansi-black: #45475a;
+  --ansi-red: #f38ba8;
+  --ansi-green: #a6e3a1;
+  --ansi-yellow: #f9e2af;
+  --ansi-blue: #89b4fa;
+  --ansi-magenta: #f5c2e7;
+  --ansi-cyan: #94e2d5;
+  --ansi-white: #bac2de;
+  --ansi-bright-black: #585b70;
+  --ansi-selection: rgba(147, 153, 178, 0.3);
+}

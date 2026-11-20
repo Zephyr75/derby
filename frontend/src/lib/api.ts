@@ -42,7 +42,6 @@ export interface Api {
   RerunChecks(task: string, link: string): Promise<void>
   ResolveThread(task: string, thread: string): Promise<void>
   RequestCopilotReview(task: string): Promise<void>
-  RefreshIssue(task: string): Promise<void>
   Diagrams(task: string): Promise<Diagram[]>
   SetFocused(focused: boolean): Promise<void>
   SetNotifications(on: boolean): Promise<void>
