@@ -421,8 +421,6 @@ class Derby {
     this.collapsed[k] = !this.collapsed[k]
   }
 
-  /** A project's tasks in the left panel's tab, newest first: tasks by
-   *  creation, archives by when they were closed (archived). */
   /** sisterGroups: the families of tasks linked as sisters (the same work in
    *  several repositories), each task's family by its id. */
   get sisterGroups(): Map<string, string[]> {
@@ -457,7 +455,8 @@ class Derby {
 
   /** panelFamilies: the sister families in the list, shown first under
    *  Sisters, each with the big sister (the task that started the others)
-   *  first; a family with one task in the list shows under its project. */
+   *  first. A family stays there with a single task in the list, e.g. once
+   *  its sisters' PRs were merged and they moved to the Archive. */
   panelFamilies(): Task[][] {
     const listed = this.listed()
     const groups = this.sisterGroups
@@ -468,12 +467,13 @@ class Derby {
       if (!ids || seen.has(ids)) continue
       seen.add(ids)
       const members = listed.filter((x) => ids.includes(x.id))
-      if (members.length < 2) continue
       out.push(members.sort((a, b) => Number(a.sister) - Number(b.sister) || -this.newest(a, b)))
     }
     return out
   }
 
+  /** A project's tasks in the left panel's tab, newest first: tasks by
+   *  creation, archives by when they were closed (archived). */
   panelTasks(projectId: string): Task[] {
     const inFamily = new Set(this.panelFamilies().flat().map((t) => t.id))
     return this.listed()

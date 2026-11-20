@@ -27,6 +27,14 @@ async function deleteTask() {
 }
 const allow = (id: string) => derby.attempt('Allow once failed', () => api.AllowOnce(id))
 const markDone = (id: string) => derby.attempt('Mark done failed', () => api.MarkDone(id))
+// One click per repository the plan also needs: its sister task, or first its project.
+async function createSister(repo: string) {
+  const task = t.value
+  if (!task) return
+  const s = await derby.attempt('Could not create the sister task', () => api.CreateSister(task.id, repo))
+  if (s) derby.toast('Sister task created', `${repo}: ${s.title}`)
+}
+const addProject = () => derby.attempt('Could not add the project', () => api.AddProject())
 </script>
 
 <template>
@@ -36,6 +44,12 @@ const markDone = (id: string) => derby.attempt('Mark done failed', () => api.Mar
       <span class="grow"></span>
       <TaskRef :issue="t.issue" :task="t.id" class="tref" />
       <span class="ref">· {{ t.projectName }}</span>
+    </div>
+
+    <div v-for="o in nx.sisters" :key="o.repo" class="sister">
+      <p :title="o.scope"><b>The plan also needs {{ o.repo }}</b>: {{ o.part || o.scope }}</p>
+      <button v-if="o.project" class="btn primary" :title="`Create a task in ${o.repo} for the same issue, with its own worktree, plan and PR, linked to this one under Sisters`" @click="createSister(o.repo)"><Icon name="plus" :size="13" /><span>Create sister task</span></button>
+      <button v-else class="btn" :title="`${o.repo} is not a Derby project yet: pick its folder, then create the sister task`" @click="addProject"><Icon name="plus" :size="13" /><span>Add as a project</span></button>
     </div>
 
     <template v-if="nx.options.length && !t.archived">
@@ -156,5 +170,26 @@ p {
 }
 .transparent {
   background: transparent;
+}
+.sister {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.sister p {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.sister .btn {
+  max-width: 100%;
+}
+.sister .btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

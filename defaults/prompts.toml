@@ -261,8 +261,8 @@ You explain the changes of the task {{.Task}} (project {{.Project}}) in its work
 
 [[prompt]]
 id = "partsSummary"
-name = "Sister overview"
-where = "The prompt of the Claude run (Haiku) that writes the sister overview's lines when the plans have no Parts overview. It must ask for a JSON object. A Go template"
+name = "Sister parts"
+where = "The prompt of the Claude run (Haiku) that writes what each sister task's part does, in a line (on hover under Sisters, and in Next step's offers), when the plans have no Parts overview. It must ask for a JSON object. A Go template"
 vars = "{{.Tasks}} (each .Project .Title .Description .Plan) {{.Offers}} (each .Repo .Scope)"
 text = '''
 Each repository below is one part of the same piece of work. For each, write what its part does in under 10 words: start with what is specific to that part (never the same verb on every line, never the repository's name) and end with how it connects to the others when there is one (e.g. "needs X's new endpoint"). Reply with only a JSON object: {"<repository>": "<line>"}.

@@ -3,7 +3,7 @@
 // every screen; it never touches git, gh or Claude Code.
 
 import type { Api } from './api'
-import { afterOf, unsuccessful, type CICheck, type Agent, type Artifact, type Context, type Next, type Project, type Settings, type Step, type Task, type StatusKind, type Note, type Todo, type ChatItem } from './types'
+import { afterOf, unsuccessful, type CICheck, type Agent, type Artifact, type Context, type Next, type Project, type Settings, type Step, type Task, type StatusKind, type Note, type Todo, type ChatItem, type SisterOffer } from './types'
 
 type Handler = (data: any) => void
 const listeners = new Map<string, Set<Handler>>()
@@ -65,10 +65,14 @@ interface Fx {
   diff?: [string, string][]; changes?: string[]; findings?: string[]; copilot?: string[]; options?: boolean // the plan lists options
 }
 interface MockStep { key: string; agent: string; n: number; state: Step['state']; guide?: string; session: string; sha?: string; verdict?: string; manual?: boolean }
-interface MockTask { sisterOf?: string[]; sister?: boolean; notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
+interface MockTask { sisterOf?: string[]; sister?: boolean; part?: string; offers?: SisterOffer[]; notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
 
 const T: MockTask[] = [
   { id: 'core:4356', project: 'core', issue: '4356', slug: '4356', title: 'Retry BLE unlock on flaky connections', description: '',
+    offers: [
+      { repo: 'okai-tcp-server', project: '', scope: 'Echo the retry attempt in the unlock ack, so the backend can tell retries apart.', part: 'echoes the attempt in the unlock ack' },
+      { repo: 'infra', project: 'infra', scope: 'Raise the BLE gateway timeout to cover three retries.', part: 'raises the gateway timeout for the retries' },
+    ],
     fx: { goal: 'Unlock requests fail on scooters with older BLE firmware when the first connection attempt drops. Add bounded retries with backoff before surfacing an error to the rider.',
       files: ['internal/unlock/ble.go', 'internal/unlock/retry.go', 'internal/unlock/ble_test.go'], grep: 'UnlockVehicle', test: 'go test ./internal/unlock/...', testOut: 'ok   pony-core/internal/unlock   1.84s',
       flow: ['Unlock request', 'Connect over BLE', 'Connected?', 'Retry with backoff, max N', 'Return unlock result'],
@@ -81,7 +85,7 @@ const T: MockTask[] = [
       { key: 'review-1', agent: 'review', n: 1, state: 'done', sha: 'b7c41d9', verdict: 'failed', session: 'c83f0e55' },
       { key: 'impl-2', agent: 'impl', n: 2, state: 'running', guide: 'keep the retry budget configurable, default 3', session: '7f3c91d4' },
     ] },
-  { sisterOf: ['rider:1188'], id: 'core:4361', project: 'core', issue: '4361', slug: '4361', title: 'Per-minute pricing rounding', description: 'Keep the per-minute rule identical to the B2B tariff.',
+  { sisterOf: ['rider:1188'], part: 'makes per-minute ceiling rounding the single rule', id: 'core:4361', project: 'core', issue: '4361', slug: '4361', title: 'Per-minute pricing rounding', description: 'Keep the per-minute rule identical to the B2B tariff.',
     fx: { goal: 'Ride prices are rounded per second in one code path and per minute in another. Make per-minute ceiling rounding the single rule.',
       files: ['internal/pricing/minute.go', 'internal/pricing/minute_test.go'], grep: 'RoundDuration', test: 'go test ./internal/pricing/...', testOut: 'ok   pony-core/internal/pricing   0.62s',
       flow: ['Ride ends', 'Compute duration', 'Ceil to minute', 'Apply tariff'], diff: [['-', '\tsecs := d.Seconds()'], ['+', '\tmins := decimal.NewFromFloat(d.Minutes()).Ceil()']],
@@ -91,7 +95,7 @@ const T: MockTask[] = [
       { key: 'impl-1', agent: 'impl', n: 1, state: 'done', session: '44e1c9b2' },
       { key: 'review-1', agent: 'review', n: 1, state: 'done', sha: '91aa0f3', verdict: '', session: 'e0c5d7a8' },
     ] },
-  { id: 'core:4370', project: 'core', issue: '4370', slug: '4370', title: 'Batch battery telemetry ingestion', description: '',
+  { sisterOf: ['infra:212'], sister: true, part: 'batches the telemetry rows per vehicle', id: 'core:4370', project: 'core', issue: '4370', slug: '4370', title: 'Batch battery telemetry ingestion', description: '',
     fx: { goal: 'Telemetry rows are inserted one by one. Batch them per vehicle every 5 seconds to cut database writes.', files: ['internal/telemetry/ingest.go', 'internal/telemetry/batch.go'],
       grep: 'InsertTelemetry', test: 'go test -race ./internal/telemetry/...', flow: ['Telemetry message', 'Buffer per vehicle', 'Flush on 5s or 500 rows', 'Bulk insert'],
       diff: [['+', 'type batcher struct {'], ['+', '\tbuf map[string][]Row'], ['-', '\tdb.InsertTelemetry(ctx, row)']], changes: ['New batcher with time and size flush'] },
@@ -101,7 +105,7 @@ const T: MockTask[] = [
     ] },
   { id: 'core:local-heatmap', project: 'core', issue: '', slug: 'local-heatmap', title: 'Fleet rebalancing heatmap endpoint',
     description: 'Add GET /fleet/heatmap returning vehicle density per H3 cell for the ops dashboard.', fx: {}, steps: [] },
-  { sisterOf: ['core:4361'], sister: true, id: 'rider:1188', project: 'rider', issue: '1188', slug: '1188', title: 'Show unlock retry progress in the app', description: '',
+  { sisterOf: ['core:4361'], sister: true, part: 'shows the attempt count in the unlock sheet', id: 'rider:1188', project: 'rider', issue: '1188', slug: '1188', title: 'Show unlock retry progress in the app', description: '',
     fx: { goal: 'When the backend retries a BLE unlock, the rider sees nothing for up to 6 seconds. Show the attempt count in the unlock sheet.', files: ['src/unlock/UnlockSheet.tsx', 'src/unlock/useUnlock.ts'],
       grep: 'useUnlock', test: 'pnpm test unlock', testOut: 'Tests  12 passed', flow: ['Tap unlock', 'Show progress sheet', 'Retry event from API', 'Update attempt count', 'Success or error state'] },
     steps: [{ key: 'plan-1', agent: 'plan', n: 1, state: 'idle', session: '6e0d1f93' }] },
@@ -152,6 +156,13 @@ const T: MockTask[] = [
       { key: 'impl-1', agent: 'impl', n: 1, state: 'done', session: '3e9a77c0' },
       { key: 'review-1', agent: 'review', n: 1, state: 'done', sha: '6d3e20b', verdict: '', session: '71bc04de' },
       { key: 'push-1', agent: 'push', n: 1, state: 'done', session: 'd2a6f5e9' },
+    ] },
+  { sisterOf: ['core:4370'], part: 'adds the queue the telemetry batches go through', id: 'infra:212', project: 'infra', issue: '212', slug: '212', title: 'Queue for battery telemetry ingestion', description: '', archived: true, pr: 66, prState: 'merged', archivedOn: '2026-11-12', fx: {},
+    steps: [
+      { key: 'plan-1', agent: 'plan', n: 1, state: 'done', session: '1d2e3f40' },
+      { key: 'impl-1', agent: 'impl', n: 1, state: 'done', session: '2e3f4051' },
+      { key: 'review-1', agent: 'review', n: 1, state: 'done', sha: '5e1a9c3', verdict: '', session: '3f405162' },
+      { key: 'push-1', agent: 'push', n: 1, state: 'done', session: '40516273' },
     ] },
   { id: 'infra:207', project: 'infra', issue: '207', slug: '207', title: 'Rotate SP certificates through Horizon', description: '', archived: true, pr: 64, prState: 'merged', archivedOn: '2026-10-21', fx: {},
     steps: [
@@ -209,7 +220,7 @@ function derive(t: MockTask): Task {
     else if (last.state === 'failed' || unsuccessful(last)) status = of('failed', 'Failure', last)
     else status = last.external ? of('done', 'Success', last) : of('waiting', 'Waiting for next step', last)
   }
-  const next: Next = { options: [], text: '', approval: '', markDone: '', warning: '', elsewhere: [], sisters: [], ghost: null as Next['ghost'] }
+  const next: Next = { options: [], text: '', approval: '', markDone: '', warning: '', elsewhere: [], sisters: t.archived ? [] : t.offers ?? [], ghost: null as Next['ghost'] }
   const count = (id: string) => Math.max(0, ...steps.filter((s) => s.agent === id).map((s) => s.n))
   const opt = (a: Agent, n: number, prefix = '') => ({ agent: a.id, n, label: prefix + displayName(a, n) })
   if (t.archived) {
@@ -253,7 +264,7 @@ function derive(t: MockTask): Task {
   return {
     id: t.id, project: t.project, slug: t.slug, issue: t.issue, title: t.title, description: t.description, createdAt: '',
     archived: !!t.archived, archivedAt: t.archivedOn ?? '', pr: t.pr ?? 0, prUrl: t.pr ? `https://github.com/pony-org/${t.project}/pull/${t.pr}` : '', prState: t.prState ?? '', worktreeRemoved: !!t.removed,
-    projectName: p.name, repo: p.repo, issueRepo: '', sister: !!t.sister, sisters: (t.sisterOf ?? []).map((id) => ({ id, project: proj(find(id).project).name, part: '' })), part: '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
+    projectName: p.name, repo: p.repo, issueRepo: '', sister: !!t.sister, sisters: (t.sisterOf ?? []).map((id) => ({ id, project: proj(find(id).project).name, part: find(id).part ?? '' })), part: t.part ?? '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
     branch: t.branch ?? 'ar-' + t.slug, runDir: `~/.derby/runs/${p.name}/${t.slug}`,
     source: t.issue && t.description ? `GitHub issue #${t.issue} + description · ${p.repo}` : t.issue ? `GitHub issue #${t.issue} · ${p.repo}` : 'LOCAL · description only, no GitHub issue',
     status, steps, next, projectGone: !projects.some((x) => x.id === t.project), checks: t.checks ?? [], labels: t.labels ?? [], draft: t.draft ?? false, conflicting: false, feedback: [], rejected: {}, behind: 0, notes: t.notes ?? [], todos: t.todos ?? [],

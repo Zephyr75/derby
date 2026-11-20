@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // A task in the left panel: its reference and title, its status and its PR.
-// In a sister family it also names its project, and the big sister (the task
-// that started the others) has a flag.
+// In a sister family it also names its project, says what its part of the
+// work does on hover, and the big sister (the task that started the others)
+// has a flag.
 import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
@@ -21,7 +22,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
 </script>
 
 <template>
-  <button class="card" :class="{ on: task.id === derby.sel }" @click="derby.pickTask(task.id)">
+  <button class="card" :class="{ on: task.id === derby.sel }" :title="family ? task.part : undefined" @click="derby.pickTask(task.id)">
     <span class="row">
       <span v-if="big" class="big" title="The big sister: it started the other tasks"><Icon name="flag" :size="11" /></span>
       <TaskRef :issue="task.issue" :task="task.id" />

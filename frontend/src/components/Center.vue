@@ -5,7 +5,6 @@ import Icon from './ui/Icon.vue'
 import Terminal from './Terminal.vue'
 import ChatView from './ChatView.vue'
 import PRTracker from './PRTracker.vue'
-import SisterOverview from './SisterOverview.vue'
 import Toasts from './Toasts.vue'
 
 const tabs = computed(() =>
@@ -17,8 +16,6 @@ const tabs = computed(() =>
   }),
 )
 const step = computed(() => derby.selStep)
-// The sister tasks' overview: under the step's toolbar, which joins its tab.
-const sisters = computed(() => !!derby.selTask && (derby.selTask.sisters.length > 0 || derby.selTask.next.sisters.length > 0))
 const t = computed(() => derby.selTask)
 const agent = computed(() => (step.value ? derby.settings?.agents.find((a) => a.id === step.value!.agent) : undefined))
 const model = (m: string) => (m ? m[0].toUpperCase() + m.slice(1) : '')
@@ -49,7 +46,6 @@ const chip = computed(() => {
       <span class="grow"></span>
     </div>
 
-    <SisterOverview v-if="sisters && !(step && !step.external)" :task="t!" />
     <PRTracker v-if="step && t && step.external" :task="t" :step="step" />
     <template v-else-if="step && t">
       <div class="toolbar">
@@ -72,7 +68,6 @@ const chip = computed(() => {
           </template>
         </span>
       </div>
-      <SisterOverview v-if="sisters" :task="t" />
       <ChatView v-if="derby.sessionView === 'chat'" :step="step" />
       <Terminal v-else :key="step.id + ':' + derby.termRev" :step="step" />
     </template>

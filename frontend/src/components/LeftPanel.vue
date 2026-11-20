@@ -5,6 +5,7 @@ import Icon from './ui/Icon.vue'
 import TaskCard from './TaskCard.vue'
 import NextStep from './NextStep.vue'
 import Splitter from './ui/Splitter.vue'
+import type { Task } from '../lib/types'
 
 const counts = computed(() => ({
   active: derby.tasks.filter((t) => !t.archived).length,
@@ -12,8 +13,11 @@ const counts = computed(() => ({
 }))
 const groups = computed(() => derby.groups.map((p) => ({ p, tasks: derby.panelTasks(p.id) })).filter((g) => !g.p.gone || g.tasks.length))
 
-// Sister families first, under Sisters, each in a box; single tasks under their project.
+// Sister families first, under Sisters, each in a box (even when only one of
+// its tasks is in this list); single tasks under their project.
 const families = computed(() => derby.panelFamilies())
+// Every project of the family, archived tasks included.
+const familyTitle = (f: Task[]) => 'The same work in ' + (derby.sisterGroups.get(f[0].id) ?? []).map((id) => derby.task(id)?.projectName ?? id).join(', ')
 
 function addProject() {
   derby.view = 'settings'
@@ -40,7 +44,7 @@ function addProject() {
           <span>{{ families.length }}</span>
         </button>
         <template v-if="!derby.isCollapsed(SISTERS)">
-          <div v-for="f in families" :key="f[0].id" class="family" :title="'The same work in ' + f.map((t) => t.projectName).join(', ')">
+          <div v-for="f in families" :key="f[0].id" class="family" :title="familyTitle(f)">
             <TaskCard v-for="(t, i) in f" :key="t.id" :task="t" family :big="i === 0 && !t.sister" />
           </div>
         </template>

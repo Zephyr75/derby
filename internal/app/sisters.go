@@ -31,7 +31,7 @@ type SisterOffer struct {
 	From    string `json:"-"`       // the artifact that asks for it
 }
 
-// SisterRef is a sister task, for the header link and the overview.
+// SisterRef is a sister task, for the left panel's Sisters.
 type SisterRef struct {
 	ID      string `json:"id"`
 	Project string `json:"project"` // its project's name
