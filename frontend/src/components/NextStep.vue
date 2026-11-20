@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onUpdated, ref, watch } from 'vue'
 import { api } from '../lib/api'
 import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
@@ -43,6 +43,41 @@ async function createSister(repo: string) {
   if (s) derby.toast('Sister task created', `${repo}: ${s.title}`)
 }
 const addProject = () => derby.attempt('Could not add the project', () => api.AddProject())
+
+// Buttons pair up two per line; with an odd count the first, the main one,
+// takes the first line alone. If a paired label does not fit in half the
+// width, every button gets its own line instead.
+const opts = ref<HTMLElement>()
+const stack = ref(false)
+function needed(b: Element) {
+  const cs = getComputedStyle(b)
+  const px = (v: string) => parseFloat(v) || 0
+  let w = px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth)
+  for (const k of b.children) w += k.tagName === 'SPAN' ? k.scrollWidth : k.getBoundingClientRect().width
+  return w + px(cs.columnGap) * Math.max(0, b.children.length - 1)
+}
+function fit() {
+  const el = opts.value
+  if (!el) return
+  const btns = [...el.children]
+  const paired = btns.length % 2 ? btns.slice(1) : btns
+  const half = (el.clientWidth - (parseFloat(getComputedStyle(el).columnGap) || 0)) / 2
+  stack.value = paired.some((b) => needed(b) > half + 0.5)
+}
+watch(opts, (el, _, onCleanup) => {
+  if (!el) return
+  let raf = 0
+  const ro = new ResizeObserver(() => {
+    cancelAnimationFrame(raf)
+    raf = requestAnimationFrame(fit)
+  })
+  ro.observe(el)
+  onCleanup(() => {
+    ro.disconnect()
+    cancelAnimationFrame(raf)
+  })
+})
+onUpdated(fit)
 </script>
 
 <template>
@@ -65,8 +100,7 @@ const addProject = () => derby.attempt('Could not add the project', () => api.Ad
 
     <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so Derby cannot restore this task or touch its repository. Delete task only removes it from derby.</p>
 
-    <!-- Each button takes half the width, or a full line when its label needs more. -->
-    <div class="opts">
+    <div ref="opts" class="opts" :class="{ stack }">
       <template v-if="runnable">
         <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" :title="o.label" @click="derby.run(o)"><Icon name="play" :size="13" /><span>{{ o.label }}</span></button>
       </template>
@@ -131,18 +165,20 @@ textarea:focus {
   outline: none;
 }
 .opts {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 .opts:empty {
   display: none;
 }
-/* Half the width each; a label wider than that keeps its width (the automatic
-   minimum), wraps to its own line, and grows to fill it. */
+/* an odd count: the first button has the first line to itself */
+.opts > :first-child:nth-last-child(odd),
+.opts.stack > * {
+  grid-column: 1 / -1;
+}
 .opts .btn {
-  flex: 1 1 calc(50% - 3px);
-  max-width: 100%;
+  min-width: 0;
   justify-content: center;
 }
 .opts .btn:not(.primary):not(.danger):not(.allow) {
