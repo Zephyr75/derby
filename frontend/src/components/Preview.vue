@@ -90,14 +90,18 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
 <template>
   <div class="wrap">
     <div ref="bar" class="bar" :class="{ compact }" role="tablist">
-      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the report this step wrote` : 'The report a step writes'" aria-label="Report" @click="derby.rightTab = 'preview'">
-        <span class="in"><Icon name="file" /><span class="label">Report</span></span>
-      </button>
+      <!-- a div, not a button: it holds the button that opens the report in a pop-up -->
+      <div class="tab" role="tab" tabindex="0" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the report this step wrote` : 'The report a step writes'" aria-label="Report" @click="derby.rightTab = 'preview'" @keydown.enter.space.prevent="derby.rightTab = 'preview'">
+        <span class="in"
+          ><Icon name="file" /><span class="label">Report</span
+          ><button v-if="step && art?.exists" class="expand" aria-label="Open the report in a large pop-up" title="Open the report in a large pop-up" @click.stop="derby.openArtifactPopup(step.id)" @keydown.stop><Icon name="maximize" :size="12" /></button
+        ></span>
+      </div>
       <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="Changes" @click="hasChanges && (derby.rightTab = 'changes')">
         <span class="in"><Icon name="diff" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}: its review comments and CI checks` : 'No PR yet: Commit and push opens one'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
-        <span class="in"><Icon name="pr" /><span class="label">PR</span></span>
+        <span class="in"><Icon name="pr" /><span class="label">PR</span><span v-if="task?.pr" class="count">#{{ task.pr }}</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="`The task's todos${openTodos ? `, ${openTodos} open` : ''}`" aria-label="TODOs" @click="task && (derby.rightTab = 'todos')">
         <span class="in"><Icon name="todo" /><span class="label">TODOs</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
@@ -118,10 +122,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
       <p v-else-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
       <template v-else>
-        <div class="md-head">
-          <span class="md-file">{{ file }}</span>
-          <button class="big" aria-label="Open in a large pop-up" title="Open in a large pop-up" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" /></button>
-        </div>
+        <div class="md-file">{{ file }}</div>
         <ArtifactView :art="art" :task="step.taskId" />
       </template>
     </div>
@@ -197,40 +198,34 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
   .on .count {
     color: var(--muted);
   }
+  /* opens the report in a pop-up; sized and coloured like a count */
+  .expand {
+    display: flex;
+    margin: 0 -2px 0 4px;
+    padding: 2px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--faint);
+  }
+  .on .expand {
+    color: var(--muted);
+  }
+  .tab .expand:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
   .grow {
     flex: 1;
   }
-  /* the artifact's file name, and the button that opens it in a pop-up */
-  .md-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin: -6px -8px -2px 0;
-  }
+  /* the artifact's file name */
   .md-file {
-    min-width: 0;
+    margin-top: -2px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--muted);
     font-size: var(--fs-12);
-  }
-  .big {
-    flex: none;
-    width: 26px;
-    height: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--muted);
-  }
-  .big:hover {
-    background: var(--hover);
-    color: var(--text);
   }
   .content {
     flex: 1;
