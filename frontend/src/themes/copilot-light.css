@@ -1,24 +1,25 @@
-/* GitHub Copilot Light, from the GitHub Copilot app's Primer tokens (GitHub
-   light default): white canvas, #f6f8fa for the bars and side panels. */
+/* GitHub Copilot Light, from the GitHub Copilot app's own CSS (its built-in
+   "GitHub" theme, Primer light): the sidebar is bgColor-muted #f6f8fa beside
+   the bgColor-default white chat in the center. */
 [data-theme='copilot-light'] {
   color-scheme: light;
   --bg: #ffffff;
-  --chrome: #f6f8fa;
+  --chrome: #f6f8fa; /* bars and tab strip share the sidebar's colour */
   --panel: #f6f8fa; /* bgColor-muted: the app's sidebar */
-  --surface: #ffffff;
-  --elev: #ffffff;
+  --surface: #f6f8fa; /* bgColor-muted: code, hunks, cards */
+  --elev: #f6f8fa;
   --border: #d1d9e0;
   --text: #1f2328;
   --muted: #59636e;
   --faint: #818b98;
-  --sel: rgba(9, 105, 218, 0.08);
+  --sel: rgba(129, 139, 152, 0.15); /* neutral, as the app selects a session */
   --toggle-sel: rgba(9, 105, 218, 0.12);
   --toggle-text: #0969da;
   --hover: #eaeef2;
   --button: #1f883d; /* Primer's primary button */
   --button-text: #ffffff;
-  --overlay: rgba(31, 35, 40, 0.25);
-  --shadow: 0 16px 40px rgba(37, 41, 46, 0.18);
+  --overlay: rgba(200, 209, 218, 0.4); /* overlay-backdrop-bgColor */
+  --shadow: 0 40px 80px rgba(37, 41, 46, 0.24); /* shadow-floating-large */
   --accent: #0969da;
   --code-kw: #cf222e;
   --decision: #9a6700;
@@ -54,15 +55,15 @@
   /* todos marked urgent */
   --urgent: #d1242f;
 
-  /* terminal ANSI palette, Primer's */
-  --ansi-black: #1f2328;
+  /* terminal ANSI palette, the app's GitHub terminal theme */
+  --ansi-black: #6e7781;
   --ansi-red: #cf222e;
   --ansi-green: #116329;
-  --ansi-yellow: #4d2d00;
+  --ansi-yellow: #9a6700;
   --ansi-blue: #0969da;
   --ansi-magenta: #8250df;
   --ansi-cyan: #1b7c83;
-  --ansi-white: #59636e;
-  --ansi-bright-black: #6e7781;
+  --ansi-white: #6e7781;
+  --ansi-bright-black: #57606a;
   --ansi-selection: rgba(9, 105, 218, 0.2);
 }
