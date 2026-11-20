@@ -52,7 +52,7 @@ function addProject() {
       <template v-for="g in groups" :key="g.p.id">
         <button class="group" :aria-expanded="!derby.isCollapsed(g.p.id)" @click="derby.toggleCollapsed(g.p.id)">
           <Icon :name="derby.isCollapsed(g.p.id) ? 'chevron-right' : 'chevron'" :size="14" />
-          <Icon name="folder" />
+          <Icon :name="derby.isCollapsed(g.p.id) ? 'folder' : 'folder-open'" />
           <span class="name">{{ g.p.name }}</span>
           <span v-if="g.p.gone" class="gone" title="This project was removed from Settings > Projects">removed</span>
           <span>{{ g.tasks.length }}</span>
