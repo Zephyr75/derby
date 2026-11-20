@@ -101,7 +101,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
         <span class="in"><Icon name="diff" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}: its review comments and CI checks` : 'No PR yet: Commit and push opens one'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
-        <span class="in"><Icon name="pr" /><span class="label">PR</span><span v-if="task?.pr" class="count">#{{ task.pr }}</span></span>
+        <span class="in"><Icon name="pr" /><span class="label">PR<span v-if="task?.pr" class="count">#{{ task.pr }}</span></span></span>
       </button>
       <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="`The task's todos${openTodos ? `, ${openTodos} open` : ''}`" aria-label="TODOs" @click="task && (derby.rightTab = 'todos')">
         <span class="in"><Icon name="todo" /><span class="label">TODOs</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
