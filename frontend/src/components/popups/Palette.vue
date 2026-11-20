@@ -45,7 +45,6 @@ function key(e: KeyboardEvent) {
       <label for="pq" class="sr-only">Search tasks</label>
       <input id="pq" ref="input" v-model="query" placeholder="Search tasks in all projects…" autocomplete="off" spellcheck="false" @keydown="key" />
     </div>
-    <span class="heading">{{ query.trim() ? `${matches.length} task${matches.length === 1 ? '' : 's'} match` : 'Recent tasks · all projects' }} · archived included</span>
     <div ref="list" class="rows">
       <button v-for="(t, i) in matches" :key="t.id" class="row" :class="{ hi: i === hi }" @click="derby.pickTask(t.id)" @mousemove="hi = i">
         <TaskRef :issue="t.issue" width="46px" :task="t.id" />
@@ -82,18 +81,12 @@ function key(e: KeyboardEvent) {
     color: var(--text);
     font-size: var(--fs-14);
   }
-  .heading {
-    flex: none;
-    padding: 8px 12px 4px;
-    font-size: var(--fs-11-5);
-    color: var(--muted);
-  }
   .rows {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    padding: 0 4px 6px;
+    padding: 4px 4px 6px;
     overflow: auto;
   }
   .row {

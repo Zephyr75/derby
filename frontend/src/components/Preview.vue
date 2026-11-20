@@ -178,6 +178,11 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     color: var(--text);
     font-weight: 500;
   }
+  /* unavailable: only the label and icon fade, the bar's borders stay as they are */
+  .tab.off {
+    opacity: 1;
+    color: color-mix(in srgb, var(--muted) 35%, transparent);
+  }
   .in {
     flex: none;
     display: flex;
