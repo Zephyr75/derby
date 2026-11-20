@@ -5,7 +5,7 @@ import {
   Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, Folder, FolderOpen, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Split, Square, SquareTerminal, TriangleAlert, Undo2, X,
   ArrowDown, ArrowUp, Bot, Brain, Flag, UsersRound, ChevronUp, Hammer, Lightbulb, ListPlus, SendHorizontal, UserRound, CircleX, Globe, ListChecks, LoaderCircle, MessageSquare, ShieldAlert, Sparkles, Wrench,
-  Monitor, Moon, Sun, CircleDot, Code,
+  Monitor, Moon, Sun, CircleDot, Code, NotebookText,
 } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: number }>(), { size: 14, stroke: 2 })
@@ -54,6 +54,7 @@ const icons: Record<string, Component> = {
   revert: Undo2,
   issue: CircleDot, // GitHub's open-issue icon
   code: Code, // Zed
+  description: NotebookText, // a task's own description, when it has no issue
   pr: GitPullRequestArrow,
   'pr-draft': GitPullRequestDraft,
   'pr-closed': GitPullRequestClosed,

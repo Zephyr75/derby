@@ -15,6 +15,18 @@ const openPR = () => t.value && derby.attempt('Could not open the PR', () => api
 // GitHub's PR icons, as in the left panel: merged, closed, draft, open.
 const prIcon = computed(() => (t.value?.prState === 'merged' ? 'rebase' : t.value?.prState && t.value.prState !== 'open' ? 'pr-closed' : t.value?.draft ? 'pr-draft' : 'pr'))
 const behindText = computed(() => `${t.value?.behind} commits behind origin/${t.value?.baseBranch} (Derby fetches it every 5 minutes)`)
+// Issue opens it on GitHub; a task without one has a description instead.
+const hasIssue = computed(() => !!(t.value?.issue && (t.value.issueRepo || t.value.repo)))
+// Rebase always shows, before Archive; it's off unless the branch is behind
+// and a step can rebase it now.
+const canRebase = computed(() => !!t.value?.behind && !t.value.archived && derby.canFix(t.value))
+const rebaseTitle = computed(() => {
+  const task = t.value
+  if (!task || task.archived) return 'Rebase: the task is archived'
+  if (!task.behind) return `Rebase: nothing to do, the branch is up to date with origin/${task.baseBranch}`
+  if (canRebase.value) return `${behindText.value}. Rebase: start a ${derby.fixers(task)[0]?.name} step that rebases the branch on origin/${task.baseBranch}`
+  return `${behindText.value}. Rebase is possible once no step is running`
+})
 
 // The buttons under the title keep only their icons when their names don't fit.
 const bar = ref<HTMLDivElement>()
@@ -82,17 +94,15 @@ async function archive() {
           <span class="title" :title="t.title">{{ t.title }}</span>
         </div>
         <div ref="bar" class="bar" :class="{ compact }">
-          <button v-if="t.issue && (t.issueRepo || t.repo)" class="hb" :title="`Open issue #${t.issue} of ${t.issueRepo || t.repo} on GitHub`" aria-label="Issue" @click="openIssue"><Icon name="issue" /><span class="label">Issue</span></button>
-          <button v-if="t.pr" class="hb" :title="`Open PR #${t.pr} on GitHub`" :aria-label="`PR #${t.pr}`" @click="openPR"><Icon :name="prIcon" /><span class="label">PR #{{ t.pr }}</span></button>
+          <button v-if="hasIssue" class="hb" :title="`Open issue #${t.issue} of ${t.issueRepo || t.repo} on GitHub`" aria-label="Issue" @click="openIssue"><Icon name="issue" /><span class="label">Issue</span></button>
+          <button v-else class="hb" :class="{ off: !t.description }" :aria-disabled="!t.description" :title="t.description ? 'Show the task description: it has no GitHub issue' : 'The task has no GitHub issue and no description'" aria-label="Description" @click="t.description && derby.openOverlay('description')"><Icon name="description" /><span class="label">Description</span></button>
+          <button class="hb" :class="{ off: !t.pr }" :aria-disabled="!t.pr" :title="t.pr ? `Open PR #${t.pr} on GitHub` : 'No PR yet: Commit and push opens one'" :aria-label="t.pr ? `PR #${t.pr}` : 'PR'" @click="t.pr && openPR()"><Icon :name="prIcon" /><span class="label">{{ t.pr ? `PR #${t.pr}` : 'PR' }}</span></button>
           <button v-if="!t.archived && !t.worktreeRemoved" class="hb" title="Open the task's worktree in Zed to edit it by hand" aria-label="Zed" @click="derby.openWorktree()"><Icon name="code" /><span class="label">Zed</span></button>
           <button class="hb" :title="`Open the folder with this task's reports, the markdown files its steps wrote (${t.runDir})`" aria-label="Reports" @click="openRunDir"><Icon name="folder" /><span class="label">Reports</span></button>
-          <template v-if="t.behind && !t.archived">
-            <button v-if="derby.canFix(t)" class="hb warn" :title="`${behindText}. Start a ${derby.fixers(t)[0]?.name} step that rebases the branch on origin/${t.baseBranch}`" aria-label="Rebase" @click="rebase"><Icon name="rebase" /><span class="label">Rebase</span></button>
-            <span v-else class="hb warn static" :title="behindText"><Icon name="rebase" /><span class="label">{{ t.behind }} behind</span></span>
-          </template>
+          <button class="hb" :class="{ warn: t.behind && !t.archived, off: !canRebase }" :aria-disabled="!canRebase" :title="rebaseTitle" aria-label="Rebase" @click="canRebase && rebase()"><Icon name="rebase" /><span class="label">Rebase</span></button>
           <button v-if="!t.archived" class="hb" title="Archive task" aria-label="Archive" @click="archive"><Icon name="archive" /><span class="label">Archive</span></button>
         </div>
-        <p v-if="t.description" class="desc">{{ t.description }}</p>
+        <p v-if="t.description && hasIssue" class="desc">{{ t.description }}</p>
       </div>
 
       <div ref="timeline" class="timeline" :class="{ sized: derby.timelineHeight > 0 }" :style="derby.timelineHeight > 0 ? { height: derby.timelineHeight + 'px' } : {}">
@@ -191,15 +201,18 @@ async function archive() {
     font-size: var(--fs-12-5);
     white-space: nowrap;
   }
-  .hb:hover:not(.static) {
+  .hb:hover:not(.off) {
     background: var(--hover);
     color: var(--text);
   }
   .hb.warn {
     color: var(--waiting);
   }
-  .hb.static {
+  .hb.off {
     cursor: default;
+  }
+  .hb.off:not(.warn) {
+    color: var(--faint);
   }
   .label {
     margin-left: 6px; /* LABEL_GAP in lib/compact.ts */
@@ -310,11 +323,20 @@ async function archive() {
     display: flex;
     gap: 8px;
     align-items: baseline;
+    overflow: hidden; /* under the step's buttons, e.g. Revert's question */
+    white-space: nowrap;
   }
   .name {
+    flex: none;
+    max-width: 100%; /* the meta gives way first */
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-weight: 500;
   }
   .meta {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-size: var(--fs-12);
     color: var(--muted);
   }
@@ -351,6 +373,10 @@ async function archive() {
   }
   .act.danger {
     border-color: var(--approval-dot);
+    background: color-mix(in srgb, var(--approval-dot) 14%, var(--panel));
     color: var(--approval);
+  }
+  .act.danger:hover {
+    background: color-mix(in srgb, var(--approval-dot) 22%, var(--panel));
   }
 </style>

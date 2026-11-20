@@ -9,7 +9,7 @@ import { copyText } from './window'
 import { modes, themeDef, themes } from './themes'
 import { unsuccessful, type Option, type Proc, type Settings, type Step, type TabRef, type Task, type Agent, type Note, type Todo, type StatusKind, type ThemeMode, fill } from './types'
 
-export type Overlay = 'none' | 'palette' | 'scope' | 'new' | 'activity' | 'views' | 'todos'
+export type Overlay = 'none' | 'palette' | 'scope' | 'new' | 'activity' | 'views' | 'todos' | 'description'
 export type ScopeMode = 'project' | 'worktree' | 'branch'
 export type SettingsTab = 'agents' | 'context' | 'projects' | 'appearance' | 'shortcuts' | 'about'
 

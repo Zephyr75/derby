@@ -13,6 +13,7 @@ import NewTask from './components/popups/NewTask.vue'
 import Activity from './components/popups/Activity.vue'
 import Todos from './components/popups/Todos.vue'
 import ViewPopups from './components/popups/ViewPopups.vue'
+import Description from './components/popups/Description.vue'
 
 watchEffect(() => {
   document.documentElement.dataset.theme = derby.theme
@@ -49,6 +50,7 @@ watchEffect(() => {
     <NewTask v-if="derby.overlay === 'new'" />
     <Activity v-if="derby.overlay === 'activity'" />
     <Todos v-if="derby.overlay === 'todos'" />
+    <Description v-if="derby.overlay === 'description' && derby.selTask" />
     <ViewPopups v-if="derby.overlay === 'views' && (derby.diffOf || derby.artifactOf || derby.diagramOf)" />
   </div>
 </template>
