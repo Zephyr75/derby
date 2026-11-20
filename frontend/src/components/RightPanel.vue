@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onUpdated, ref, watch } from 'vue'
 import { api } from '../lib/api'
 import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
@@ -12,6 +12,35 @@ const t = computed(() => derby.selTask)
 // Agents set to "Show a Diff button" (Implement and Test by default) get one.
 const diffs = (s: Step) => !!derby.settings?.agents.find((a) => a.id === s.agent)?.showDiff
 const openIssue = () => t.value && derby.attempt('Could not open the issue', () => api.OpenURL(`https://github.com/${t.value!.issueRepo || t.value!.repo}/issues/${t.value!.issue}`))
+const openPR = () => t.value && derby.attempt('Could not open the PR', () => api.OpenURL(t.value!.prUrl || `https://github.com/${t.value!.repo}/pull/${t.value!.pr}`))
+// GitHub's PR icons, as in the left panel: merged, closed, draft, open.
+const prIcon = computed(() => (t.value?.prState === 'merged' ? 'rebase' : t.value?.prState && t.value.prState !== 'open' ? 'pr-closed' : t.value?.draft ? 'pr-draft' : 'pr'))
+const behindText = computed(() => `${t.value?.behind} commits behind origin/${t.value?.baseBranch} (Derby fetches it every 5 minutes)`)
+
+// The buttons under the title drop their names, keeping their icons, when
+// they don't fit on one line. Hidden names keep their width (max-width: 0
+// with overflow hidden), so the row knows when they fit again.
+const bar = ref<HTMLDivElement>()
+const compact = ref(false)
+const LABEL_GAP = 6
+function fit() {
+  const el = bar.value
+  if (!el) return
+  const kids = [...el.children] as HTMLElement[]
+  let need = kids.reduce((w, k) => w + k.offsetWidth, 0) + 2 * Math.max(0, kids.length - 1)
+  if (compact.value) for (const l of el.querySelectorAll<HTMLElement>('.label')) need += l.scrollWidth + LABEL_GAP
+  // a few pixels of slack each way so rounding can't make it flicker
+  const next = compact.value ? need > el.clientWidth - 6 : need > el.clientWidth - 2
+  if (next !== compact.value) compact.value = next
+}
+const sizes = new ResizeObserver(fit)
+watch(bar, (el, old) => {
+  if (old) sizes.unobserve(old)
+  if (el) sizes.observe(el)
+}, { flush: 'post' })
+onUpdated(fit)
+document.fonts?.ready.then(fit)
+onBeforeUnmount(() => sizes.disconnect())
 
 function meta(s: Step): { text: string; cls: string } {
   if (s.paused && s.state !== 'done' && s.state !== 'failed') return { text: 'paused', cls: '' }
@@ -29,7 +58,7 @@ const dotCls = (s: Step) => (unsuccessful(s) ? 'd-failed' : s.state === 'done' ?
 const stepInfo = (s: Step) => (s.external ? 'Run by Derby · PR #' + t.value?.pr : s.sha ? 'Commit ' + s.sha : 'Session ' + s.session.slice(0, 8)) + (s.auto ? ' · auto' : '')
 
 // Rerun (set by derby): the latest step when it commits, and the cycle's
-// Review once you changed the worktree by hand (Edit opens it in Zed).
+// Review once you changed the worktree by hand (Zed opens it).
 
 // Drag the line above the preview to give it more or less room.
 const timeline = ref<HTMLDivElement>()
@@ -74,25 +103,20 @@ async function archive() {
       <div class="head">
         <div class="title-row">
           <TaskRef :issue="t.issue" :task="t.id" />
-          <span class="title">{{ t.title }}</span>
-          <button v-if="t.issue && (t.issueRepo || t.repo)" class="act" :title="`Open issue #${t.issue} on GitHub`" @click="openIssue"><Icon name="external" :size="12" />Issue</button>
-          <button v-if="!t.archived && !t.worktreeRemoved" class="act" title="Open the task's worktree in Zed to edit it by hand" @click="derby.openWorktree()"><Icon name="pencil" :size="12" />Edit</button>
-          <button v-if="!t.archived" class="icon-btn" aria-label="Archive task" title="Archive task" @click="archive"><Icon name="archive" :size="16" /></button>
+          <span class="title" :title="t.title">{{ t.title }}</span>
         </div>
-        <div class="src">
-          <span class="muted small">{{ t.source }}{{ t.pr ? ` · PR #${t.pr}` : '' }}</span>
+        <div ref="bar" class="bar" :class="{ compact }">
+          <button v-if="t.issue && (t.issueRepo || t.repo)" class="hb" :title="`Open issue #${t.issue} of ${t.issueRepo || t.repo} on GitHub`" aria-label="Issue" @click="openIssue"><Icon name="issue" /><span class="label">Issue</span></button>
+          <button v-if="t.pr" class="hb" :title="`Open PR #${t.pr} on GitHub`" :aria-label="`PR #${t.pr}`" @click="openPR"><Icon :name="prIcon" /><span class="label">PR #{{ t.pr }}</span></button>
+          <button v-if="!t.archived && !t.worktreeRemoved" class="hb" title="Open the task's worktree in Zed to edit it by hand" aria-label="Zed" @click="derby.openWorktree()"><Icon name="code" /><span class="label">Zed</span></button>
+          <button class="hb" :title="`Open the folder with this task's reports, the markdown files its steps wrote (${t.runDir})`" aria-label="Reports" @click="openRunDir"><Icon name="folder" /><span class="label">Reports</span></button>
           <template v-if="t.behind && !t.archived">
-            <span class="behind small" :title="`origin/${t.baseBranch} has ${t.behind} commits this branch lacks (Derby fetches it every 5 minutes)`">{{ t.behind }} behind {{ t.baseBranch }}</span>
-            <button v-if="derby.canFix(t)" class="act" :title="`Start a ${derby.fixers(t)[0]?.name} step that rebases the branch on origin/${t.baseBranch}`" @click="rebase"><Icon name="rebase" :size="12" />Rebase</button>
+            <button v-if="derby.canFix(t)" class="hb warn" :title="`${behindText}. Start a ${derby.fixers(t)[0]?.name} step that rebases the branch on origin/${t.baseBranch}`" aria-label="Rebase" @click="rebase"><Icon name="rebase" /><span class="label">Rebase</span></button>
+            <span v-else class="hb warn static" :title="behindText"><Icon name="rebase" /><span class="label">{{ t.behind }} behind</span></span>
           </template>
+          <button v-if="!t.archived" class="hb" title="Archive task" aria-label="Archive" @click="archive"><Icon name="archive" /><span class="label">Archive</span></button>
         </div>
         <p v-if="t.description" class="desc">{{ t.description }}</p>
-      </div>
-
-      <div class="steps-head">
-        <span class="muted small">Steps</span>
-        <span class="grow"></span>
-        <button class="icon-btn run-dir" :title="`Open the folder with this task's markdown files (${t.runDir})`" aria-label="Open the run folder" @click="openRunDir"><Icon name="folder" :size="16" /></button>
       </div>
 
       <div ref="timeline" class="timeline" :class="{ sized: derby.timelineHeight > 0 }" :style="derby.timelineHeight > 0 ? { height: derby.timelineHeight + 'px' } : {}">
@@ -137,16 +161,6 @@ async function archive() {
 </template>
 
 <style scoped>
-  .src {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px 8px;
-  }
-  .behind {
-    color: var(--waiting);
-  }
-
   aside {
     position: relative;
     flex: 0 1 auto; /* narrow windows: shrink before the terminal is cut */
@@ -178,24 +192,46 @@ async function archive() {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .icon-btn {
-    flex: none;
-    width: 28px;
-    height: 26px;
+  /* Issue, PR, Zed, Reports, Archive: Zed's ghost buttons, names dropped
+     when the panel is too narrow for them */
+  .bar {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    margin: 0 -7px; /* the icons line up with the title's reference */
+    overflow: hidden;
+  }
+  .hb {
+    flex: none;
+    display: flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 7px;
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: var(--muted);
+    font-size: var(--fs-12-5);
+    white-space: nowrap;
   }
-  .icon-btn:hover {
+  .hb:hover:not(.static) {
     background: var(--hover);
     color: var(--text);
   }
-  .small {
-    font-size: var(--fs-12);
+  .hb.warn {
+    color: var(--waiting);
+  }
+  .hb.static {
+    cursor: default;
+  }
+  .label {
+    margin-left: 6px; /* LABEL_GAP */
+    overflow: hidden;
+  }
+  .compact .label {
+    max-width: 0;
+    margin-left: 0;
   }
   .desc {
     margin: 0;
@@ -208,18 +244,6 @@ async function archive() {
     max-height: 120px;
     overflow: auto;
     white-space: pre-wrap;
-  }
-  .steps-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 32px;
-    flex: none;
-    padding: 0 10px 0 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .grow {
-    flex: 1;
   }
   .timeline {
     display: flex;
