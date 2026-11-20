@@ -141,7 +141,7 @@ function setZed(e: Event) {
       <input class="val" :value="derby.settings?.config.zedCommand" @change="setZed" />
     </label>
     <label class="r">
-      <span class="grow">Open tabs <span class="muted small">at most; opening one more closes the oldest</span></span>
+      <span class="grow">Open tabs <span class="muted small">at most, one per task; opening one more closes the oldest</span></span>
       <input class="val num" type="number" min="1" max="30" :value="derby.settings?.config.maxTabs" @change="setMaxTabs" />
     </label>
     <label class="r">

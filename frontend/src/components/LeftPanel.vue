@@ -77,8 +77,9 @@ aside {
   border-right: 1px solid var(--border);
   min-height: 0;
 }
-/* Zed's panel tabs (as Git's Changes and History): two equal tabs; the open one
-   takes the panel's colour with no line under it, so it runs into the list */
+/* Zed's panel tabs (as Git's Changes and History): two equal tabs on the panel's
+   colour (only the centre's tab bar takes the darker chrome); the open one has
+   no line under it, so it runs into the list */
 .tabs {
   display: flex;
   flex: none;
@@ -94,7 +95,7 @@ aside {
   padding: 0 12px;
   border: 0;
   border-bottom: 1px solid var(--border);
-  background: var(--chrome);
+  background: var(--panel);
   color: var(--muted);
   font-size: var(--fs-13);
   white-space: nowrap;

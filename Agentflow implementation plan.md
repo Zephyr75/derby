@@ -11,7 +11,7 @@ Terms used below:
 - **Project**: a git repository registered in Settings (e.g. pony-core, pony-rider-app, pony-infra), with its GitHub repo and base branch.
 - **Task**: one unit of work in one project, in its own worktree and branch. Its source is a GitHub issue, a description, or both. A task with no issue is tagged **LOCAL**.
 - **Agent**: a step type defined in Settings: command, model, permissions, trigger, instructions, artifact. Defaults: Plan, Implement, Review, Push.
-- **Step**: one run of an agent on a task, i.e. one Claude Code session. Each opened step gets its own tab.
+- **Step**: one run of an agent on a task, i.e. one Claude Code session. Each task with an opened step gets one tab, showing that step.
 - **Artifact**: the markdown a step writes (`PLAN.md`, `IMPLEMENT-n.md`, `REVIEW-n.md`, `PR.md`, `FEEDBACK.md`), the only handoff between steps.
 - **Context**: markdown given to sessions, general plus per project, edited in Settings.
 
@@ -230,7 +230,7 @@ The UI copies the preview screen for screen; build each artboard as listed and u
 
 **Left panel**: a header toggle Tasks | Archive with counts (⌘⇧A). Below, one collapsible group per project with its tasks as cards: tag (#4356 in mono, or a LOCAL chip), title, status badge. At the bottom, the next-step box for the selected task: guidance field, one play button per allowed next step (primary first, ⌘⏎), Allow once on a pending permission, Restore and Remove worktree for archived tasks.
 
-**Tabs**: every opened step is a tab in the center tab bar, across tasks and projects. A tab shows a state dot (blue live, red approval, grey finished), `#4356 · Implement 2` and the project name, plus a close button. Opening an already open step focuses its tab; starting a step opens a new tab; closing focuses the neighbour. The focused tab drives the selected task: left card, title bar, right panel. Selecting a task card focuses its most recent tab, or opens its last step; a task with no steps shows an empty state with no tab focused. ⌘1 to ⌘9 and ⌘W work on tabs. Open tabs persist across restarts.
+**Tabs**: one tab per task in the center tab bar, across projects, to switch between recent tasks; the right panel's steps switch between the task's agents. A tab shows a state dot (red when a step waits for approval, blue when one is live, grey otherwise), `#4356`, the task title and the project name, plus a close button. Opening a step shows it in its task's tab (opening one if the task has none); an automatic step that starts shows in the tab when it showed the step before; closing focuses the neighbour. The focused tab drives the selected task: left card, title bar, right panel. Selecting a task card focuses its most recent tab, or opens its last step; a task with no steps shows an empty state with no tab focused. ⌘1 to ⌘9 and ⌘W work on tabs. Open tabs persist across restarts.
 
 **Center**: a toolbar under the tabs (live or resumed chip, agent name and model, session id), then the step's terminal (`xterm.js`).
 

@@ -81,6 +81,12 @@ const view = (t: ToolCall) => toolView(t.call, task.value?.worktree ?? '', task.
 // Everything starts folded, to read the answers at a glance; a click unfolds.
 const isOpen = (id: string) => !!open.value[id]
 const toggle = (id: string) => (open.value[id] = !open.value[id])
+// A long message (a paste) shows its first lines; a click shows the rest.
+function fold(id: string, text: string) {
+  const lines = text.split('\n')
+  if (lines.length <= 12) return null
+  return { text: isOpen(id) ? text : lines.slice(0, 6).join('\n'), more: lines.length - 6 }
+}
 
 // ---- the session's state ----
 const running = computed(() => props.step.live && props.step.state === 'running')
@@ -113,8 +119,51 @@ function grow() {
   el.style.height = Math.min(el.scrollHeight, 300) + 'px'
 }
 watch(draft, () => void nextTick(grow))
+
+// A long paste shows as "[42 lines pasted]" in the box, as in Claude Code's
+// prompt, and goes out in full on send. Backspace or Delete removes it whole.
+const pastes = ref<Record<string, string>>({})
+function paste(e: ClipboardEvent) {
+  const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n?/g, '\n')
+  const lines = text.replace(/\n$/, '').split('\n').length
+  if (lines < 10 && text.length < 1000) return
+  e.preventDefault()
+  for (const k of Object.keys(pastes.value)) if (!draft.value.includes(k)) delete pastes.value[k]
+  const what = lines > 1 ? `${lines} lines` : `${text.length.toLocaleString('en-US')} characters`
+  let token = `[${what} pasted]`
+  for (let n = 2; token in pastes.value; n++) token = `[${what} pasted #${n}]`
+  pastes.value[token] = text
+  const el = e.target as HTMLTextAreaElement
+  // insertText keeps the paste in the box's undo history.
+  if (document.execCommand('insertText', false, token)) return
+  const [a, b] = [el.selectionStart, el.selectionEnd]
+  draft.value = draft.value.slice(0, a) + token + draft.value.slice(b)
+  void nextTick(() => {
+    el.setSelectionRange(a + token.length, a + token.length)
+    sync()
+  })
+}
+function expand(s: string) {
+  const keys = Object.keys(pastes.value)
+  if (!keys.length) return s
+  const re = new RegExp(keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g')
+  return s.replace(re, (k) => pastes.value[k])
+}
+// selectPaste selects the paste next to the caret, for Backspace or Delete to remove.
+function selectPaste(back: boolean) {
+  const el = box.value
+  if (!el || el.selectionStart !== el.selectionEnd) return
+  const at = el.selectionStart
+  for (const k of Object.keys(pastes.value)) {
+    if (back ? draft.value.slice(0, at).endsWith(k) : draft.value.startsWith(k, at)) {
+      el.setSelectionRange(back ? at - k.length : at, back ? at : at + k.length)
+      return
+    }
+  }
+}
+
 async function send() {
-  const text = draft.value.trim()
+  const text = expand(draft.value).trim()
   if (!text || sending.value || blocked.value) return
   sending.value = true
   try {
@@ -126,6 +175,7 @@ async function send() {
       void derby.setSessionView('terminal')
     }
     draft.value = ''
+    pastes.value = {}
     scrollDown()
   } catch (e) {
     const procs = await api.SessionElsewhere(props.step.id).catch(() => [])
@@ -159,6 +209,7 @@ function key(e: KeyboardEvent) {
     e.preventDefault()
     void send()
   }
+  if ((e.key === 'Backspace' || e.key === 'Delete') && !e.isComposing && !e.altKey && !e.metaKey) selectPaste(e.key === 'Backspace')
 }
 
 // ---- "/" for commands, "@" for files, "!" for bash mode, as Claude Code's prompt ----
@@ -414,7 +465,7 @@ async function checkAgain() {
           </div>
           <pre v-else-if="e.kind === 'item' && e.item.kind === 'bashout'" class="bashout">{{ e.item.text || 'No output.' }}</pre>
           <div v-else-if="e.kind === 'item' && (e.item.kind === 'user' || e.item.kind === 'command')" class="umsg" :data-turn="e.turn">
-            <div class="ubox"><code v-if="e.item.kind === 'command'" class="slash">{{ e.item.tool }}</code> {{ e.item.text }}</div>
+            <div class="ubox"><code v-if="e.item.kind === 'command'" class="slash">{{ e.item.tool }}</code> {{ fold(e.id, e.item.text)?.text ?? e.item.text }}<button v-if="fold(e.id, e.item.text)" class="more" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)"><Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" />{{ isOpen(e.id) ? 'Show less' : `${fold(e.id, e.item.text)!.more} more lines` }}</button></div>
           </div>
 
           <!-- Claude's answer -->
@@ -475,7 +526,7 @@ async function checkAgain() {
             <span class="sl">{{ s.label }}</span><span class="sd">{{ s.detail }}</span>
           </button>
         </div>
-        <textarea ref="box" v-model="draft" rows="4" :class="{ bash }" :placeholder="placeholder" :disabled="blocked" data-own-escape @keydown="key" @input="sync" @click="sync" @keyup="sync"></textarea>
+        <textarea ref="box" v-model="draft" rows="4" :class="{ bash }" :placeholder="placeholder" :disabled="blocked" data-own-escape @keydown="key" @paste="paste" @input="sync" @click="sync" @keyup="sync"></textarea>
         <div class="tools">
           <button class="ib" title="Attach files: Derby copies them to the run folder and mentions them in your message" aria-label="Attach files" :disabled="blocked" @click="attach"><Icon name="plus" :size="14" /></button>
           <span v-if="bash" class="bashpill" title="A message starting with ! runs as a shell command in the worktree; its output joins the conversation">! Bash mode</span>
@@ -597,6 +648,22 @@ button:hover > .disc,
 }
 .ubox:hover {
   border-color: var(--accent);
+}
+.ubox .more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-12);
+  cursor: pointer;
+}
+.ubox .more:hover {
+  color: var(--text);
 }
 .slash {
   font-family: var(--mono);

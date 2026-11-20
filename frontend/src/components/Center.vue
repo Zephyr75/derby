@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { derby, resumeCommand } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import Terminal from './Terminal.vue'
@@ -7,14 +7,22 @@ import ChatView from './ChatView.vue'
 import PRTracker from './PRTracker.vue'
 import Toasts from './Toasts.vue'
 
+// One tab per task: its dot says whether one of its steps waits for approval
+// or runs, whichever step the tab shows.
 const tabs = computed(() =>
   derby.tabs.map((tb, i) => {
     const t = derby.task(tb.task)
-    const s = t?.steps.find((x) => x.id === tb.step)
-    const kind = !s || s.state === 'done' || s.state === 'failed' ? 'off' : s.state === 'approval' ? 'approval' : 'live'
-    return { i, id: tb.step, kind, label: `${t?.issue ? '#' + t.issue : 'LOCAL'} · ${s?.name ?? ''}`, project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
+    const steps = t?.steps ?? []
+    const kind = steps.some((s) => s.state === 'approval') ? 'approval' : steps.some((s) => s.state === 'running' || s.state === 'idle') ? 'live' : 'off'
+    const step = steps.find((x) => x.id === tb.step)?.name ?? ''
+    return { i, id: tb.task, kind, ref: t?.issue ? '#' + t.issue : 'LOCAL', title: t?.title ?? '', tip: `${t?.title ?? ''}${step ? ` (${step})` : ''}`, project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
   }),
 )
+// Task titles make the tabs wide: the bar scrolls to the open one.
+const bar = ref<HTMLElement>()
+const reveal = () => bar.value?.querySelector('.tab.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+watch(() => [derby.active, derby.tabs.length], reveal, { flush: 'post' })
+onMounted(reveal)
 const step = computed(() => derby.selStep)
 const t = computed(() => derby.selTask)
 const agent = computed(() => (step.value ? derby.settings?.agents.find((a) => a.id === step.value!.agent) : undefined))
@@ -34,11 +42,12 @@ const chip = computed(() => {
 
 <template>
   <section>
-    <div class="tabs" role="tablist">
+    <div ref="bar" class="tabs" role="tablist">
       <div v-for="tb in tabs" :key="tb.id" class="tab" :class="{ on: tb.on }">
-        <button class="open" role="tab" :aria-selected="tb.on" @click="derby.focusTab(tb.i)">
+        <button class="open" role="tab" :aria-selected="tb.on" :title="tb.tip" @click="derby.focusTab(tb.i)">
           <span :class="['dot', `k-${tb.kind}`]"></span>
-          <span>{{ tb.label }}</span>
+          <span class="issue-ref">{{ tb.ref }}</span>
+          <span class="name">{{ tb.title }}</span>
           <span class="proj">{{ tb.project }}</span>
         </button>
         <button class="x" aria-label="Close tab" @click="derby.closeTab(tb.i)"><Icon name="close" :size="14" /></button>
@@ -144,6 +153,11 @@ section {
   color: inherit;
   white-space: nowrap;
   font-size: var(--fs-13);
+}
+.name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .proj {
   font-size: var(--fs-11-5);

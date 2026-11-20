@@ -160,9 +160,19 @@ class Derby {
       this.settings = b.settings
       this.tasks = b.tasks ?? []
       this.todos = b.todos ?? []
+      // One tab per task (older saves have one per step): the step the
+      // active tab showed for its task, else the task's last one.
       const saved = b.tabs?.tabs ?? []
-      this.tabs = saved.filter((tb) => this.task(tb.task)?.steps.some((s) => s.id === tb.step))
-      this.active = Math.min(b.tabs?.active ?? -1, this.tabs.length - 1)
+      const was = saved[b.tabs?.active ?? -1]
+      const tabs: TabRef[] = []
+      for (const tb of saved) {
+        if (!this.task(tb.task)?.steps.some((s) => s.id === tb.step)) continue
+        const cur = tabs.find((x) => x.task === tb.task)
+        if (!cur) tabs.push({ task: tb.task, step: tb.step })
+        else if (!(was?.task === tb.task && cur.step === was.step)) cur.step = tb.step
+      }
+      this.tabs = tabs
+      this.active = was ? tabs.findIndex((x) => x.task === was.task) : -1
       if (this.active < 0 && this.tabs.length) this.active = 0
       this.sel = this.tabs[this.active]?.task ?? this.tasks.find((t) => !t.archived)?.id ?? this.tasks[0]?.id ?? ''
       if (this.task(this.sel)?.archived) this.left = 'archive'
@@ -235,29 +245,33 @@ class Derby {
     const before = i >= 0 ? this.tasks[i] : null
     if (i >= 0) this.tasks[i] = t
     else this.tasks.push(t)
-    // Tabs of steps that are gone (a Revert removed them) close.
-    const ids = new Set(t.steps.map((s) => s.id))
-    const kept = this.tabs.filter((tb) => tb.task !== t.id || ids.has(tb.step))
-    if (kept.length !== this.tabs.length) {
-      this.tabs = kept
-      this.active = Math.min(this.active, kept.length - 1)
-    }
-    if (!before) return
-    // A step that started by itself (automatic agents) opens a tab, and takes
-    // focus when the user was watching the step before it.
-    const known = new Set(before.steps.map((s) => s.id))
-    for (const s of t.steps) {
-      if (known.has(s.id) || !s.auto) continue
-      if (this.tabs.some((tb) => tb.step === s.id)) continue
-      const prev = before.steps[before.steps.length - 1]
-      const watching = this.activeTab?.step === prev?.id
-      const hasTab = this.tabs.some((tb) => tb.task === t.id)
-      if (!hasTab) continue
-      this.tabs.push({ task: t.id, step: s.id })
-      if (watching) this.active = this.tabs.length - 1
-      this.trimTabs()
+    // The task's tab showed a step that is gone (a Revert removed it): it
+    // shows the task's last step, or closes when none is left.
+    const ix = this.tabs.findIndex((tb) => tb.task === t.id)
+    const tb = this.tabs[ix]
+    if (tb && !t.steps.some((s) => s.id === tb.step)) {
+      if (t.steps.length) tb.step = t.steps[t.steps.length - 1].id
+      else this.dropTab(ix)
       this.persistTabs()
     }
+    if (!before || !tb) return
+    // A step that started by itself (automatic agents) shows in the task's
+    // tab when the tab showed the step before it.
+    const known = new Set(before.steps.map((s) => s.id))
+    const prev = before.steps[before.steps.length - 1]
+    for (const s of t.steps) {
+      if (known.has(s.id) || !s.auto) continue
+      if (tb.step !== prev?.id && known.has(tb.step)) continue
+      tb.step = s.id
+      this.persistTabs()
+    }
+  }
+
+  /** dropTab removes a tab, keeping the active one (or its neighbour) active. */
+  private dropTab(i: number) {
+    this.tabs.splice(i, 1)
+    if (i < this.active) this.active--
+    else if (i === this.active) this.active = Math.min(i, this.tabs.length - 1)
   }
 
   /** forget drops a deleted task, its tabs and its selection. */
@@ -341,33 +355,35 @@ class Derby {
 
   // ---- selection and tabs ----
 
-  /** When each tab was last opened or focused, by step id. */
+  /** When each tab was last opened or focused, by task id. */
   private tabUsed: Record<string, number> = {}
 
   /** trimTabs closes the least recently used tabs above the limit in Settings. */
   trimTabs() {
     const max = Math.max(1, this.settings?.config.maxTabs || 5)
     const keep = this.tabs[this.active]
-    if (keep) this.tabUsed[keep.step] = Date.now()
+    if (keep) this.tabUsed[keep.task] = Date.now()
     while (this.tabs.length > max) {
       let old = -1
       this.tabs.forEach((tb, i) => {
-        if (tb !== keep && (old < 0 || (this.tabUsed[tb.step] ?? 0) < (this.tabUsed[this.tabs[old].step] ?? 0))) old = i
+        if (tb !== keep && (old < 0 || (this.tabUsed[tb.task] ?? 0) < (this.tabUsed[this.tabs[old].task] ?? 0))) old = i
       })
       if (old < 0) break
-      delete this.tabUsed[this.tabs[old].step]
+      delete this.tabUsed[this.tabs[old].task]
       this.tabs.splice(old, 1)
       if (old < this.active) this.active--
     }
     this.persistTabs()
   }
 
+  /** openStep shows a step in its task's tab: one tab per task, to switch
+   *  between recent tasks (the right panel switches between its steps). */
   openStep(taskId: string, stepId: string) {
-    let ix = this.tabs.findIndex((tb) => tb.task === taskId && tb.step === stepId)
+    let ix = this.tabs.findIndex((tb) => tb.task === taskId)
     if (ix < 0) {
       this.tabs.push({ task: taskId, step: stepId })
       ix = this.tabs.length - 1
-    }
+    } else this.tabs[ix].step = stepId
     this.active = ix
     this.trimTabs()
     this.sel = taskId
@@ -390,12 +406,10 @@ class Derby {
       this.active = -1
       return
     }
-    let last = -1
-    this.tabs.forEach((tb, i) => {
-      if (tb.task === id) last = i
-    })
-    if (last >= 0) {
-      this.active = last
+    const ix = this.tabs.findIndex((tb) => tb.task === id)
+    if (ix >= 0) {
+      this.active = ix
+      this.tabUsed[id] = Date.now()
       this.sel = id
       this.persistTabs()
     } else this.openStep(id, t.steps[t.steps.length - 1].id)
@@ -405,7 +419,7 @@ class Derby {
     const tb = this.tabs[i]
     if (!tb) return
     this.active = i
-    this.tabUsed[tb.step] = Date.now()
+    this.tabUsed[tb.task] = Date.now()
     this.sel = tb.task
     this.view = 'board'
     const t = this.task(tb.task)
@@ -415,11 +429,8 @@ class Derby {
   }
 
   closeTab(i: number) {
-    this.tabs.splice(i, 1)
-    let a = this.active
-    if (i === a) a = Math.min(i, this.tabs.length - 1)
-    else if (i < a) a--
-    this.active = a
+    this.dropTab(i)
+    const a = this.active
     if (a >= 0 && this.tabs[a]) this.sel = this.tabs[a].task
     this.persistTabs()
   }

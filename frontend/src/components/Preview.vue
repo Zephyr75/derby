@@ -139,8 +139,8 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     border-top: 1px solid var(--border);
     min-height: 0;
   }
-  /* Report, Changes, PR, TODOs in four equal parts, like the left panel's tabs: the
-     open one has no line between it and its content */
+  /* Report, Changes, PR, TODOs in four equal parts, like the left panel's tabs: on
+     the panel's colour, the open one on its content's with no line between them */
   .bar {
     display: flex;
     flex: none;
@@ -156,7 +156,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
     overflow: hidden;
     border: 0;
     border-bottom: 1px solid var(--border);
-    background: var(--chrome);
+    background: var(--panel);
     color: var(--muted);
     white-space: nowrap;
     font-size: var(--fs-12-5);
