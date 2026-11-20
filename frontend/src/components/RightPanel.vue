@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onUpdated, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { api } from '../lib/api'
 import { derby } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 import Preview from './Preview.vue'
 import Splitter from './ui/Splitter.vue'
+import { useCompact } from '../lib/compact'
 import { unsuccessful, type Step } from '../lib/types'
 
 const t = computed(() => derby.selTask)
@@ -17,30 +18,9 @@ const openPR = () => t.value && derby.attempt('Could not open the PR', () => api
 const prIcon = computed(() => (t.value?.prState === 'merged' ? 'rebase' : t.value?.prState && t.value.prState !== 'open' ? 'pr-closed' : t.value?.draft ? 'pr-draft' : 'pr'))
 const behindText = computed(() => `${t.value?.behind} commits behind origin/${t.value?.baseBranch} (Derby fetches it every 5 minutes)`)
 
-// The buttons under the title drop their names, keeping their icons, when
-// they don't fit on one line. Hidden names keep their width (max-width: 0
-// with overflow hidden), so the row knows when they fit again.
+// The buttons under the title keep only their icons when their names don't fit.
 const bar = ref<HTMLDivElement>()
-const compact = ref(false)
-const LABEL_GAP = 6
-function fit() {
-  const el = bar.value
-  if (!el) return
-  const kids = [...el.children] as HTMLElement[]
-  let need = kids.reduce((w, k) => w + k.offsetWidth, 0) + 2 * Math.max(0, kids.length - 1)
-  if (compact.value) for (const l of el.querySelectorAll<HTMLElement>('.label')) need += l.scrollWidth + LABEL_GAP
-  // a few pixels of slack each way so rounding can't make it flicker
-  const next = compact.value ? need > el.clientWidth - 6 : need > el.clientWidth - 2
-  if (next !== compact.value) compact.value = next
-}
-const sizes = new ResizeObserver(fit)
-watch(bar, (el, old) => {
-  if (old) sizes.unobserve(old)
-  if (el) sizes.observe(el)
-}, { flush: 'post' })
-onUpdated(fit)
-document.fonts?.ready.then(fit)
-onBeforeUnmount(() => sizes.disconnect())
+const compact = useCompact(bar)
 
 function meta(s: Step): { text: string; cls: string } {
   if (s.paused && s.state !== 'done' && s.state !== 'failed') return { text: 'paused', cls: '' }
@@ -226,7 +206,7 @@ async function archive() {
     cursor: default;
   }
   .label {
-    margin-left: 6px; /* LABEL_GAP */
+    margin-left: 6px; /* LABEL_GAP in lib/compact.ts */
     overflow: hidden;
   }
   .compact .label {

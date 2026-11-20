@@ -7,6 +7,7 @@ import ChangesView from './Changes.vue'
 import PRTracker from './PRTracker.vue'
 import ArtifactView from './ArtifactView.vue'
 import TodoList from './TodoList.vue'
+import { useCompact } from '../lib/compact'
 import type { Artifact, Changes } from '../lib/types'
 
 const step = computed(() => derby.selStep)
@@ -66,32 +67,41 @@ watch(
 )
 
 const file = computed(() => art.value?.file || step.value?.artifact || '')
-// The Changes tab only shows when the step changed files, the PR tab when the
-// task has a PR; the artifact's tab stands in otherwise.
+// The four tabs always show, in equal parts; DIFF is off while the step
+// changed no files, PR while the task has none, and MD stands in for them.
 const task = computed(() => derby.selTask)
 const openTodos = computed(() => task.value?.todos.filter((x) => !x.done).length ?? 0)
+const hasChanges = computed(() => !!(step.value && changes.value?.files.length))
 const tab = computed(() =>
-  derby.rightTab === 'todos' && task.value ? 'todos' : derby.rightTab === 'pr' && task.value?.pr ? 'pr' : step.value && changes.value?.files.length && derby.rightTab === 'changes' ? 'changes' : 'preview',
+  derby.rightTab === 'todos' && task.value ? 'todos' : derby.rightTab === 'pr' && task.value?.pr ? 'pr' : hasChanges.value && derby.rightTab === 'changes' ? 'changes' : 'preview',
 )
+const diffTitle = computed(() => {
+  if (!step.value) return 'Open a step to see the files it changed'
+  if (changes.value && !changes.value.files.length) return `${step.value.name} changed no files`
+  if (step.value.external) return `Every change of the branch against ${task.value?.baseBranch}, as the PR shows it`
+  return `The files ${step.value.name} changed`
+})
+
+// The tabs keep only their icons when one of their names doesn't fit.
+const bar = ref<HTMLDivElement>()
+const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
 </script>
 
 <template>
   <div class="wrap">
-    <div class="bar">
-      <div class="tab" role="tab" tabindex="0" :class="{ on: tab === 'preview' }" @click="derby.rightTab = 'preview'" @keydown.enter="derby.rightTab = 'preview'">
-        <Icon name="file" />{{ file || 'Preview' }}
-        <button v-if="step && art?.exists" class="big" aria-label="Open in a large pop-up" title="Open in a large pop-up" @click.stop="derby.openArtifactPopup(step.id)">
-          <Icon name="maximize" :size="16" />
-        </button>
-      </div>
-      <button v-if="step && changes?.files.length" class="tab" :class="{ on: tab === 'changes' }" @click="derby.rightTab = 'changes'">
-        <Icon name="diff" />{{ step.external ? 'Full changes' : 'Changes' }}<span class="count">{{ changes.files.length }}</span>
+    <div ref="bar" class="bar" :class="{ compact }" role="tablist">
+      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file ? `${file}, the markdown this step wrote` : 'The markdown a step writes'" aria-label="MD" @click="derby.rightTab = 'preview'">
+        <span class="in"><Icon name="file" /><span class="label">MD</span></span>
       </button>
-      <button v-if="task?.pr" class="tab" :class="{ on: tab === 'pr' }" @click="derby.rightTab = 'pr'"><Icon name="pr" />PR #{{ task.pr }}</button>
-      <button v-if="task" class="tab" :class="{ on: tab === 'todos' }" @click="derby.rightTab = 'todos'">
-        <Icon name="todo" />Todos<span v-if="openTodos" class="count">{{ openTodos }}</span>
+      <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="DIFF" @click="hasChanges && (derby.rightTab = 'changes')">
+        <span class="in"><Icon name="diff" /><span class="label">DIFF</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
-      <span class="grow"></span>
+      <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}: its review comments and CI checks` : 'No PR yet: Commit and push opens one'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
+        <span class="in"><Icon name="pr" /><span class="label">PR</span></span>
+      </button>
+      <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="`The task's todos${openTodos ? `, ${openTodos} open` : ''}`" aria-label="TODO" @click="task && (derby.rightTab = 'todos')">
+        <span class="in"><Icon name="todo" /><span class="label">TODO</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
+      </button>
     </div>
     <div class="content">
       <template v-if="tab === 'todos' && task">
@@ -107,7 +117,13 @@ const tab = computed(() =>
       <ChangesView v-else-if="tab === 'changes'" :changes="changes" />
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
       <p v-else-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
-      <ArtifactView v-else :art="art" :task="step!.taskId" />
+      <template v-else>
+        <div class="md-head">
+          <span class="md-file">{{ file }}</span>
+          <button class="big" aria-label="Open in a large pop-up" title="Open in a large pop-up" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" /></button>
+        </div>
+        <ArtifactView :art="art" :task="step.taskId" />
+      </template>
     </div>
   </div>
 </template>
@@ -122,55 +138,94 @@ const tab = computed(() =>
     border-top: 1px solid var(--border);
     min-height: 0;
   }
+  /* MD, DIFF, PR, TODO in four equal parts, like the left panel's tabs: the
+     open one has no line between it and its content */
   .bar {
     display: flex;
-    align-items: stretch;
     flex: none;
     height: 32px; /* Zed's tab bar */
-    background: var(--chrome);
-    border-bottom: 1px solid var(--border);
   }
   .tab {
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 0 14px;
+    justify-content: center;
+    padding: 0 10px;
+    overflow: hidden;
     border: 0;
-    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
     background: var(--chrome);
     color: var(--muted);
     white-space: nowrap;
-    font-size: var(--fs-13);
+    font-size: var(--fs-12);
+    letter-spacing: 0.04em;
+    cursor: default;
+  }
+  .tab + .tab {
+    border-left: 1px solid var(--border);
+  }
+  .tab:hover:not(.off) {
+    color: var(--text);
   }
   .tab.on {
+    border-bottom-color: transparent;
     background: var(--bg);
     color: var(--text);
-    margin-bottom: -1px;
+    font-weight: 500;
+  }
+  .tab.off {
+    color: var(--faint);
+  }
+  .in {
+    flex: none;
+    display: flex;
+    align-items: center;
+  }
+  .label {
+    margin-left: 6px; /* LABEL_GAP in lib/compact.ts */
+    overflow: hidden;
+  }
+  .compact .label {
+    max-width: 0;
+    margin-left: 0;
   }
   .count {
-    font-family: var(--mono);
-    font-size: var(--fs-11);
-    padding: 0 5px;
-    border-radius: 8px;
-    background: var(--surface);
+    margin-left: 6px;
+    color: var(--faint);
+    font-weight: 400;
+  }
+  .on .count {
     color: var(--muted);
   }
   .grow {
     flex: 1;
   }
-  .tab {
-    cursor: default;
+  /* the artifact's file name, and the button that opens it in a pop-up */
+  .md-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: -6px -8px -2px 0;
+  }
+  .md-file {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: var(--fs-12);
   }
   .big {
     flex: none;
-    width: 24px;
-    height: 24px;
-    margin: 0 -6px 0 0;
+    width: 26px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: var(--muted);
   }
