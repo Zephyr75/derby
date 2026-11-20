@@ -25,7 +25,6 @@ const right = computed(() => {
   return parts.filter(Boolean).join(' · ')
 })
 const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show' : 'Hide'} ${what} (${label(derby.settings?.keymap[action]?.[0])})`
-const autoReview = computed(() => derby.settings?.agents.some((a) => a.trigger.startsWith('after:')) ?? false)
 </script>
 
 <template>
@@ -41,7 +40,6 @@ const autoReview = computed(() => derby.settings?.agents.some((a) => a.trigger.s
     </button>
     <span class="grow"></span>
     <span>{{ right }}</span>
-    <span v-if="autoReview">auto-review on</span>
     <button class="dock" :class="{ off: derby.rightHidden }" :title="tip('steps', derby.rightHidden, 'toggleRight')" @click="derby.togglePanel('right')">
       <Icon :name="derby.rightHidden ? 'panel-right-off' : 'panel-right'" :size="19" />
     </button>

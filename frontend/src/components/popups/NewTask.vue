@@ -217,11 +217,9 @@ function key(e: KeyboardEvent) {
 
 <template>
   <button class="scrim dim" aria-label="Cancel new task" @click="derby.overlay = 'none'"></button>
-  <div class="box popup" role="dialog" aria-label="New task" tabindex="-1" @keydown="key">
+  <div class="box popup pop pop-small" role="dialog" aria-label="New task" tabindex="-1" @keydown="key">
     <div class="head">
       <Dropdown class="proj" :items="projectItems" :value="project" placeholder="Pick a project" title="The project to work in" @pick="onProject" />
-      <Icon name="chevron-right" :size="12" class="sep" />
-      <span class="title">New task</span>
       <span class="grow"></span>
       <button class="x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
     </div>
@@ -231,7 +229,7 @@ function key(e: KeyboardEvent) {
         <input id="nfissue" ref="issueInput" class="num" :value="issue" placeholder="Issue" inputmode="numeric" autocomplete="off" @input="onIssue" @blur="fetchTitle" :style="{ width: (issue ? issue.length + 0.5 : 5) + 'ch' }" />
         <span v-if="titleError" class="itext err" :title="titleError">{{ titleError }}</span>
         <span v-else-if="issueTitle" class="itext" :title="issueTitle">{{ issueTitle }}</span>
-        <span v-else class="itext faint">{{ issuesRepo ? `optional, from ${issuesRepo}` : 'the project has no GitHub repo' }}</span>
+        <span v-else class="itext faint">{{ issuesRepo ? '' : 'the project has no GitHub repo' }}</span>
         <Dropdown v-if="issuesRepo" class="mine" :items="mineItems" :value="nIssue" :disabled="!mine?.length" :title="mineTip" @pick="pickMine">
           <span class="mine-label">{{ mineLabel }}</span><Icon name="chevron" :size="12" />
         </Dropdown>
@@ -275,16 +273,6 @@ function key(e: KeyboardEvent) {
 
 <style scoped>
   .box {
-    position: absolute;
-    z-index: 21;
-    top: 64px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 640px;
-    max-width: calc(100% - 32px);
-    max-height: calc(100% - 96px);
-    display: flex;
-    flex-direction: column;
     outline: none;
   }
   .head {
@@ -298,12 +286,6 @@ function key(e: KeyboardEvent) {
     border-color: transparent;
     padding: 0 6px 0 8px;
     font-weight: 600;
-  }
-  .sep {
-    color: var(--faint);
-  }
-  .title {
-    color: var(--muted);
   }
   .grow {
     flex: 1;
@@ -324,6 +306,7 @@ function key(e: KeyboardEvent) {
     color: var(--text);
   }
   .body {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -331,6 +314,7 @@ function key(e: KeyboardEvent) {
     padding: 10px 20px 8px;
   }
   .issue-line {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -390,12 +374,16 @@ function key(e: KeyboardEvent) {
   .mine-label {
     white-space: nowrap;
   }
+  /* The issue takes what it needs; the instructions keep the rest. */
   .issue-view {
+    flex: 0 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     margin-left: -4px;
   }
   .iv-head {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -418,7 +406,7 @@ function key(e: KeyboardEvent) {
     white-space: nowrap;
   }
   .iv-body {
-    max-height: 260px;
+    min-height: 0;
     overflow: auto;
     margin: 4px 0 4px 10px;
     padding: 0 10px 0 12px;
@@ -446,8 +434,8 @@ function key(e: KeyboardEvent) {
     border-radius: 4px;
   }
   textarea {
+    flex: 1 1 96px;
     min-height: 96px;
-    max-height: 40vh;
     padding: 6px 0;
     resize: none;
     border: 0;
@@ -461,6 +449,7 @@ function key(e: KeyboardEvent) {
     color: var(--faint);
   }
   .files {
+    flex: none;
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
@@ -539,6 +528,7 @@ function key(e: KeyboardEvent) {
     color: var(--approval);
   }
   .err.line {
+    flex: none;
     padding: 0 20px 6px;
   }
   .foot {

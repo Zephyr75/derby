@@ -39,7 +39,7 @@ function key(e: KeyboardEvent) {
 
 <template>
   <button class="scrim" aria-label="Close search" @click="derby.overlay = 'none'"></button>
-  <div class="box popup" role="dialog" aria-label="Go to task">
+  <div class="box popup pop pop-small" role="dialog" aria-label="Go to task">
     <div class="search">
       <span class="muted ico"><Icon name="search" :size="14" /></span>
       <label for="pq" class="sr-only">Search tasks</label>
@@ -60,18 +60,10 @@ function key(e: KeyboardEvent) {
 
 <style scoped>
   .box {
-    position: absolute;
-    z-index: 21;
-    top: 64px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 620px;
-    max-width: calc(100% - 32px);
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
   }
   .search {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -91,6 +83,7 @@ function key(e: KeyboardEvent) {
     font-size: var(--fs-14);
   }
   .heading {
+    flex: none;
     padding: 8px 12px 4px;
     font-size: var(--fs-11-5);
     color: var(--muted);
@@ -98,8 +91,9 @@ function key(e: KeyboardEvent) {
   .rows {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
     padding: 0 4px 6px;
-    max-height: 420px;
     overflow: auto;
   }
   .row {

@@ -89,9 +89,8 @@ function key(e: KeyboardEvent) {
 
 <style scoped>
   .box {
-    flex: 1 1 0;
+    flex: none;
     min-width: 0;
-    max-width: 1400px;
     display: flex;
     flex-direction: column;
     outline: none;

@@ -41,7 +41,7 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(derby.settings?.prompts
   </div>
   <Teleport v-if="parts !== null" to="body">
     <button class="scrim dim" aria-label="Close the context preview" @click="close"></button>
-    <div ref="box" class="box popup" role="dialog" :aria-label="`Full context of ${agent.name}`" tabindex="-1" data-own-escape @keydown="key">
+    <div ref="box" class="box popup pop pop-big" role="dialog" :aria-label="`Full context of ${agent.name}`" tabindex="-1" data-own-escape @keydown="key">
       <div class="head">
         <span class="title">Full context of {{ agent.name }}</span>
         <span class="grow"></span>
@@ -83,16 +83,6 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(derby.settings?.prompts
   color: var(--muted);
 }
 .box {
-  position: fixed;
-  z-index: 21;
-  top: 48px;
-  bottom: 48px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 860px;
-  max-width: calc(100% - 32px);
-  display: flex;
-  flex-direction: column;
   outline: none;
 }
 .head {

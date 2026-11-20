@@ -360,6 +360,40 @@ input[type='checkbox']:focus-visible {
   box-shadow: var(--shadow);
 }
 
+/* The three pop-up sizes. Big: the report or the changes alone. Half: both
+   side by side, the todos, the issue. Small: new task and search. Big and
+   half take the full height; .pop centres one alone. */
+:root {
+  --pop-big: min(1200px, 100vw - 48px);
+  --pop-half: min(760px, (100vw - 64px) / 2);
+  --pop-small: min(640px, 100vw - 32px);
+}
+.pop {
+  position: fixed;
+  z-index: 21;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.pop.pop-big,
+.pop.pop-half {
+  top: 48px;
+  bottom: 40px;
+}
+.pop-big {
+  width: var(--pop-big);
+}
+.pop-half {
+  width: var(--pop-half);
+}
+.pop-small {
+  top: 64px;
+  width: var(--pop-small);
+  height: min(720px, 100vh - 112px);
+}
+
 .scrim {
   position: fixed;
   inset: 0;

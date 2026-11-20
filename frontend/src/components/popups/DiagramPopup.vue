@@ -67,7 +67,7 @@ function key(e: KeyboardEvent) {
 
 <style scoped>
   .box {
-    flex: 1 1 0;
+    flex: none;
     min-width: 0;
     display: flex;
     flex-direction: column;

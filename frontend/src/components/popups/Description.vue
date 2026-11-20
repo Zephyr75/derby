@@ -48,7 +48,7 @@ const openGitHub = () => url.value && derby.attempt('Could not open the issue', 
 
 <template>
   <button class="scrim dim" aria-label="Close the description" @click="close"></button>
-  <div v-if="t" class="box popup" role="dialog" aria-label="Task description">
+  <div v-if="t" class="box popup pop pop-half" role="dialog" aria-label="Task description">
     <div class="head">
       <div class="line">
         <TaskRef :issue="t.issue" :task="t.id" />
@@ -85,16 +85,6 @@ const openGitHub = () => url.value && derby.attempt('Could not open the issue', 
 
 <style scoped>
 .box {
-  position: absolute;
-  z-index: 21;
-  top: 8%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 720px;
-  max-width: calc(100% - 48px);
-  max-height: 84%;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 .head {

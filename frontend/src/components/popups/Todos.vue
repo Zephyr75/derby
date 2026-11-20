@@ -25,7 +25,7 @@ function go(t: Task) {
 
 <template>
   <button class="scrim dim" aria-label="Close the todo lists" @click="derby.overlay = 'none'"></button>
-  <div class="box popup" role="dialog" aria-label="Todo lists">
+  <div class="box popup pop pop-half" role="dialog" aria-label="Todo lists">
     <div class="head">
       <Icon name="todo" :size="15" />
       <span class="title">Todos</span>
@@ -52,17 +52,6 @@ function go(t: Task) {
 </template>
 
 <style scoped>
-.box {
-  position: absolute;
-  z-index: 21;
-  /* like the artifact and diff pop-ups (ViewPopups) */
-  top: 48px;
-  bottom: 40px;
-  left: max(24px, calc(50% - 700px));
-  right: max(24px, calc(50% - 700px));
-  display: flex;
-  flex-direction: column;
-}
 .head {
   display: flex;
   align-items: center;
