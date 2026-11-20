@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { derby, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
+import { sisterTitle } from '../lib/sisters'
 import Preview from './Preview.vue'
 import Splitter from './ui/Splitter.vue'
 import { useCompact } from '../lib/compact'
@@ -23,7 +24,9 @@ const titleTip = computed(() => {
   const task = t.value
   if (!task) return ''
   const full = task.name && task.name !== task.title ? task.title + '\n\n' : ''
-  return full + (hasIssue.value ? `Show issue #${task.issue}, its comments${task.description ? ' and your instructions' : ''}` : task.description ? 'Show your instructions' : 'The task has no issue and no description')
+  const sisters = sisterTitle(task.id)
+  const show = hasIssue.value ? `Show issue #${task.issue}, its comments${task.description ? ' and your instructions' : ''}` : task.description ? 'Show your instructions' : 'The task has no issue and no description'
+  return full + (sisters ? sisters + '\n\n' : '') + show
 })
 // Rebase always shows, before Archive; it's off unless the branch is behind
 // and a step can rebase it now.
@@ -97,10 +100,10 @@ async function archive() {
     <Splitter side="right" />
     <template v-if="t">
       <div class="head">
-        <div class="title-row">
-          <TaskRef :issue="t.issue" :task="t.id" />
-          <button class="title" :class="{ plain: !canDescribe }" :disabled="!canDescribe" :title="titleTip" @click="derby.openOverlay('description')">{{ taskName(t) }}</button>
-        </div>
+        <button class="title-row" :class="{ plain: !canDescribe }" :disabled="!canDescribe" :title="titleTip" @click="derby.openOverlay('description')">
+          <TaskRef :issue="t.issue" />
+          <span class="title">{{ taskName(t) }}</span>
+        </button>
         <div ref="bar" class="bar" :class="{ compact }">
           <button v-if="hasIssue" class="hb" :title="`Open issue #${t.issue} of ${t.issueRepo || t.repo} on GitHub`" aria-label="Issue" @click="openIssue"><Icon name="issue" /><span class="label">Issue</span></button>
           <button v-else class="hb" :class="{ off: !t.description }" :aria-disabled="!t.description" :title="t.description ? 'Show the task description: it has no GitHub issue' : 'The task has no GitHub issue and no description'" aria-label="Description" @click="t.description && derby.openOverlay('description')"><Icon name="description" /><span class="label">Description</span></button>
@@ -171,15 +174,14 @@ async function archive() {
     gap: 8px;
     flex: none;
   }
+  /* The issue ref and the task's name, one button: a click shows its issue,
+     comments and instructions. */
   .title-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-width: 0;
-  }
-  /* The task's name: a click shows its issue, comments and instructions. */
-  .title {
-    flex: 0 1 auto;
+    align-self: flex-start;
+    max-width: calc(100% + 10px);
     min-width: 0;
     margin: 0 -5px;
     padding: 2px 5px;
@@ -188,17 +190,21 @@ async function archive() {
     background: transparent;
     color: var(--text);
     font: inherit;
-    font-weight: 600;
     text-align: left;
+  }
+  .title-row:not(.plain):hover {
+    background: var(--hover);
+  }
+  .title-row.plain {
+    cursor: default;
+    opacity: 1;
+  }
+  .title {
+    min-width: 0;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  .title:not(.plain):hover {
-    background: var(--hover);
-  }
-  .title.plain {
-    cursor: default;
   }
   /* Issue, PR, Zed, Reports, Archive: Zed's ghost buttons, names dropped
      when the panel is too narrow for them */
