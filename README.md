@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="build/appicon.svg?v=2" width="112" alt="Derby logo: a horse head" />
+  <img src="build/appicon.png?v=3" width="112" alt="Derby logo: a jockey helmet" />
 </p>
 
 <h1 align="center">Derby</h1>

@@ -9,7 +9,7 @@ const open = () => derby.attempt('Could not open the link', () => api.OpenURL(re
 
 <template>
   <div class="hero card">
-    <Logo :size="44" :class="derby.dark ? 'on-dark' : 'on-light'" />
+    <Logo :size="44" />
     <div class="id">
       <h1>Derby</h1>
       <p class="muted">Runs Claude Code through a pipeline of agents you define, each task in its own git worktree.</p>
@@ -51,12 +51,6 @@ const open = () => derby.attempt('Could not open the link', () => api.OpenURL(re
   .id p {
     margin: 0;
     line-height: 1.5;
-  }
-  .on-dark {
-    color: #fff;
-  }
-  .on-light {
-    color: #000;
   }
   .table {
     display: flex;
