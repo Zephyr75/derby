@@ -365,7 +365,7 @@ input[type='checkbox']:focus-visible {
    half take the full height; .pop centres one alone. */
 :root {
   --pop-big: min(max(1200px, 65vw), 1900px, 100vw - 48px); /* grows with big screens */
-  --pop-half: min(760px, (100vw - 64px) / 2);
+  --pop-half: min(max(760px, 33vw), 1100px, (100vw - 64px) / 2); /* grows with big screens */
   --pop-small: min(640px, 100vw - 32px);
 }
 .pop {
