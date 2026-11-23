@@ -105,7 +105,7 @@ async function archive() {
         </button>
         <div ref="bar" class="bar" :class="{ compact }">
           <button v-if="hasIssue" class="hb" title="Open issue on GitHub" aria-label="Issue" @click="openIssue"><Icon name="issue" /><span class="label">Issue</span></button>
-          <button v-else class="hb" :class="{ off: !t.description }" :aria-disabled="!t.description" :title="t.description ? 'Show description' : 'No description'" aria-label="Description" @click="t.description && derby.openOverlay('description')"><Icon name="description" /><span class="label">Description</span></button>
+          <button v-else class="hb" :class="{ off: !t.description }" :aria-disabled="!t.description" :title="t.description ? 'Show description' : 'No description'" aria-label="Task" @click="t.description && derby.openOverlay('description')"><Icon name="description" /><span class="label">Task</span></button>
           <button class="hb" :class="{ off: !t.pr }" :aria-disabled="!t.pr" :title="t.pr ? 'Open PR on GitHub' : 'No PR yet'" aria-label="PR" @click="t.pr && openPR()"><Icon :name="prIcon" /><span class="label">PR</span></button>
           <button v-if="!t.archived && !t.worktreeRemoved" class="hb" title="Open in Zed" aria-label="Zed" @click="derby.openWorktree()"><Icon name="code" /><span class="label">Zed</span></button>
           <button class="hb" title="Open reports folder" aria-label="Reports" @click="openRunDir"><Icon name="folder" /><span class="label">Reports</span></button>
