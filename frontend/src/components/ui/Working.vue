@@ -16,7 +16,7 @@ for (let i = colours.length - 1; i > 0; i--) {
   ;[colours[i], colours[j]] = [colours[j], colours[i]]
 }
 // The first at random, then one of the two others at random: each a third
-// of the time, never twice in a row. Each runs 6s (the rings 7.8s: three turns
+// of the time, never twice in a row. Each runs 6s (the pulsing dots 6.6s, the last one starting 0.6s late; the rings 7.8s: three turns
 // of 2.6s, which then rest in the row); the bouncing balls take 0.45s more: the last
 // one starts 0.3s after the first, and each settles after its last landing
 // (0.15s).
@@ -27,7 +27,7 @@ function next() {
   timer = window.setTimeout(() => {
     kind.value = (kind.value + 1 + Math.floor(Math.random() * 2)) % 3
     next()
-  }, kinds[kind.value] === 'bounce' ? 6450 : kinds[kind.value] === 'rings' ? 7800 : 6000)
+  }, kinds[kind.value] === 'bounce' ? 6450 : kinds[kind.value] === 'rings' ? 7800 : 6600)
 }
 next()
 onBeforeUnmount(() => clearTimeout(timer))
@@ -290,15 +290,18 @@ onBeforeUnmount(() => clearTimeout(timer))
   height: var(--ball);
   border-radius: 50%;
   background: var(--c);
-  animation: blip 1.5s calc(var(--i) * 0.2s - 0.3s) infinite ease-in-out;
+  animation: blip 1.5s calc(var(--i) * 0.2s) 4 ease-in-out;
 }
 @keyframes blip {
   0%,
   100% {
+    transform: scale(1);
+  }
+  25% {
     transform: scale(0.45);
   }
-  50% {
-    transform: scale(1.7);
+  70% {
+    transform: scale(1.6);
   }
 }
 
