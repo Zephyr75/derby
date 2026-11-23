@@ -76,6 +76,13 @@ function setMaxTabs(e: Event) {
   void derby.attempt('Could not save the tab limit', () => api.SetMaxTabs(n))
 }
 
+function setFoldWords(e: Event) {
+  const words = (e.target as HTMLInputElement).value.split(',').map((w) => w.trim()).filter(Boolean)
+  if (!derby.settings) return
+  derby.settings.config.foldWords = words
+  void derby.attempt('Could not save the fold words', () => api.SetFoldWords(words))
+}
+
 function setZed(e: Event) {
   if (!derby.settings) return
   derby.settings.config.zedCommand = (e.target as HTMLInputElement).value
@@ -143,6 +150,10 @@ function setZed(e: Event) {
     <label class="r">
       <span class="grow">Open tabs <span class="muted small">at most, one per task; opening one more closes the oldest</span></span>
       <input class="val num" type="number" min="1" max="30" :value="derby.settings?.config.maxTabs" @change="setMaxTabs" />
+    </label>
+    <label class="r">
+      <span class="grow">Fold words <span class="muted small">comma separated; a changed file whose path has one starts folded</span></span>
+      <input class="val wide" :value="(derby.settings?.config.foldWords ?? []).join(', ')" @change="setFoldWords" />
     </label>
     <label class="r">
       <span class="grow">Desktop notifications <span class="muted small">when a step needs you or ends, while Derby is in the background</span></span>
@@ -267,6 +278,10 @@ function setZed(e: Event) {
     color: var(--text);
     text-align: right;
     width: 220px;
+  }
+  .val.wide {
+    width: 260px;
+    text-align: left;
   }
   .val.num {
     width: 70px;

@@ -118,6 +118,8 @@ export interface FileChange {
   added: number
   deleted: number
   binary: boolean
+  repo?: string // a Copilot step's full changes: the project of the task it comes from
+  task?: string // and that task
 }
 
 export interface Changes {
@@ -162,6 +164,7 @@ export interface Config {
   rules: string // followed by every agent
   branchPrefix: string // every new task's branch starts with it
   issuesRepo: string // the common issues repository (owner/name)
+  foldWords: string[] // a changed file whose path has one starts folded
   projects: Project[] | null
 }
 

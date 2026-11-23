@@ -64,6 +64,7 @@ type Config struct {
 	Rules           string                 `toml:"rules" json:"rules"`                      // always followed by every agent
 	BranchPrefix    string                 `toml:"branch_prefix" json:"branchPrefix"`       // every new task's branch starts with it
 	IssuesRepo      string                 `toml:"issues_repo,omitempty" json:"issuesRepo"` // the common issues repository (owner/name) of projects set to use it
+	FoldWords       []string               `toml:"fold_words" json:"foldWords"`             // a changed file whose path has one of them starts folded in the changes view
 	Keymap          Keymap                 `toml:"keymap,omitempty" json:"-"`               // shortcuts that differ from DefaultKeymap
 	Prompts         map[string]string      `toml:"prompts,omitempty" json:"-"`              // before prompts.toml: the prompts that differed from the defaults (moved there on launch)
 	Projects        []Project              `toml:"project" json:"projects"`
@@ -313,6 +314,9 @@ func fillConfig(c *Config) {
 	}
 	if c.BranchPrefix == "" {
 		c.BranchPrefix = d.BranchPrefix
+	}
+	if c.FoldWords == nil {
+		c.FoldWords = d.FoldWords
 	}
 	if c.Context == nil {
 		c.Context = map[string]ContextMeta{}

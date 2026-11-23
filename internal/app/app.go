@@ -532,6 +532,18 @@ func (a *App) SetMaxTabs(n int) error {
 	return a.updateConfig(func(c *settings.Config) { c.MaxTabs = n })
 }
 
+// SetFoldWords sets the words that start a changed file folded when its path
+// has one (the changes view).
+func (a *App) SetFoldWords(words []string) error {
+	clean := []string{}
+	for _, w := range words {
+		if w = strings.TrimSpace(w); w != "" {
+			clean = append(clean, w)
+		}
+	}
+	return a.updateConfig(func(c *settings.Config) { c.FoldWords = clean })
+}
+
 // SetIssuesRepo sets the common issues repository (owner/name; "" for none).
 func (a *App) SetIssuesRepo(repo string) error {
 	repo = strings.TrimSpace(repo)

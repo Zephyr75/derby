@@ -24,6 +24,7 @@ func DefaultConfig() Config {
 		Notifications:   true,
 		MaxTabs:         5,
 		BranchPrefix:    "ar-",
+		FoldWords:       []string{"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "Cargo.lock", "go.sum", "poetry.lock", "uv.lock", ".min.", "node_modules", "vendor/", "dist/", "generated", ".snap"},
 		Context:         map[string]ContextMeta{},
 	}
 }

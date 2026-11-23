@@ -6,7 +6,10 @@ import { computed } from 'vue'
 import type { Changes } from '../lib/types'
 
 const props = defineProps<{ changes: Changes; selected?: string; bare?: boolean }>()
-defineEmits<{ pick: [path: string] }>()
+defineEmits<{ pick: [path: string, task?: string] }>()
+// Files of several repositories (a Copilot step of a task with sisters) are listed under the repository.
+const grouped = computed(() => new Set(props.changes.files.map((f) => f.repo ?? '')).size > 1)
+const keyOf = (f: { task?: string; path: string }) => (f.task ?? '') + '\0' + f.path
 
 const totals = computed(() => totalsOf(props.changes))
 </script>
@@ -32,7 +35,9 @@ export const sourceLabel = (c: Changes) =>
     <span class="c-del">−{{ totals.del }}</span>
   </div>
   <div class="files">
-    <button v-for="f in changes.files" :key="f.path" class="file" :class="{ on: f.path === selected }" title="Show the diff" @click="$emit('pick', f.path)">
+    <template v-for="(f, i) in changes.files" :key="keyOf(f)">
+    <p v-if="grouped && (i === 0 || changes.files[i - 1].repo !== f.repo)" class="repo">{{ f.repo }}</p>
+    <button class="file" :class="{ on: keyOf(f) === selected || f.path === selected }" title="Show the diff" @click="$emit('pick', f.path, f.task ?? '')">
       <span :class="['st', statusCls(f.status)]" :title="statusTitle(f.status)">{{ f.status === '?' ? 'U' : f.status }}</span>
       <span class="path"><span class="dir">{{ split(f.path).dir }}</span>{{ split(f.path).name }}</span>
       <span v-if="f.binary" class="muted small">binary</span>
@@ -41,6 +46,7 @@ export const sourceLabel = (c: Changes) =>
         <span v-if="f.deleted" class="c-del small">−{{ f.deleted }}</span>
       </template>
     </button>
+    </template>
   </div>
 </template>
 
@@ -65,6 +71,12 @@ export const sourceLabel = (c: Changes) =>
   display: flex;
   flex-direction: column;
   margin: 0 -8px;
+}
+.repo {
+  margin: 8px 0 2px;
+  color: var(--muted);
+  font-size: var(--fs-11-5);
+  font-weight: 600;
 }
 .file {
   display: flex;

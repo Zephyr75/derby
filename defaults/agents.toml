@@ -95,7 +95,6 @@ model = "sonnet"
 effort = "xhigh"
 trigger = "manual"
 writes = "TEST-{n}.md"
-show_diff = true
 allow = ["Bash(make test-path:*)", "Bash(make ruff:*)"]
 next = ["regress", "push", "impl", "discuss"]
 on_fail = ["impl", "discuss"]

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // The changes of a step, large: the changed files on the left (as in the
 // Changes tab), the selected file's read-only diff on the right.
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { api, errorText } from '../../lib/api'
 import { derby } from '../../lib/state'
-import type { Changes, FileDiff, Note, Step } from '../../lib/types'
+import type { Changes, FileChange, FileDiff, Note, Step } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import DiffView from '../Diff.vue'
 import NotesBar from '../NotesBar.vue'
@@ -35,8 +35,8 @@ const stepId = computed(() => derby.diffOf?.step ?? '')
 const task = computed(() => derby.tasks.find((t) => t.steps.some((s) => s.id === stepId.value)))
 const step = computed(() => task.value?.steps.find((s) => s.id === stepId.value))
 const pickStep = (id: string) => derby.diffOf && (derby.diffOf = { step: id, path: '' })
-// Only steps of agents set to "Makes changes" (Implement, Discuss and Test
-// by default) make changes. Full, last, is the whole branch: a Copilot step's changes, the
+// Only steps of agents set to "Makes changes" (Implement and Discuss by
+// default) make changes. Full, last, is the whole branch: a Copilot step's changes, the
 // same for every one of them.
 const changers = computed(() => {
   const steps = task.value?.steps ?? []
@@ -47,10 +47,16 @@ const label = (s: Step) => (s.external ? 'Full' : s.name)
 const stepItems = computed(() => changers.value.map((s) => ({ value: s.id, label: label(s) })))
 const chooseStep = (id: string) => id !== stepId.value && pickStep(id)
 const changes = ref<Changes | null>(null)
-const diff = ref<FileDiff | null>(null)
+const files = computed(() => changes.value?.files ?? [])
+// Files of the same path can exist in two repositories: a file is told apart by its task.
+const keyOf = (f: FileChange) => (f.task ?? '') + '\0' + f.path
+// Zed starts a file folded (lock files, generated code…) when its path has one of the fold words.
+const foldWords = computed(() => (derby.settings?.config.foldWords ?? []).map((w) => w.toLowerCase()).filter(Boolean))
+const foldedByDefault = (f: FileChange) => foldWords.value.some((w) => f.path.toLowerCase().includes(w))
+const folded = ref<Record<string, boolean>>({})
+const diffs = ref<Record<string, { diff?: FileDiff; error?: string }>>({})
+const selKey = ref('')
 const error = ref('')
-const sel = computed(() => derby.diffOf?.path ?? '')
-const file = computed(() => changes.value?.files.find((f) => f.path === sel.value))
 
 let cseq = 0
 async function loadChanges() {
@@ -71,25 +77,31 @@ async function loadChanges() {
     }
   }
   changes.value = c
-  // The file left the changes (e.g. reverted): show the first one instead.
-  if (c && c.files.length && !c.files.some((f) => f.path === sel.value) && derby.diffOf) derby.diffOf.path = c.files[0].path
+  const next: Record<string, boolean> = {}
+  for (const f of c?.files ?? []) next[keyOf(f)] = folded.value[keyOf(f)] ?? foldedByDefault(f)
+  folded.value = next
+  if (!files.value.some((f) => keyOf(f) === selKey.value)) selKey.value = files.value[0] ? keyOf(files.value[0]) : ''
+  void loadVisible()
 }
-let dseq = 0
-async function loadDiff() {
-  const mine = ++dseq
-  if (!sel.value) return
+async function loadDiff(f: FileChange) {
+  const k = keyOf(f)
+  const sid = stepId.value
   try {
-    const d = await api.FileDiff(stepId.value, sel.value)
-    if (mine === dseq) (diff.value = d), (error.value = '')
+    const d = f.task && f.task !== task.value?.id ? await api.SisterFileDiff(sid, f.task, f.path) : await api.FileDiff(sid, f.path)
+    if (sid === stepId.value) diffs.value[k] = { diff: d }
   } catch (e) {
-    if (mine === dseq) (diff.value = null), (error.value = errorText(e))
+    if (sid === stepId.value) diffs.value[k] = { error: errorText(e) }
   }
 }
-watch(stepId, loadChanges, { immediate: true })
-watch(sel, () => {
-  diff.value = null
-  error.value = ''
-  void loadDiff()
+// A file's diff is fetched once it is open.
+async function loadVisible(all = false) {
+  await Promise.all(files.value.filter((f) => !folded.value[keyOf(f)] && (all || !diffs.value[keyOf(f)])).map(loadDiff))
+}
+watch(stepId, () => {
+  diffs.value = {}
+  folded.value = {}
+  selKey.value = ''
+  void loadChanges()
 }, { immediate: true })
 // Uncommitted changes keep moving while the agent works.
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -97,17 +109,62 @@ watch(
   () => [step.value?.sha, step.value?.state, derby.selTask?.steps.length] as const,
   () => {
     clearTimeout(timer)
-    timer = setTimeout(() => void loadChanges().then(loadDiff), 800)
+    timer = setTimeout(() => void loadChanges().then(() => loadVisible(true)), 800)
   },
 )
 
-const pick = (path: string) => derby.diffOf && (derby.diffOf.path = path)
+const cards = ref<Record<string, HTMLElement>>({})
+const scroller = ref<HTMLDivElement>()
+function toggle(f: FileChange) {
+  const k = keyOf(f)
+  folded.value[k] = !folded.value[k]
+  if (!folded.value[k]) void loadVisible()
+}
+const allFolded = computed(() => files.value.length > 0 && files.value.every((f) => folded.value[keyOf(f)]))
+function foldAll() {
+  const to = !allFolded.value
+  for (const f of files.value) folded.value[keyOf(f)] = to
+  void loadVisible()
+}
+// A click in the list goes to the file, opening it if it is folded.
+async function pick(path: string, taskId?: string) {
+  const f = files.value.find((x) => x.path === path && (taskId === undefined || (x.task ?? '') === taskId))
+  if (!f) return
+  const k = keyOf(f)
+  selKey.value = k
+  pickedAt = Date.now()
+  if (folded.value[k]) folded.value[k] = false
+  void loadVisible()
+  await nextTick()
+  const el = cards.value[k]
+  if (el && scroller.value) scroller.value.scrollTo({ top: el.offsetTop, behavior: 'smooth' })
+}
+// The file picked from outside (the Changes tab).
+watch(() => derby.diffOf?.path, (p) => { if (p && files.value.length) void pick(p) })
+watch(changes, () => {
+  const p = derby.diffOf?.path
+  if (p) void pick(p)
+}, { once: true })
+// The file in view is the one marked in the list.
+let pickedAt = 0
+function spy() {
+  if (Date.now() - pickedAt < 800) return
+  const top = (scroller.value?.scrollTop ?? 0) + 4
+  let cur = ''
+  for (const f of files.value) {
+    const el = cards.value[keyOf(f)]
+    if (el && el.offsetTop <= top) cur = keyOf(f)
+  }
+  if (cur) selKey.value = cur
+}
 
-// Comments on the diff, kept with the task until sent to a step.
-const fileNotes = computed(() => (task.value?.notes ?? []).filter((n) => n.path === sel.value))
-function addNote(n: Omit<Note, 'id' | 'path'>) {
+// Comments on the diff, kept with the task until sent to a step. A sister's
+// file is named with its repository.
+const notePath = (f: FileChange) => (f.task && f.task !== task.value?.id && f.repo ? f.repo + '/' + f.path : f.path)
+const notesOf = (f: FileChange) => (task.value?.notes ?? []).filter((n) => n.path === notePath(f))
+function addNote(f: FileChange, n: Omit<Note, 'id' | 'path'>) {
   const t = task.value
-  if (t) void derby.setNotes(t, [...t.notes, { ...n, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), path: sel.value }])
+  if (t) void derby.setNotes(t, [...t.notes, { ...n, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), path: notePath(f) }])
 }
 function updateNote(id: string, text: string) {
   const t = task.value
@@ -135,11 +192,10 @@ onMounted(() => box.value?.focus())
 // Up and down move through the files.
 function key(e: KeyboardEvent) {
   if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
-  const files = changes.value?.files ?? []
-  const i = files.findIndex((f) => f.path === sel.value)
-  if (e.key === 'ArrowDown' && i < files.length - 1) pick(files[i + 1].path)
-  else if (e.key === 'ArrowUp' && i > 0) pick(files[i - 1].path)
-  else return
+  const i = files.value.findIndex((f) => keyOf(f) === selKey.value)
+  const to = e.key === 'ArrowDown' ? files.value[i + 1] : e.key === 'ArrowUp' ? files.value[i - 1] : undefined
+  if (!to) return
+  void pick(to.path, to.task ?? '')
   e.preventDefault()
 }
 </script>
@@ -159,15 +215,15 @@ function key(e: KeyboardEvent) {
         <div class="side">
           <p v-if="!changes" class="empty">Loading…</p>
           <p v-else-if="!changes.files.length" class="empty">No changed files.</p>
-          <ChangedFiles v-else :changes="changes" :selected="sel" @pick="pick" />
+          <ChangedFiles v-else :changes="changes" :selected="selKey" @pick="pick" />
         </div>
         <Splitter side="left" :width="sb.width.value" :min="SIDEBAR.min" :max="SIDEBAR.max" :def="sb.def" label="Resize the side bar" @resize="(w) => (sb.width.value = w)" />
       </div>
       <div class="main">
         <NotesBar v-if="task?.notes.length" class="notes" :task="task" />
-        <div v-if="file" class="fhead">
-          <span :class="['st', statusCls(file.status)]" :title="statusTitle(file.status)">{{ file.status === '?' ? 'U' : file.status }}</span>
-          <span class="path mono" :title="file.path"><span class="dir">{{ split(file.path).dir }}</span>{{ split(file.path).name }}</span>
+        <div class="fhead">
+          <span class="grow"></span>
+          <button v-if="files.length > 1" class="zed" :title="allFolded ? 'Unfold all files' : 'Fold all files'" @click="foldAll">{{ allFolded ? 'Unfold all' : 'Fold all' }}</button>
           <span class="views" role="radiogroup" aria-label="Diff view">
             <button role="radio" :aria-checked="!splitView" :class="{ on: !splitView }" title="Unified" aria-label="Unified" @click="splitView = false">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="2.6" width="10" height="4.4" rx="1" /><rect x="3" y="9" width="10" height="4.4" rx="1" fill="currentColor" fill-opacity="0.5" /></svg>
@@ -178,15 +234,32 @@ function key(e: KeyboardEvent) {
           </span>
           <button class="zed" title="Open in Zed" @click="openInZed"><Icon name="diff" :size="13" />Diff</button>
         </div>
-        <div class="scroll">
-          <p v-if="error" class="empty err">{{ error }}</p>
-          <p v-else-if="!diff" class="empty">Loading…</p>
-          <p v-else-if="diff.binary" class="empty">Binary file: no text diff.</p>
-          <p v-else-if="!diff.diff" class="empty">No text changes (mode or whitespace only).</p>
-          <template v-else>
-            <DiffView :diff="diff.diff" :path="diff.path" :sources="diff.sources ? diff : undefined" :notes="fileNotes" :split="splitView" commentable @add="addNote" @update="updateNote" @remove="removeNote" />
-            <p v-if="diff.truncated" class="empty">The diff is too long to show in full; open the file in Zed for the rest.</p>
-          </template>
+        <div ref="scroller" class="scroll" @scroll.passive="spy">
+          <p v-if="!changes" class="empty">Loading…</p>
+          <p v-else-if="!files.length" class="empty">No changed files.</p>
+          <section v-for="(f, i) in files" :key="keyOf(f)" :ref="(el) => { if (el) cards[keyOf(f)] = el as HTMLElement }" class="card">
+            <p v-if="f.repo && (i === 0 || files[i - 1].repo !== f.repo) && files.some((x) => x.repo !== f.repo)" class="repo">{{ f.repo }}</p>
+            <button class="ch" :class="{ on: keyOf(f) === selKey }" :aria-expanded="!folded[keyOf(f)]" @click="toggle(f)">
+              <Icon :name="folded[keyOf(f)] ? 'chevron-right' : 'chevron'" :size="12" />
+              <span :class="['st', statusCls(f.status)]" :title="statusTitle(f.status)">{{ f.status === '?' ? 'U' : f.status }}</span>
+              <span class="path mono" :title="f.path"><span class="dir">{{ split(f.path).dir }}</span>{{ split(f.path).name }}</span>
+              <span v-if="f.binary" class="muted small">binary</span>
+              <template v-else>
+                <span v-if="f.added" class="c-add small">+{{ f.added }}</span>
+                <span v-if="f.deleted" class="c-del small">−{{ f.deleted }}</span>
+              </template>
+            </button>
+            <template v-if="!folded[keyOf(f)]">
+              <p v-if="diffs[keyOf(f)]?.error" class="empty err">{{ diffs[keyOf(f)].error }}</p>
+              <p v-else-if="!diffs[keyOf(f)]?.diff" class="empty">Loading…</p>
+              <p v-else-if="diffs[keyOf(f)].diff!.binary" class="empty">Binary file: no text diff.</p>
+              <p v-else-if="!diffs[keyOf(f)].diff!.diff" class="empty">No text changes (mode or whitespace only).</p>
+              <template v-else>
+                <DiffView :diff="diffs[keyOf(f)].diff!.diff" :path="f.path" :sources="diffs[keyOf(f)].diff!.sources ? diffs[keyOf(f)].diff : undefined" :notes="notesOf(f)" :split="splitView" commentable @add="(n) => addNote(f, n)" @update="updateNote" @remove="removeNote" />
+                <p v-if="diffs[keyOf(f)].diff!.truncated" class="empty">The diff is too long to show in full; open the file in Zed for the rest.</p>
+              </template>
+            </template>
+          </section>
         </div>
       </div>
     </div>
@@ -361,9 +434,42 @@ function key(e: KeyboardEvent) {
     background: var(--hover);
   }
   .scroll {
+    position: relative;
     flex: 1;
     min-height: 0;
     overflow: auto;
+  }
+  .ch {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    text-align: left;
+    font-size: var(--fs-12-5);
+  }
+  .ch:hover {
+    background: var(--hover);
+  }
+  .small {
+    flex: none;
+    font-family: var(--mono);
+    font-size: var(--fs-11-5);
+  }
+  .repo {
+    margin: 0;
+    padding: 10px 14px 4px;
+    color: var(--muted);
+    font-size: var(--fs-11-5);
+    font-weight: 600;
   }
   .empty {
     margin: 12px 14px;

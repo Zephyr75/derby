@@ -36,7 +36,7 @@ const agents: Agent[] = [
     instructions: 'This step is a conversation: implement the plan together with the user.\nOnly when the user says the work is done, write DISCUSS-{n}.md: What changed, Files, Notes for the reviewer.\nEnd with status: done.' },
   { id: 'review', name: 'Review', command: '/derby:review {task}', model: 'opus', trigger: 'after:impl', writes: 'REVIEW-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: true, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['test', 'impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss'],
     instructions: 'Review the uncommitted changes in this worktree (git status, git diff HEAD) against PLAN.md.\nWrite REVIEW-{n}.md with the findings, most important first. End with status: done if the changes are ready, or status: failed if they need changes.\nNever edit code, and do not commit: Commit and push commits once the tests pass.' },
-  { id: 'test', name: 'Test', command: '/derby:test {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'TEST-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: false, allow: [], next: ['push', 'impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss'],
+  { id: 'test', name: 'Test', command: '/derby:test {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'TEST-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['push', 'impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss'],
     instructions: 'Read PLAN.md, the IMPLEMENT files and the REVIEW files.\nWrite tests for the reviewed changes, following the repo\'s test conventions.\nRun them. Change only tests, never the code under test.\nWrite TEST-{n}.md with Tests added, How to run and Results. End with status: done.' },
   { id: 'push', name: 'Commit and push', command: '/derby:push {task}', model: 'haiku', trigger: 'manual', writes: 'PUSH.md', commit: true, push: true, openPR: true, revert: false, rerun: false, choose: false, builtin: false, ignoreRules: true, showDiff: false, sisters: false, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', projects: [], onFail: [],
     instructions: 'First rebase on origin/{base} when it has new commits (git rebase --autostash); on a conflict, abort and end with status: failed.\nWrite PUSH.md: a title line, then a body summarising PLAN.md and the IMPLEMENT files.\nAdd Closes #{issue} when the task has an issue.\nDo not push: Derby pushes, opens the PR and collects the Copilot review.' },
@@ -55,7 +55,7 @@ let others: Todo[] = [{ id: 'o1', text: 'Update the Slack profile picture', done
 const settings: Settings = {
   config: {
     appearance: { theme: 'fleet', mode: 'dark', uiFont: 'Geist', uiFontSize: 13, termFont: 'Geist Mono', termFontSize: 12.5, sessionView: 'terminal' },
-    zedCommand: 'zed', claudeCommand: 'claude', maxLiveSessions: 6, notifications: true, maxTabs: 5, branchPrefix: 'ar-', issuesRepo: '',
+    zedCommand: 'zed', claudeCommand: 'claude', maxLiveSessions: 6, notifications: true, maxTabs: 5, branchPrefix: 'ar-', issuesRepo: '', foldWords: ['package-lock.json', 'go.sum', '.min.', 'node_modules', 'generated'],
     rules: 'Never edit generated files under gen/.\nRun the tests you touched before writing the artifact.', projects,
   },
   agents, context,
@@ -534,6 +534,11 @@ export const api: Api = {
     const i = s ? t.steps.indexOf(s) : -1, last = i === t.steps.length - 1
     const next = t.steps[i + 1], via = !s?.sha && next?.sha ? next : undefined
     const sha = s?.sha || via?.sha
+    if (s?.agent === 'copilot') return ok({ source: 'branch', sha: '', base: 'main', via: '', files: [
+      { path: 'internal/unlock/ble.go', status: 'M', added: 42, deleted: 9, binary: false, repo: 'core', task: t.id },
+      { path: 'go.sum', status: 'M', added: 6, deleted: 2, binary: false, repo: 'core', task: t.id },
+      { path: 'src/unlock/client.ts', status: 'M', added: 14, deleted: 3, binary: false, repo: 'app', task: 'sister-1' },
+    ] })
     if (sha) return ok({ source: 'commit', sha, via: via ? displayName(agent(via.agent), via.n) : '', files: [
       { path: 'internal/unlock/ble.go', status: 'M', added: 42, deleted: 9, binary: false },
       { path: 'internal/unlock/retry.go', status: 'A', added: 61, deleted: 0, binary: false },
@@ -555,6 +560,8 @@ export const api: Api = {
   ].join('\n') }),
   SetFocused: () => ok(undefined),
   SetNotifications: (on) => { settings.config.notifications = on; return ok(undefined) },
+  SetFoldWords: (w) => { settings.config.foldWords = w; emit('settings:changed', settings); return ok(undefined) },
+  SisterFileDiff: (_sid, _task, path) => api.FileDiff(_sid, path),
   SetMaxTabs: (n) => { settings.config.maxTabs = n; emit('settings:changed', settings); return ok(undefined) },
   SetRules: (r) => { settings.config.rules = r; return ok(undefined) },
   SystemClaudeMd: () => ok({ path: '~/.claude/CLAUDE.md', exists: true, synced: mockSynced }),

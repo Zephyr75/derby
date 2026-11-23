@@ -23,6 +23,10 @@ type FileChange struct {
 	Added   int    `json:"added"`
 	Deleted int    `json:"deleted"`
 	Binary  bool   `json:"binary"`
+	// The whole branch's files (a Copilot step) say which task they are of:
+	// the sister tasks' files are listed with the step's own, by repository.
+	Repo string `json:"repo,omitempty"`
+	Task string `json:"task,omitempty"`
 }
 
 // Changes is what a step changed. Steps between two commits of the branch
@@ -50,7 +54,7 @@ func (a *App) StepChanges(stepID string) (Changes, error) {
 	p := a.projectOf(t)
 	out := Changes{Files: []FileChange{}}
 	if s.Agent == copilotAgent {
-		return a.branchChanges(p, t)
+		return a.fullChanges(t)
 	}
 	steps, _ := a.db.Steps(t.ID)
 	sha := ""
@@ -91,6 +95,31 @@ func (a *App) StepChanges(stepID string) (Changes, error) {
 		return out, err
 	}
 	out.Files = files
+	return out, nil
+}
+
+// fullChanges is the whole work's changes: the task's branch and those of its
+// sister tasks, by repository, each file tagged with its repository and task.
+func (a *App) fullChanges(t store.Task) (Changes, error) {
+	out, err := a.branchChanges(a.projectOf(t), t)
+	tag := func(c *Changes, x store.Task) {
+		for i := range c.Files {
+			c.Files[i].Repo, c.Files[i].Task = a.projectOf(x).Name, x.ID
+		}
+	}
+	tag(&out, t)
+	if err != nil {
+		return out, err
+	}
+	for _, x := range a.sisters(t.ID) {
+		c, err := a.branchChanges(a.projectOf(x), x)
+		if err != nil {
+			continue // a sister whose branch is gone adds nothing
+		}
+		tag(&c, x)
+		out.Files = append(out.Files, c.Files...)
+	}
+	slices.SortStableFunc(out.Files, func(x, y FileChange) int { return strings.Compare(strings.ToLower(x.Repo), strings.ToLower(y.Repo)) })
 	return out, nil
 }
 
@@ -239,13 +268,37 @@ const maxDiff = 400 << 10
 // source as StepChanges: the step's commit (or its Review's), or the
 // uncommitted worktree.
 func (a *App) FileDiff(stepID, rel string) (FileDiff, error) {
-	ch, err := a.StepChanges(stepID)
+	return a.SisterFileDiff(stepID, "", rel)
+}
+
+// SisterFileDiff is FileDiff for a file of a sister task's branch, listed in
+// a Copilot step's changes (taskID is the FileChange's Task).
+func (a *App) SisterFileDiff(stepID, taskID, rel string) (FileDiff, error) {
+	s, err := a.db.Step(stepID)
+	if err != nil {
+		return FileDiff{}, err
+	}
+	t, err := a.db.Task(s.TaskID)
+	if err != nil {
+		return FileDiff{}, err
+	}
+	var ch Changes
+	if taskID != "" && taskID != t.ID {
+		i := slices.IndexFunc(a.sisters(t.ID), func(x store.Task) bool { return x.ID == taskID })
+		if s.Agent != copilotAgent || i < 0 {
+			return FileDiff{}, fmt.Errorf("%s is not a sister task of %s", taskID, t.ID)
+		}
+		t = a.sisters(t.ID)[i]
+		ch, err = a.branchChanges(a.projectOf(t), t)
+	} else {
+		ch, err = a.StepChanges(stepID)
+	}
 	if err != nil {
 		return FileDiff{}, err
 	}
 	var fc *FileChange
 	for i := range ch.Files {
-		if ch.Files[i].Path == rel {
+		if ch.Files[i].Path == rel && (ch.Files[i].Task == "" || ch.Files[i].Task == t.ID) {
 			fc = &ch.Files[i]
 		}
 	}
@@ -256,8 +309,6 @@ func (a *App) FileDiff(stepID, rel string) (FileDiff, error) {
 	if fc.Binary {
 		return out, nil
 	}
-	s, _ := a.db.Step(stepID)
-	t, _ := a.db.Task(s.TaskID)
 	p := a.projectOf(t)
 	switch {
 	case ch.Source == "branch":

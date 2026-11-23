@@ -52,6 +52,8 @@ export interface Api {
   SetFocused(focused: boolean): Promise<void>
   SetNotifications(on: boolean): Promise<void>
   SetMaxTabs(n: number): Promise<void>
+  SetFoldWords(words: string[]): Promise<void>
+  SisterFileDiff(step: string, task: string, path: string): Promise<FileDiff>
   SetRules(rules: string): Promise<void>
   SystemClaudeMd(): Promise<SystemMemory>
   OverrideSystemClaudeMd(): Promise<string>
