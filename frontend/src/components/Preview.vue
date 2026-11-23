@@ -122,7 +122,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
       <template v-else>
         <PaneHead :title="file || 'Report'" :tip="art?.path">
-          <button v-if="failed" title="Run Claude again to explain the changes" @click="derby.attempt('Could not retry the explanation', () => api.RetryExplanation(step!.id))">Retry</button>
+          <button v-if="failed" title="Retry the explanation" aria-label="Retry the explanation" @click="derby.attempt('Could not retry the explanation', () => api.RetryExplanation(step!.id))"><Icon name="rerun" :size="13" /></button>
           <button v-if="art?.exists" title="Expand" aria-label="Open the whole report" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
         </PaneHead>
         <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
