@@ -382,6 +382,11 @@ tr:hover .add-note,
   position: relative;
   z-index: 1;
 }
+/* a selected line shows only the line, never the + on hover */
+.sel .add-note,
+.gut.sel .add-note {
+  visibility: hidden !important;
+}
 .sel .gut::before,
 .gut.sel::before {
   content: '';
