@@ -85,7 +85,7 @@ const icons: Record<string, Component> = {
   light: Sun,
   system: Monitor,
 }
-const filled = ['play', 'stop'] // solid, like media buttons
+const filled = ['stop'] // solid, like a media button
 const turned = ['worktree']
 
 const icon = computed(() => icons[props.name])
