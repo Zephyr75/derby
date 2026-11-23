@@ -175,6 +175,7 @@ func Start(a *App, ctx context.Context, plat Platform) error {
 		for _, t := range ts {
 			renameArtifacts(a.runDir(a.projectOf(t), t))
 			migrateCopilotFiles(a.runDir(a.projectOf(t), t))
+			abandonedExplanations(a.runDir(a.projectOf(t), t))
 		}
 	}
 	a.reconcile()

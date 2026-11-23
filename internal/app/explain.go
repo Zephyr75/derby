@@ -182,6 +182,17 @@ func renameArtifacts(runDir string) {
 	}
 }
 
+// abandonedExplanations marks the explanations a quit of derby cut short as
+// failed, so the Retry button shows: no run writes them anymore.
+func abandonedExplanations(runDir string) {
+	files, _ := filepath.Glob(filepath.Join(runDir, "COPILOT-*.md"))
+	for _, f := range files {
+		if b, _ := os.ReadFile(f); string(b) == explaining {
+			_ = os.WriteFile(f, []byte("_Derby could not write an explanation of the changes (derby quit before it finished)._\n"), 0o644)
+		}
+	}
+}
+
 // migrateCopilotFiles moves a run directory's Copilot files to their
 // current names. Older derby wrote COPILOT-n.md (state, explanation and a
 // footer), COPILOT-n-review.md (the review) and .COPILOT-n-explain.md (the
