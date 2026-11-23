@@ -364,7 +364,7 @@ input[type='checkbox']:focus-visible {
    side by side, the todos, the issue. Small: new task and search. Big and
    half take the full height; .pop centres one alone. */
 :root {
-  --pop-big: min(1200px, 100vw - 48px);
+  --pop-big: min(max(1200px, 65vw), 1900px, 100vw - 48px); /* grows with big screens */
   --pop-half: min(760px, (100vw - 64px) / 2);
   --pop-small: min(640px, 100vw - 32px);
 }
