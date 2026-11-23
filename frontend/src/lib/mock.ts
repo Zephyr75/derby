@@ -551,7 +551,7 @@ export const api: Api = {
     ] })
     return ok({ source: '', sha: '', via: '', files: [] })
   },
-  FileDiff: (_sid, path) => ok({ path, binary: false, truncated: false, old: '', new: '', sources: false, diff: [
+  FileDiff: (_sid, path) => ok({ path, binary: false, truncated: false, old: '', new: Array.from({ length: 80 }, (_, i) => `// line ${i + 1}`).join('\n') + '\n', sources: true, diff: [
     `diff --git a/${path} b/${path}`, `--- a/${path}`, `+++ b/${path}`,
     '@@ -12,7 +12,12 @@ func (c *Conn) Unlock(ctx context.Context) error {',
     ' \tif c.closed {', ' \t\treturn ErrClosed', ' \t}', '-\treturn c.send(ctx, cmdUnlock)',

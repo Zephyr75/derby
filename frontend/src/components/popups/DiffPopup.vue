@@ -241,8 +241,7 @@ function key(e: KeyboardEvent) {
             <p v-if="f.repo && (i === 0 || files[i - 1].repo !== f.repo) && files.some((x) => x.repo !== f.repo)" class="repo">{{ f.repo }}</p>
             <button class="ch" :class="{ on: keyOf(f) === selKey }" :aria-expanded="!folded[keyOf(f)]" @click="toggle(f)">
               <Icon :name="folded[keyOf(f)] ? 'chevron-right' : 'chevron'" :size="12" />
-              <span :class="['st', statusCls(f.status)]" :title="statusTitle(f.status)">{{ f.status === '?' ? 'U' : f.status }}</span>
-              <span class="path mono" :title="f.path"><span class="dir">{{ split(f.path).dir }}</span>{{ split(f.path).name }}</span>
+              <span class="path mono" :title="f.path"><span :class="['name', statusCls(f.status)]">{{ split(f.path).name }}</span> <span class="dir">{{ split(f.path).dir }}</span></span>
               <span v-if="f.binary" class="muted small">binary</span>
               <template v-else>
                 <span v-if="f.added" class="c-add small">+{{ f.added }}</span>
@@ -441,20 +440,24 @@ function key(e: KeyboardEvent) {
   }
   .ch {
     position: sticky;
-    top: 0;
+    top: 6px;
     z-index: 2;
-    width: 100%;
+    width: calc(100% - 16px);
+    margin: 6px 8px;
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 32px;
-    padding: 0 12px;
-    border: 0;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
     color: var(--text);
     text-align: left;
     font-size: var(--fs-12-5);
+  }
+  .name.c-mod {
+    color: var(--accent);
   }
   .ch:hover {
     background: var(--hover);

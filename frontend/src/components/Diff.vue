@@ -17,20 +17,32 @@ interface Row {
   old: number | null
   new: number | null
   text: string
+  gap?: number // a separator: the gap it stands for
+  nf?: number // a hunk header: its first new line, line count, first old line, old count and the gap's offset
+  nc?: number
+  of?: number
+  oc?: number
+  delta?: number
+  above?: boolean // it can show lines above the next hunk
+  below?: boolean // it can show lines under the previous hunk
 }
 
-const rows = computed(() => {
+const base = computed(() => {
   const out: Row[] = []
   let o = 0
   let n = 0
   let inHunk = false
   for (const line of props.diff.split('\n')) {
-    const m = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/.exec(line)
+    const m = /^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@(.*)$/.exec(line)
     if (m) {
       o = Number(m[1])
-      n = Number(m[2])
+      n = Number(m[4])
       inHunk = true
-      out.push({ kind: 'hunk', old: null, new: null, text: m[3].trim() })
+      const oc = m[3] === undefined ? 1 : Number(m[3])
+      const nc = m[6] === undefined ? 1 : Number(m[6])
+      const of = oc === 0 ? o + 1 : o // a count of 0 names the line before
+      const nf = nc === 0 ? n + 1 : n
+      out.push({ kind: 'hunk', old: null, new: null, text: m[7].trim(), nf, nc, of, oc, delta: nf - of })
       continue
     }
     if (!inHunk) continue // diff --git, index, ---, +++ headers
@@ -40,6 +52,63 @@ const rows = computed(() => {
     else if (line.startsWith('diff --git')) inHunk = false
     else out.push({ kind: 'ctx', old: o++, new: n++, text: line.slice(1) })
   }
+  return out
+})
+
+// With the files' text, the lines a diff leaves out (between its hunks, before
+// the first, after the last) can be shown, a few at a time, from the arrows of
+// their separator, as in Zed.
+const STEP = 20
+const grown = ref<Record<number, { up: number; down: number }>>({})
+const newLines = computed(() => {
+  const t = props.sources?.new
+  if (t === undefined) return null
+  const l = t.split('\n')
+  if (l.at(-1) === '') l.pop()
+  return l
+})
+watch(() => props.diff, () => (grown.value = {}))
+function grow(gap: number, dir: 'up' | 'down') {
+  const g = grown.value[gap] ?? { up: 0, down: 0 }
+  grown.value = { ...grown.value, [gap]: { ...g, [dir]: g[dir] + STEP } }
+  cancel()
+}
+const rows = computed(() => {
+  const b = base.value
+  const lines = newLines.value
+  if (!lines) return b
+  const out: Row[] = []
+  let next = 1 // the first new line not placed yet
+  let delta = 0 // new line number minus old, in the gap
+  let gap = 0
+  const fill = (until: number, last: boolean, text: string) => {
+    const hidden = until - next
+    const g = grown.value[gap] ?? { up: 0, down: 0 }
+    const down = gap === 0 ? 0 : Math.min(g.down, hidden)
+    const up = last ? 0 : Math.min(g.up, hidden - down)
+    const show = (from: number, to: number) => {
+      for (let n = from; n <= to; n++) out.push({ kind: 'ctx', old: n - delta, new: n, text: lines[n - 1] ?? '' })
+    }
+    if (hidden > 0) {
+      show(next, next + down - 1)
+      if (hidden - down - up > 0) out.push({ kind: 'hunk', old: null, new: null, text, gap, above: !last, below: gap > 0 })
+      show(until - up, until - 1)
+    }
+    gap++
+  }
+  for (const r of b) {
+    if (r.kind !== 'hunk') {
+      out.push(r)
+      continue
+    }
+    delta = r.delta ?? 0
+    fill(r.nf ?? next, false, r.text)
+    next = (r.nf ?? next) + (r.nc ?? 0)
+    delta = 0
+  }
+  const lastHunk = [...b].reverse().find((r) => r.kind === 'hunk')
+  delta = lastHunk ? (lastHunk.nf ?? 0) + (lastHunk.nc ?? 0) - ((lastHunk.of ?? 0) + (lastHunk.oc ?? 0)) : 0
+  fill(lines.length + 1, true, '')
   return out
 })
 
@@ -111,7 +180,7 @@ const units = computed<Unit[]>(() => {
   }
   return out
 })
-const cols = computed(() => (props.split ? 6 : 4))
+const cols = computed(() => (props.split ? 6 : 3))
 const sides = (u: Unit) => [
   { side: 'l', i: u.left },
   { side: 'r', i: u.right },
@@ -221,13 +290,18 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}�
       <tbody>
         <template v-for="(u, j) in units" :key="j">
           <tr v-if="u.hunk" class="hunk">
-            <td class="ln" :colspan="split ? 1 : 3">⋯</td>
+            <td class="ln exp" :colspan="split ? 1 : 2">
+              <template v-if="rows[u.left].gap !== undefined">
+                <button v-if="rows[u.left].above" class="expand" aria-label="Show more lines above" title="Show more lines above" @click="grow(rows[u.left].gap!, 'up')"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 10 8 5.5l4.5 4.5" /></svg></button>
+                <button v-if="rows[u.left].below" class="expand" aria-label="Show more lines below" title="Show more lines below" @click="grow(rows[u.left].gap!, 'down')"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 6 8 10.5 12.5 6" /></svg></button>
+              </template>
+              <template v-else>⋯</template>
+            </td>
             <td class="code" :colspan="split ? 5 : 1">{{ rows[u.left].text }}</td>
           </tr>
-          <!-- unified: old and new line numbers, then the line -->
+          <!-- unified: the line number (the old one of a removed line), then the line -->
           <tr v-else-if="!split" :class="[rows[u.left].kind, marks(u.left)]" @mouseenter="over(u.left)">
-            <td class="ln">{{ rows[u.left].old ?? '' }}</td>
-            <td class="ln">{{ rows[u.left].new ?? '' }}</td>
+            <td class="ln">{{ rows[u.left].new ?? rows[u.left].old ?? '' }}</td>
             <td class="gut">
               <button v-if="commentable && lineRow(rows[u.left])" class="add-note" aria-label="Comment on this line" title="Comment (drag for several lines)" @mousedown="press(u.left, $event)">+</button>
             </td>
@@ -330,6 +404,26 @@ td {
 }
 .del .sign {
   color: var(--del);
+}
+.expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.expand:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.exp {
+  white-space: nowrap;
 }
 .hunk td {
   padding-top: 4px;
