@@ -27,7 +27,8 @@ function family(tasks: Task[]) {
 // under their project.
 const families = computed(() => derby.panelFamilies().map(family))
 
-// Archive: the picked project's tasks, newest first, each family folded into one row.
+// Archive: the pick's tasks (a project's, the sister families or all), newest
+// first, each family folded into one row.
 const archive = computed(() => derby.archiveEntries().map((e) => (e.family ? { ...family(e.tasks), family: true } : { key: e.key, tasks: e.tasks, family: false, name: '', tip: '' })))
 
 function addProject() {

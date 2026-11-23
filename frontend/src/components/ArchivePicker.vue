@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// The Archive's project picker: the Archive lists one project's archived
-// tasks at a time, or every project's. A Zed picker, as the top bar's lists:
-// a ghost button, then a filter over the projects.
+// The Archive's picker: the Archive lists one project's archived tasks at a
+// time, the sister families (several projects' work, so a pick of their own),
+// or everything. A Zed picker, as the top bar's lists: a ghost button, then a
+// filter over the picks.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { derby } from '../lib/state'
+import { derby, SISTERS } from '../lib/state'
 import Icon from './ui/Icon.vue'
 
 interface Row {
@@ -18,12 +19,15 @@ const hi = ref(0)
 const root = ref<HTMLElement>()
 const input = ref<HTMLInputElement>()
 
+// Counts are archived tasks: a project's own, and the families' together.
 const all = computed<Row[]>(() => {
   const archived = derby.tasks.filter((t) => t.archived)
+  const families = derby.sisterGroups
+  const single = archived.filter((t) => !families.has(t.id))
   const projects = derby.groups
-    .map((g) => ({ id: g.id, label: g.name, count: archived.filter((t) => t.project === g.id).length, gone: g.gone }))
+    .map((g) => ({ id: g.id, label: g.name, count: single.filter((t) => t.project === g.id).length, gone: g.gone }))
     .filter((r) => !r.gone || r.count)
-  return [{ id: '', label: 'All projects', count: archived.length }, ...projects]
+  return [{ id: '', label: 'All projects', count: archived.length }, { id: SISTERS, label: 'Sisters', count: archived.length - single.length }, ...projects]
 })
 const label = computed(() => all.value.find((r) => r.id === derby.archiveScope)?.label ?? 'All projects')
 const rows = computed(() => {
@@ -64,8 +68,8 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
 
 <template>
   <div ref="root" class="picker">
-    <button type="button" class="trigger" :class="{ on: open }" title="Pick a project" aria-haspopup="listbox" :aria-expanded="open" @click="toggle">
-      <Icon name="folder-open" :size="14" class="fi" />
+    <button type="button" class="trigger" :class="{ on: open }" title="Pick what to list" aria-haspopup="listbox" :aria-expanded="open" @click="toggle">
+      <Icon :name="derby.archiveScope === SISTERS ? 'sisters' : 'folder-open'" :size="14" class="fi" />
       <span class="name">{{ label }}</span>
       <Icon name="chevron" :size="12" class="chev" />
     </button>
