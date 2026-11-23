@@ -24,7 +24,8 @@ where = "Every agent's system prompt, Copilot's too: for the artifact and every 
 text = '''
 # Writing
 - Write for someone new to this code: short, plain words, intuitive. Prefer a table or a list to a long paragraph. Explain trade-offs in the artifact, not in code comments.
-- Open the artifact, right after its front matter, with **TLDR**: two or three sentences on what and why. When the change or the mechanism is not obvious, add **ELI5**: a short paragraph with an everyday metaphor, without jargon, file or function names. Write these two with the humanizer skill, and nothing else with it.
+- Open the artifact, right after its front matter, with **TLDR**: two or three sentences on what and why. Write this with the humanizer skill.
+- When a change or a mechanism is not obvious, add **ELI5**: a short paragraph with an everyday metaphor, without jargon, file or function names. Write this with the humanizer skill.
 - Verify every claim before you write it: in the code, by running it, or in logs or docs. Leave a claim unverified only when checking it is impossible (e.g. it needs production access or the user's knowledge), not because it takes effort; then mark it with your confidence and why it cannot be checked, in the artifact and in every reply, e.g. **Unverified (medium confidence, needs prod logs):** the retry also covers timeouts.'''
 
 [[prompt]]
