@@ -16,8 +16,8 @@ for (let i = colours.length - 1; i > 0; i--) {
   ;[colours[i], colours[j]] = [colours[j], colours[i]]
 }
 // The first at random, then one of the two others at random: each a third
-// of the time, never twice in a row. Each runs 6s (three turns of the rings,
-// which then rest in the row); the bouncing balls take 0.45s more: the last
+// of the time, never twice in a row. Each runs 6s (the rings 7.8s: three turns
+// of 2.6s, which then rest in the row); the bouncing balls take 0.45s more: the last
 // one starts 0.3s after the first, and each settles after its last landing
 // (0.15s).
 const kinds = ['rings', 'bounce', 'pulse'] as const
@@ -27,7 +27,7 @@ function next() {
   timer = window.setTimeout(() => {
     kind.value = (kind.value + 1 + Math.floor(Math.random() * 2)) % 3
     next()
-  }, kinds[kind.value] === 'bounce' ? 6450 : 6000)
+  }, kinds[kind.value] === 'bounce' ? 6450 : kinds[kind.value] === 'rings' ? 7800 : 6000)
 }
 next()
 onBeforeUnmount(() => clearTimeout(timer))
@@ -76,7 +76,7 @@ onBeforeUnmount(() => clearTimeout(timer))
   fill: none;
   stroke-width: 30;
   stroke-linecap: round;
-  animation: ringA 2s linear infinite;
+  animation: ringA 2.6s linear infinite;
 }
 .ring.b {
   animation-name: ringB;
@@ -295,10 +295,10 @@ onBeforeUnmount(() => clearTimeout(timer))
 @keyframes blip {
   0%,
   100% {
-    transform: scale(0.8);
+    transform: scale(0.45);
   }
   50% {
-    transform: scale(1.2);
+    transform: scale(1.7);
   }
 }
 
