@@ -70,9 +70,9 @@ function addProject() {
             <Icon name="sisters" />
             <span class="name">{{ f.name }}</span>
           </button>
-          <template v-if="!derby.isCollapsed(f.key)">
+          <div v-if="!derby.isCollapsed(f.key)" class="nest">
             <div v-for="(t, i) in f.tasks" :key="t.id" class="cardw"><TaskCard :task="t" family :big="i === 0 && !t.sister" /></div>
-          </template>
+          </div>
         </template>
         <template v-for="g in groups" :key="g.p.id">
           <button class="group" :aria-expanded="!derby.isCollapsed(g.p.id)" @click="derby.toggleCollapsed(g.p.id)">
@@ -80,10 +80,10 @@ function addProject() {
             <span class="name">{{ g.p.name }}</span>
             <span v-if="g.p.gone" class="gone" title="Project removed">removed</span>
           </button>
-          <template v-if="!derby.isCollapsed(g.p.id)">
-            <span v-if="!g.tasks.length" class="empty">No open tasks</span>
+          <span v-if="!derby.isCollapsed(g.p.id) && !g.tasks.length" class="empty">No open tasks</span>
+          <div v-else-if="!derby.isCollapsed(g.p.id)" class="nest">
             <div v-for="t in g.tasks" :key="t.id" class="cardw"><TaskCard :task="t" /></div>
-          </template>
+          </div>
         </template>
       </template>
       <div v-if="derby.left === 'archive' ? !derby.groups.length : !groups.length" class="none">

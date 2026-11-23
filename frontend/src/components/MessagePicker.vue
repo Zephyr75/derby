@@ -157,7 +157,7 @@ const tip = computed(() => `Your messages (${label(derby.settings?.keymap.messag
   padding: 0 8px 0 10px;
   border: 0;
   border-radius: 6px;
-  background: transparent;
+  background: var(--bg);
   color: var(--muted);
   font-size: var(--fs-12);
 }
