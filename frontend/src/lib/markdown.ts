@@ -97,7 +97,7 @@ const led = (b: string) => {
 const prose = (b: string) => !heading(b) && !/^\s*(`{3,}|~{3,})/.test(b) && !/^\s*([-*_])(\s*\1){2,}\s*$/.test(b) && !/^\s*<!--[\s\S]*-->\s*$/.test(b)
 
 /**
- * summary is a report's TL;DR and ELI5, as the Writing prompt asks every
+ * summary is a report's TL;DR, ELI5 and, for a plan, Options, as the Writing prompt asks every
  * artifact to open with: a heading (## TLDR) with its blocks up to the next
  * heading, or a paragraph led by a bold label (**TLDR**: …), with the next
  * paragraph when the label stands alone. Without a TL;DR, the report's first
@@ -130,7 +130,20 @@ export function summary(src: string): { label: string; md: string }[] {
     const first = bs.findIndex((b, i) => prose(b) && !used.has(i))
     if (first >= 0 && (!found.has('ELI5') || first < Math.min(...used))) out.unshift({ label: '', md: bs[first] })
   }
+  const opts = options(bs)
+  if (opts) out.push({ label: 'Options', md: opts })
   return out
+}
+
+// the Options section of a plan: its heading's blocks up to the next heading
+// of the same or a higher level (the options' own subheadings stay in)
+function options(bs: string[]): string {
+  const level = (b: string) => /^(#{1,6})\s/.exec(b)?.[1].length ?? 0
+  const i = bs.findIndex((b) => level(b) && /^(?:\d+[.)]\s*)?options?\s*[:.]?$/i.test(b.replace(/^#+\s+/, '').replace(/[*_`#\s]+$/, '').replace(/[*_`]/g, '')))
+  if (i < 0) return ''
+  const body: string[] = []
+  for (let j = i + 1; j < bs.length && !(level(bs[j]) && level(bs[j]) <= level(bs[i])); j++) body.push(bs[j])
+  return body.join('\n\n')
 }
 
 /** renderInline renders one line of markdown, without a paragraph. */
