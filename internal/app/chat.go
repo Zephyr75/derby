@@ -29,13 +29,14 @@ import (
 
 // ChatItem is one entry of a step's conversation.
 type ChatItem struct {
-	Kind    string         `json:"kind"`    // user | command | bash | bashout | text | thinking | tool | result | note | error
-	ID      string         `json:"id"`      // the tool call a tool or result item belongs to
-	Text    string         `json:"text"`    // the message; a result's output; a command's arguments
-	Tool    string         `json:"tool"`    // a tool call's tool, a command's name
-	Input   map[string]any `json:"input"`   // a tool call's input (long values cut)
-	Diff    string         `json:"diff"`    // a result's change to a file, as a unified diff
-	IsError bool           `json:"isError"` // a result that failed
+	Kind    string         `json:"kind"`         // user | command | bash | bashout | text | thinking | tool | result | note | error
+	ID      string         `json:"id"`           // the tool call a tool or result item belongs to
+	Text    string         `json:"text"`         // the message; a result's output; a command's arguments
+	Tool    string         `json:"tool"`         // a tool call's tool, a command's name
+	Input   map[string]any `json:"input"`        // a tool call's input (long values cut)
+	Diff    string         `json:"diff"`         // a result's change to a file, as a unified diff
+	IsError bool           `json:"isError"`      // a result that failed
+	At      string         `json:"at,omitempty"` // when the user sent it (user, command and bash items), RFC 3339
 }
 
 // Chat is the part of a step's conversation after Offset.
@@ -144,6 +145,7 @@ type chatMeta struct {
 // transcriptLine is the part of a transcript line the chat shows.
 type transcriptLine struct {
 	Type        string `json:"type"`
+	Timestamp   string `json:"timestamp"`
 	QuerySource string `json:"querySource"` // api-request: repl_main_thread for the conversation's own
 	Params      struct {
 		Model  string `json:"model"`
@@ -220,7 +222,7 @@ func parseChat(b []byte) ([]ChatItem, string, chatMeta) {
 			}
 		case "user":
 			if !l.IsMeta {
-				items = append(items, userItems(l)...)
+				items = append(items, sent(userItems(l), l.Timestamp)...)
 			}
 		case "assistant":
 			if u := l.Message.Usage; u != nil {
@@ -256,12 +258,23 @@ func parseChat(b []byte) ([]ChatItem, string, chatMeta) {
 				items = append(items, ChatItem{Kind: "note", Text: "Conversation compacted"})
 			case "local_command":
 				if it, ok := commandItem(l.Content); ok {
+					it.At = l.Timestamp
 					items = append(items, it)
 				}
 			}
 		}
 	}
 	return items, title, meta
+}
+
+// sent stamps what the user sent with its transcript line's time.
+func sent(items []ChatItem, at string) []ChatItem {
+	for i, it := range items {
+		if it.Kind == "user" || it.Kind == "command" || it.Kind == "bash" {
+			items[i].At = at
+		}
+	}
+	return items
 }
 
 // userItems: what the user typed (a message or a /command), a local

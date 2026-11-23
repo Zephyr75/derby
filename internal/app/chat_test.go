@@ -13,10 +13,10 @@ func TestParseChat(t *testing.T) {
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"","signature":"x"}]}}`,
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Reading the plan."}]}}`,
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Edit","input":{"file_path":"/w/a.go","old_string":"a","new_string":"b"}}]}}`,
-		`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"The file /w/a.go has been updated."}]},"toolUseResult":{"filePath":"/w/a.go","structuredPatch":[{"oldStart":3,"oldLines":1,"newStart":3,"newLines":1,"lines":["-a","+b"]}]}}`,
+		`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"The file /w/a.go has been updated."}]},"timestamp":"2026-11-20T14:55:02.000Z","toolUseResult":{"filePath":"/w/a.go","structuredPatch":[{"oldStart":3,"oldLines":1,"newStart":3,"newLines":1,"lines":["-a","+b"]}]}}`,
 		`{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"a subagent"}]}}`,
 		`{"type":"user","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user]"}]}}`,
-		`{"type":"user","message":{"role":"user","content":"why b?"}}`,
+		`{"type":"user","message":{"role":"user","content":"why b?"},"timestamp":"2026-11-20T14:56:40.000Z"}`,
 		`{"type":"system","subtype":"api_error","error":{"message":"Connection error.","formatted":"Can't reach the API server"}}`,
 		`{"type":"system","subtype":"stop_hook_summary"}`,
 		`{"type":"attachment","attachment":{"type":"hook_success"}}`,
@@ -35,8 +35,11 @@ func TestParseChat(t *testing.T) {
 	if c := items[0]; c.Tool != "/derby:implement" || c.Text != "4356 -- keep it small" {
 		t.Errorf("command: %+v", c)
 	}
-	if r := items[3]; r.ID != "t1" || r.Diff != "@@ -3,1 +3,1 @@\n-a\n+b\n" {
+	if r := items[3]; r.ID != "t1" || r.Diff != "@@ -3,1 +3,1 @@\n-a\n+b\n" || r.At != "" {
 		t.Errorf("result: %+v", r)
+	}
+	if u := items[5]; u.Text != "why b?" || u.At != "2026-11-20T14:56:40.000Z" {
+		t.Errorf("user: %+v", u)
 	}
 	if e := items[6]; e.Text != "Can't reach the API server" {
 		t.Errorf("error: %+v", e)

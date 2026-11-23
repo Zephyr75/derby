@@ -59,7 +59,7 @@ const settings: Settings = {
     rules: 'Never edit generated files under gen/.\nRun the tests you touched before writing the artifact.', projects,
   },
   agents, context,
-  keymap: { toggleLeft: ['Alt+E'], toggleRight: ['Alt+A'], close: ['Escape'] },
+  keymap: { toggleLeft: ['Alt+E'], toggleRight: ['Alt+A'], messages: ['Alt+S'], close: ['Escape'] },
   prompts: [],
   dir: '~/.derby',
 }
@@ -317,7 +317,8 @@ export function mockChat(stepId: string): ChatItem[] {
     return result === undefined ? [it('tool', { id, tool: name, input })] : [it('tool', { id, tool: name, input }), it('result', { id, text: result, diff, isError })]
   }
   const cmd = s.agent === 'impl' ? 'implement' : s.agent
-  const out: ChatItem[] = [it('command', { tool: `/derby:${cmd}`, text: `${t.issue || '--local'}${s.guide ? ' -- ' + s.guide : ''}` })]
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
+  const out: ChatItem[] = [it('command', { tool: `/derby:${cmd}`, text: `${t.issue || '--local'}${s.guide ? ' -- ' + s.guide : ''}`, at: ago(s.state === 'done' ? 26 * 60 : 12) })]
   out.push(it('text', { text: `Reading the run files first: \`TASK.md\`, the newest plan${s.n > 1 ? ' and the last review' : ''}.` }))
   out.push(...tool('Read', { file_path: `${run}/PLAN-1.md` }, '---\nstatus: done\n---\n\n**TLDR**: …'))
   if (s.agent === 'plan') {
@@ -336,7 +337,16 @@ export function mockChat(stepId: string): ChatItem[] {
   ] }))
   if (s.state === 'running') out.push(it('text', { text: 'Writing the artifact now.' }))
   else if (s.state !== 'approval') out.push(it('text', { text: `Done. The artifact is written in \`${run}\`:\n\n- the change keeps the diff small\n- tests pass (\`${test}\`)\n\nNext: start the next step from the left panel.` }))
-  if (s.state === 'done') out.push(it('user', { text: 'Why did you keep the old retry helper?' }), it('text', { text: 'Two callers outside `internal/unlock` still use it; removing it belongs in its own change.' }))
+  if (s.state === 'done') out.push(
+    it('user', { text: 'Why did you keep the old retry helper?', at: ago(41) }),
+    it('text', { text: 'Two callers outside `internal/unlock` still use it; removing it belongs in its own change.' }),
+    it('user', { text: 'Make the retry budget a per-region setting instead of a global one, with 3 as the default when a region leaves it out', at: ago(30) }),
+    it('text', { text: 'Moved `RetryBudget` under each region in `config.yaml`; a region without it gets 3.' }),
+    it('bash', { text: test, at: ago(22) }),
+    it('bashout', { text: 'ok   ./internal/unlock   1.84s\nok   ./internal/config   0.41s' }),
+    it('user', { text: 'Looks good. Write what changed for the PR description', at: ago(9) }),
+    it('text', { text: '- retries the BLE handshake up to the region\'s `RetryBudget` (3 by default)\n- the unlock sheet shows the attempt while it retries' }),
+  )
   return [...out, ...(chatSent[stepId] ?? [])]
 }
 
@@ -573,7 +583,7 @@ export const api: Api = {
   TrustFolder: (step) => { mockTrusting.delete(step); return ok(undefined) },
   StepFiles: (_s, q) => ok(['internal/', 'internal/unlock/', 'internal/unlock/ble.go', 'internal/unlock/budget.go', 'internal/config/config.go', 'README.md'].filter((f) => f.toLowerCase().includes(q.toLowerCase()))),
   AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.derby/runs/core/4356/attachments/' + f.split('/').pop())),
-  SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false }); return ok(undefined) },
+  SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false, at: new Date().toISOString() }); return ok(undefined) },
   InterruptStep: () => ok(undefined),
   SetTheme: (theme, mode) => { Object.assign(settings.config.appearance, { theme, mode }); emit('settings:changed', settings); return ok(undefined) },
   SaveAppearance: (a, z) => { settings.config.appearance = a; settings.config.zedCommand = z; emit('settings:changed', settings); return ok(undefined) },

@@ -72,6 +72,8 @@ class Derby {
   active = -1
   sel = ''
   left: 'tasks' | 'archive' = 'tasks'
+  /** The chat's list of the user's messages is open. */
+  messages = false
   view: 'board' | 'settings' = 'board'
   settingsTab: SettingsTab = 'context'
   overlay: Overlay = 'none'
@@ -891,6 +893,9 @@ class Derby {
         return this.togglePanel('right')
       case 'newTask':
         return this.openOverlay('new')
+      case 'messages':
+        if (board) this.messages = !this.messages
+        return
       case 'todos':
         return this.openOverlay(this.overlay === 'todos' ? 'none' : 'todos')
       case 'settings':

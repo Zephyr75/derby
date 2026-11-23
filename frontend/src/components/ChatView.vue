@@ -13,6 +13,7 @@ import type { ChatItem, SessionStatus, Skill, Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
 import Diff from './Diff.vue'
 import Working from './ui/Working.vue'
+import MessagePicker, { type Mark } from './MessagePicker.vue'
 
 const props = defineProps<{ step: Step }>()
 const task = computed(() => derby.task(props.step.taskId))
@@ -79,6 +80,14 @@ function scrollDown(now = false) {
 }
 
 const list = computed(() => entries(items.value))
+// What the user sent, for the picker in the thread's corner.
+const marks = computed<Mark[]>(() =>
+  list.value.flatMap((e) =>
+    e.kind === 'item' && (e.item.kind === 'user' || e.item.kind === 'command' || e.item.kind === 'bash')
+      ? [{ turn: e.turn, text: e.item.kind === 'bash' ? '! ' + e.item.text : e.item.text, command: e.item.kind === 'command' ? e.item.tool : '', at: e.item.at ?? '' }]
+      : [],
+  ),
+)
 const html = (text: string) => render(text, { task: props.step.taskId, dark: derby.dark })
 const view = (t: ToolCall) => toolView(t.call, task.value?.worktree ?? '', task.value?.runDir ?? '')
 
@@ -385,150 +394,153 @@ async function checkAgain() {
 
 <template>
   <div class="chat" :style="{ '--code-blue': derby.dark ? '#b1b9f9' : '#5769f7', '--bash': derby.dark ? '#fd5db1' : '#ff0087' }">
-    <div ref="thread" class="thread">
-      <div class="inner">
-        <p v-if="loaded && !found && !trust" class="empty">Claude Code has not saved this session's conversation yet. It shows here as soon as Claude starts.</p>
+    <div class="pane">
+      <div ref="thread" class="thread">
+        <div class="inner">
+          <p v-if="loaded && !found && !trust" class="empty">Claude Code has not saved this session's conversation yet. It shows here as soon as Claude starts.</p>
 
-        <template v-for="e in list" :key="e.id">
-          <!-- a command: Zed's terminal card, its header the command -->
-          <div v-if="e.kind === 'tool' && view(e.tool).body === 'command'" class="tcard" :class="{ failed: e.tool.result?.isError }">
-            <div class="thead">
-              <button class="trow" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)">
-                <span class="cwd">{{ e.tool.call.input?.description || 'Run Command' }}</span>
-                <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
-                <Icon v-if="busy(e.tool) && !confirming(e.tool)" name="spinner" :size="13" class="spin" />
-                <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
-              </button>
-              <pre class="command">{{ e.tool.call.input?.command }}</pre>
-              <button class="copyc" title="Copy Command" aria-label="Copy Command" @click="derby.copy(String(e.tool.call.input?.command ?? ''), 'the command')"><Icon name="copy" :size="12" /></button>
-            </div>
-            <pre v-if="isOpen(e.id) && e.tool.result" class="output">{{ e.tool.result.text || 'No output.' }}</pre>
-            <div v-if="confirming(e.tool)" class="perm">
-              <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
-              <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
-              <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
-            </div>
-          </div>
-
-          <!-- an edit (or a tool waiting for approval): a card, its header the title -->
-          <div v-else-if="e.kind === 'tool' && (view(e.tool).card || confirming(e.tool))" class="card" :class="{ failed: e.tool.result?.isError }">
-            <button class="chead" :aria-expanded="isOpen(e.id) || confirming(e.tool)" @click="toggle(e.id)">
-              <Icon :name="view(e.tool).icon" :size="14" class="ico" />
-              <span class="ttl" v-html="title(e.tool)"></span>
-              <span v-if="e.tool.result?.diff" class="stat"><span class="add">+{{ diffStat(e.tool.result.diff).add }}</span><span class="del">−{{ diffStat(e.tool.result.diff).del }}</span></span>
-              <Icon v-if="busy(e.tool) && !confirming(e.tool)" name="spinner" :size="13" class="spin" />
-              <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
-              <Icon v-if="!confirming(e.tool)" :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
-            </button>
-            <template v-if="isOpen(e.id) || confirming(e.tool)">
-              <div v-if="e.tool.result?.diff" class="diffw"><Diff :diff="e.tool.result.diff" :path="String(e.tool.call.input?.file_path ?? '')" /></div>
-              <!-- Claude's question form, answered here: Derby types the answers into Claude Code's form -->
-              <div v-else-if="view(e.tool).body === 'question' && confirming(e.tool)" class="qs form">
-                <div v-for="(q, i) in questions(e.tool.call)" :key="i" class="qblock">
-                  <div class="qq"><span v-if="q.header" class="qh">{{ q.header }}</span>{{ q.question }}<span v-if="q.multi" class="muted"> (pick any)</span></div>
-                  <button v-for="(o, k) in q.options" :key="o.label" class="opt" :class="{ on: picked(i, k + 1) }" @click="pickOption(i, k + 1, q.multi)">
-                    <span :class="q.multi ? 'box' : 'radio'"></span>
-                    <span class="ol"><b>{{ o.label }}</b><span v-if="o.description" class="muted">{{ o.description }}</span></span>
-                  </button>
-                  <input v-if="!q.multi" v-model="typed[i]" class="other" :class="{ on: !!typed[i]?.trim() }" placeholder="Or type your own answer" data-own-escape @focus="picks[i] = []" />
-                </div>
+          <template v-for="e in list" :key="e.id">
+            <!-- a command: Zed's terminal card, its header the command -->
+            <div v-if="e.kind === 'tool' && view(e.tool).body === 'command'" class="tcard" :class="{ failed: e.tool.result?.isError }">
+              <div class="thead">
+                <button class="trow" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)">
+                  <span class="cwd">{{ e.tool.call.input?.description || 'Run Command' }}</span>
+                  <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
+                  <Icon v-if="busy(e.tool) && !confirming(e.tool)" name="spinner" :size="13" class="spin" />
+                  <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
+                </button>
+                <pre class="command">{{ e.tool.call.input?.command }}</pre>
+                <button class="copyc" title="Copy Command" aria-label="Copy Command" @click="derby.copy(String(e.tool.call.input?.command ?? ''), 'the command')"><Icon name="copy" :size="12" /></button>
               </div>
-              <div v-else-if="view(e.tool).body === 'question'" class="qs">
-                <div v-for="(q, i) in questions(e.tool.call)" :key="i">
-                  <div class="qq">{{ q.question }}</div>
-                  <div v-for="o in q.options" :key="o.label" class="qo"><b>{{ o.label }}</b> <span class="muted">{{ o.description }}</span></div>
-                </div>
-              </div>
-              <pre v-else class="output">{{ e.tool.result?.text || rawInput(e.tool.call) }}</pre>
-            </template>
-            <div v-if="confirming(e.tool)" class="perm">
-              <template v-if="e.tool.call.tool !== 'AskUserQuestion'">
+              <pre v-if="isOpen(e.id) && e.tool.result" class="output">{{ e.tool.result.text || 'No output.' }}</pre>
+              <div v-if="confirming(e.tool)" class="perm">
                 <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
                 <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
                 <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+              </div>
+            </div>
+
+            <!-- an edit (or a tool waiting for approval): a card, its header the title -->
+            <div v-else-if="e.kind === 'tool' && (view(e.tool).card || confirming(e.tool))" class="card" :class="{ failed: e.tool.result?.isError }">
+              <button class="chead" :aria-expanded="isOpen(e.id) || confirming(e.tool)" @click="toggle(e.id)">
+                <Icon :name="view(e.tool).icon" :size="14" class="ico" />
+                <span class="ttl" v-html="title(e.tool)"></span>
+                <span v-if="e.tool.result?.diff" class="stat"><span class="add">+{{ diffStat(e.tool.result.diff).add }}</span><span class="del">−{{ diffStat(e.tool.result.diff).del }}</span></span>
+                <Icon v-if="busy(e.tool) && !confirming(e.tool)" name="spinner" :size="13" class="spin" />
+                <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
+                <Icon v-if="!confirming(e.tool)" :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
+              </button>
+              <template v-if="isOpen(e.id) || confirming(e.tool)">
+                <div v-if="e.tool.result?.diff" class="diffw"><Diff :diff="e.tool.result.diff" :path="String(e.tool.call.input?.file_path ?? '')" /></div>
+                <!-- Claude's question form, answered here: Derby types the answers into Claude Code's form -->
+                <div v-else-if="view(e.tool).body === 'question' && confirming(e.tool)" class="qs form">
+                  <div v-for="(q, i) in questions(e.tool.call)" :key="i" class="qblock">
+                    <div class="qq"><span v-if="q.header" class="qh">{{ q.header }}</span>{{ q.question }}<span v-if="q.multi" class="muted"> (pick any)</span></div>
+                    <button v-for="(o, k) in q.options" :key="o.label" class="opt" :class="{ on: picked(i, k + 1) }" @click="pickOption(i, k + 1, q.multi)">
+                      <span :class="q.multi ? 'box' : 'radio'"></span>
+                      <span class="ol"><b>{{ o.label }}</b><span v-if="o.description" class="muted">{{ o.description }}</span></span>
+                    </button>
+                    <input v-if="!q.multi" v-model="typed[i]" class="other" :class="{ on: !!typed[i]?.trim() }" placeholder="Or type your own answer" data-own-escape @focus="picks[i] = []" />
+                  </div>
+                </div>
+                <div v-else-if="view(e.tool).body === 'question'" class="qs">
+                  <div v-for="(q, i) in questions(e.tool.call)" :key="i">
+                    <div class="qq">{{ q.question }}</div>
+                    <div v-for="o in q.options" :key="o.label" class="qo"><b>{{ o.label }}</b> <span class="muted">{{ o.description }}</span></div>
+                  </div>
+                </div>
+                <pre v-else class="output">{{ e.tool.result?.text || rawInput(e.tool.call) }}</pre>
               </template>
-              <template v-else>
-                <button class="pb" :disabled="!answered(e.tool) || answering" @click="submitAnswers(e.tool)"><Icon name="check" :size="13" class="ok" />{{ answering ? 'Sending…' : 'Submit answers' }}</button>
-                <button class="pb" title="Skip the form (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Skip</button>
-              </template>
+              <div v-if="confirming(e.tool)" class="perm">
+                <template v-if="e.tool.call.tool !== 'AskUserQuestion'">
+                  <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
+                  <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
+                  <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+                </template>
+                <template v-else>
+                  <button class="pb" :disabled="!answered(e.tool) || answering" @click="submitAnswers(e.tool)"><Icon name="check" :size="13" class="ok" />{{ answering ? 'Sending…' : 'Submit answers' }}</button>
+                  <button class="pb" title="Skip the form (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Skip</button>
+                </template>
+              </div>
+            </div>
+
+            <!-- any other tool: a muted line; unfolded, its raw input and output on a left rule -->
+            <div v-else-if="e.kind === 'tool'" class="tool">
+              <button class="lrow" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)">
+                <Icon :name="view(e.tool).icon" :size="14" class="ico" />
+                <span class="ttl" v-html="title(e.tool)"></span>
+                <Icon v-if="busy(e.tool)" name="spinner" :size="13" class="spin" />
+                <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
+                <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
+              </button>
+              <div v-if="isOpen(e.id)" class="rule">
+                <ul v-if="view(e.tool).body === 'todos'" class="todos">
+                  <li v-for="(td, i) in todos(e.tool.call)" :key="i" :class="td.status"><span class="box"></span>{{ td.text }}</li>
+                </ul>
+                <template v-else>
+                  <div class="io">Raw Input:</div>
+                  <pre class="raw">{{ rawInput(e.tool.call) }}</pre>
+                  <div class="io">Output:</div>
+                  <pre class="raw">{{ e.tool.result?.text || (busy(e.tool) ? 'Running…' : 'No output.') }}</pre>
+                </template>
+                <button class="fold" aria-label="Collapse" @click="toggle(e.id)"><Icon name="chevron-up" :size="13" /></button>
+              </div>
+            </div>
+
+            <!-- the user's message, or the /command Derby ran -->
+            <div v-else-if="e.kind === 'item' && e.item.kind === 'bash'" class="umsg" :data-turn="e.turn">
+              <div class="ubox bashbox"><span class="bang">!</span> <code>{{ e.item.text }}</code></div>
+            </div>
+            <pre v-else-if="e.kind === 'item' && e.item.kind === 'bashout'" class="bashout">{{ e.item.text || 'No output.' }}</pre>
+            <div v-else-if="e.kind === 'item' && (e.item.kind === 'user' || e.item.kind === 'command')" class="umsg" :data-turn="e.turn">
+              <div class="ubox"><code v-if="e.item.kind === 'command'" class="slash">{{ e.item.tool }}</code> {{ fold(e.id, e.item.text)?.text ?? e.item.text }}<button v-if="fold(e.id, e.item.text)" class="more" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)"><Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" />{{ isOpen(e.id) ? 'Show less' : `${fold(e.id, e.item.text)!.more} more lines` }}</button></div>
+            </div>
+
+            <!-- Claude's answer -->
+            <div v-else-if="e.kind === 'item' && e.item.kind === 'text'" class="amsg md" v-html="html(e.item.text)"></div>
+            <div v-else-if="e.kind === 'item' && e.item.kind === 'thinking'" class="amsg">
+              <button class="lrow" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)">
+                <Icon name="think" :size="14" class="ico" /><span class="ttl">Thinking</span>
+                <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
+              </button>
+              <div v-if="isOpen(e.id)" class="thought md" v-html="html(e.item.text)"></div>
+            </div>
+            <div v-else-if="e.kind === 'item' && e.item.kind === 'error'" class="callout"><Icon name="error" :size="14" />{{ e.item.text }}</div>
+            <div v-else-if="e.kind === 'item'" class="note">{{ e.item.text }}</div>
+
+            <!-- a turn's end: copy its answer, back to its message; at the bottom, to the top -->
+            <div v-else-if="e.kind === 'end' && !(e.bottom && (running || approval))" class="controls">
+              <button class="ib" title="Copy response" aria-label="Copy response" @click="copyTurn(e.turn)"><Icon name="copy" :size="14" /></button>
+              <button class="ib" title="Go to your message" aria-label="Go to your message" @click="toUser(e.turn)"><Icon name="user-up" :size="14" /></button>
+              <button v-if="e.bottom" class="ib" title="Go to top" aria-label="Go to top" @click="toTop"><Icon name="arrow-up" :size="14" /></button>
+            </div>
+          </template>
+
+          <!-- Claude waits on something that is not a tool call -->
+          <div v-if="approval && !pending" class="card">
+            <div class="chead static"><Icon name="approval" :size="14" class="ico" /><span class="ttl">Claude waits for your answer</span></div>
+            <div class="perm">
+              <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
+              <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
             </div>
           </div>
-
-          <!-- any other tool: a muted line; unfolded, its raw input and output on a left rule -->
-          <div v-else-if="e.kind === 'tool'" class="tool">
-            <button class="lrow" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)">
-              <Icon :name="view(e.tool).icon" :size="14" class="ico" />
-              <span class="ttl" v-html="title(e.tool)"></span>
-              <Icon v-if="busy(e.tool)" name="spinner" :size="13" class="spin" />
-              <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
-              <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
-            </button>
-            <div v-if="isOpen(e.id)" class="rule">
-              <ul v-if="view(e.tool).body === 'todos'" class="todos">
-                <li v-for="(td, i) in todos(e.tool.call)" :key="i" :class="td.status"><span class="box"></span>{{ td.text }}</li>
-              </ul>
-              <template v-else>
-                <div class="io">Raw Input:</div>
-                <pre class="raw">{{ rawInput(e.tool.call) }}</pre>
-                <div class="io">Output:</div>
-                <pre class="raw">{{ e.tool.result?.text || (busy(e.tool) ? 'Running…' : 'No output.') }}</pre>
-              </template>
-              <button class="fold" aria-label="Collapse" @click="toggle(e.id)"><Icon name="chevron-up" :size="13" /></button>
+          <!-- Claude Code's folder trust dialog, shown before the session starts -->
+          <div v-if="trust" class="card">
+            <div class="chead static"><Icon name="folder" :size="14" class="ico" /><span class="ttl">Claude Code asks to trust this folder</span></div>
+            <div class="trust">
+              <code>{{ trust }}</code>
+              <span>Claude has not worked in it before. Trusting it lets Claude read, edit and run files there.</span>
+            </div>
+            <div class="perm">
+              <button class="pb" :disabled="trusting" @click="trustFolder"><Icon name="check" :size="13" class="ok" />Trust folder</button>
+              <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
             </div>
           </div>
-
-          <!-- the user's message, or the /command Derby ran -->
-          <div v-else-if="e.kind === 'item' && e.item.kind === 'bash'" class="umsg" :data-turn="e.turn">
-            <div class="ubox bashbox"><span class="bang">!</span> <code>{{ e.item.text }}</code></div>
-          </div>
-          <pre v-else-if="e.kind === 'item' && e.item.kind === 'bashout'" class="bashout">{{ e.item.text || 'No output.' }}</pre>
-          <div v-else-if="e.kind === 'item' && (e.item.kind === 'user' || e.item.kind === 'command')" class="umsg" :data-turn="e.turn">
-            <div class="ubox"><code v-if="e.item.kind === 'command'" class="slash">{{ e.item.tool }}</code> {{ fold(e.id, e.item.text)?.text ?? e.item.text }}<button v-if="fold(e.id, e.item.text)" class="more" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)"><Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" />{{ isOpen(e.id) ? 'Show less' : `${fold(e.id, e.item.text)!.more} more lines` }}</button></div>
-          </div>
-
-          <!-- Claude's answer -->
-          <div v-else-if="e.kind === 'item' && e.item.kind === 'text'" class="amsg md" v-html="html(e.item.text)"></div>
-          <div v-else-if="e.kind === 'item' && e.item.kind === 'thinking'" class="amsg">
-            <button class="lrow" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)">
-              <Icon name="think" :size="14" class="ico" /><span class="ttl">Thinking</span>
-              <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
-            </button>
-            <div v-if="isOpen(e.id)" class="thought md" v-html="html(e.item.text)"></div>
-          </div>
-          <div v-else-if="e.kind === 'item' && e.item.kind === 'error'" class="callout"><Icon name="error" :size="14" />{{ e.item.text }}</div>
-          <div v-else-if="e.kind === 'item'" class="note">{{ e.item.text }}</div>
-
-          <!-- a turn's end: copy its answer, back to its message; at the bottom, to the top -->
-          <div v-else-if="e.kind === 'end' && !(e.bottom && (running || approval))" class="controls">
-            <button class="ib" title="Copy response" aria-label="Copy response" @click="copyTurn(e.turn)"><Icon name="copy" :size="14" /></button>
-            <button class="ib" title="Go to your message" aria-label="Go to your message" @click="toUser(e.turn)"><Icon name="user-up" :size="14" /></button>
-            <button v-if="e.bottom" class="ib" title="Go to top" aria-label="Go to top" @click="toTop"><Icon name="arrow-up" :size="14" /></button>
-          </div>
-        </template>
-
-        <!-- Claude waits on something that is not a tool call -->
-        <div v-if="approval && !pending" class="card">
-          <div class="chead static"><Icon name="approval" :size="14" class="ico" /><span class="ttl">Claude waits for your answer</span></div>
-          <div class="perm">
-            <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
-            <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
-          </div>
+          <div v-else-if="approval" class="generating"><span class="sand"></span><span class="lbl">Awaiting Confirmation</span></div>
+          <div v-else-if="running" class="generating"><Working /></div>
         </div>
-        <!-- Claude Code's folder trust dialog, shown before the session starts -->
-        <div v-if="trust" class="card">
-          <div class="chead static"><Icon name="folder" :size="14" class="ico" /><span class="ttl">Claude Code asks to trust this folder</span></div>
-          <div class="trust">
-            <code>{{ trust }}</code>
-            <span>Claude has not worked in it before. Trusting it lets Claude read, edit and run files there.</span>
-          </div>
-          <div class="perm">
-            <button class="pb" :disabled="trusting" @click="trustFolder"><Icon name="check" :size="13" class="ok" />Trust folder</button>
-            <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
-          </div>
-        </div>
-        <div v-else-if="approval" class="generating"><span class="sand"></span><span class="lbl">Awaiting Confirmation</span></div>
-        <div v-else-if="running" class="generating"><Working /></div>
       </div>
+      <MessagePicker :thread="thread" :marks="marks" @go="toUser" />
     </div>
 
     <!-- the message editor: across the bottom, its toolbar under the text -->
@@ -600,6 +612,14 @@ async function checkAgain() {
   --card-border: color-mix(in srgb, var(--border) 80%, transparent);
   --card-head: var(--surface);
   --tool-size: var(--fs-13);
+}
+/* the thread, and the picker of the user's messages over its corner */
+.pane {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .thread {
   flex: 1;

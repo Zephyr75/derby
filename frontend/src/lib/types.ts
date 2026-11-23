@@ -80,6 +80,7 @@ export interface ChatItem {
   input: Record<string, unknown> | null // a tool call's input (long values cut)
   diff: string // a result's change to a file, as a unified diff
   isError: boolean
+  at?: string // when the user sent it (user, command and bash items), RFC 3339
 }
 
 /** The part of a step's conversation after a byte offset (StepChat). */
