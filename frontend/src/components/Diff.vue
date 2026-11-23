@@ -191,7 +191,6 @@ function enter(i: number) {
   hov.value = i
   over(i)
 }
-const sign = (r: Row) => (r.kind === 'add' ? '+' : r.kind === 'del' ? 'âˆ’' : ' ')
 
 // Selection: the rows a new comment is on.
 const anchor = ref(-1)
@@ -305,7 +304,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
             <td class="gut">
               <button v-if="commentable && lineRow(rows[u.left])" class="add-note" aria-label="Comment on this line" title="Comment (drag for several lines)" @mousedown="press(u.left, $event)">+</button>
             </td>
-            <td class="code"><span class="sign">{{ sign(rows[u.left]) }}</span><template v-if="segs.get(u.left)"><span v-for="(s, k) in segs.get(u.left)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[u.left].text }}</template></td>
+            <td class="code"><template v-if="segs.get(u.left)"><span v-for="(s, k) in segs.get(u.left)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[u.left].text }}</template></td>
           </tr>
           <!-- split: the old file on the left, the new on the right -->
           <tr v-else class="srow">
@@ -315,7 +314,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
                 <td class="gut" :class="[rows[c.i].kind, marks(c.i), { hov: hov === c.i }]" @mouseenter="enter(c.i)">
                   <button v-if="commentable" class="add-note" aria-label="Comment on this line" title="Comment (drag for several lines)" @mousedown="press(c.i, $event)">+</button>
                 </td>
-                <td class="code" :class="[rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)"><span class="sign">{{ sign(rows[c.i]) }}</span><template v-if="segs.get(c.i)"><span v-for="(s, k) in segs.get(c.i)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[c.i].text }}</template></td>
+                <td class="code" :class="[rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)"><template v-if="segs.get(c.i)"><span v-for="(s, k) in segs.get(c.i)" :key="k" :class="s.c">{{ s.t }}</span></template><template v-else>{{ rows[c.i].text }}</template></td>
               </template>
               <td v-else class="blank" :class="c.side" colspan="3"></td>
             </template>
@@ -376,7 +375,7 @@ td {
   vertical-align: top;
 }
 .ln {
-  width: 1%;
+  width: 1px;
   padding: 0 6px;
   text-align: right;
   color: var(--faint);
@@ -387,23 +386,11 @@ td {
   padding: 0 12px 0 4px;
   white-space: pre;
 }
-.sign {
-  display: inline-block;
-  width: 14px;
-  color: var(--muted);
-  user-select: none;
-}
 .add {
   background: var(--add-bg);
 }
-.add .sign {
-  color: var(--add);
-}
 .del {
   background: var(--del-bg);
-}
-.del .sign {
-  color: var(--del);
 }
 .expand {
   display: inline-flex;
