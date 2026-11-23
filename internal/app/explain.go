@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -113,6 +114,41 @@ func (a *App) explainChanges(t store.Task, s store.Step) {
 		_ = os.WriteFile(file, []byte(fmt.Sprintf("_Derby could not write an explanation of the changes (%s)._\n", strings.ReplaceAll(why, "\n", " "))), 0o644)
 	}
 	a.emit(EvArtifact, map[string]string{"taskId": t.ID, "file": filepath.Base(file)})
+}
+
+// RetryExplanation runs the Claude run again that explains a Copilot step's
+// PR, when the first one failed (the explanation says so).
+func (a *App) RetryExplanation(stepID string) error {
+	s, err := a.db.Step(stepID)
+	if err != nil {
+		return err
+	}
+	if s.Agent != copilotAgent {
+		return errors.New("only a Copilot step has an explanation")
+	}
+	t, err := a.db.Task(s.TaskID)
+	if err != nil {
+		return err
+	}
+	if t.PRNumber == 0 {
+		return errors.New("the task has no pull request")
+	}
+	a.copilotMu.Lock()
+	b, _ := os.ReadFile(a.copilotPath(t, s))
+	busy := string(b) == explaining
+	if !busy {
+		_ = os.WriteFile(a.copilotPath(t, s), []byte(explaining), 0o644)
+	}
+	a.copilotMu.Unlock()
+	if busy {
+		return errors.New("Claude is already writing it")
+	}
+	a.explaining.Add(1)
+	go func() {
+		defer a.explaining.Done()
+		a.explainChanges(t, s)
+	}()
+	return nil
 }
 
 // explainSystemPrompt is the system prompt of the Claude run that explains a

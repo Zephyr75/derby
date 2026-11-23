@@ -68,6 +68,8 @@ watch(
   () => loadChanges(step.value?.id, 800),
 )
 
+// The Copilot step's explanation Claude could not write: it says so.
+const failed = computed(() => step.value?.agent === 'copilot' && !!art.value?.body.startsWith('_Derby could not write'))
 const file = computed(() => art.value?.file || step.value?.artifact || '')
 // The report's TL;DR and ELI5 only (its first paragraph without them): the
 // expand button opens the whole of it.
@@ -120,6 +122,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
       <template v-else>
         <PaneHead :title="file || 'Report'" :tip="art?.path">
+          <button v-if="failed" title="Run Claude again to explain the changes" @click="derby.attempt('Could not retry the explanation', () => api.RetryExplanation(step!.id))">Retry</button>
           <button v-if="art?.exists" title="Expand" aria-label="Open the whole report" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
         </PaneHead>
         <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
