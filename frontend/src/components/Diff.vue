@@ -428,7 +428,6 @@ td {
 .hunk td {
   padding-top: 4px;
   padding-bottom: 4px;
-  background: var(--surface);
   color: var(--muted);
 }
 .note .code {
