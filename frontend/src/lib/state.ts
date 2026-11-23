@@ -47,6 +47,21 @@ function savedNumber(key: string): number {
   }
 }
 
+function savedText(key: string): string {
+  try {
+    return localStorage.getItem(key) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+/** An entry of the Archive's list: a task, or a sister family folded into one row. */
+export interface ArchiveEntry {
+  key: string
+  family: boolean
+  tasks: Task[]
+}
+
 class Derby {
   ready = false
   failed = ''
@@ -69,6 +84,8 @@ class Derby {
   scope: ScopeMode = 'project'
   /** Projects folded in the left panel, by tab and project ("archive:core"): each tab folds its own. */
   collapsed: Record<string, boolean> = {}
+  /** The project whose archived tasks the Archive lists ('' for every project). */
+  archiveProject = savedText('derby.archive.project')
   guidance = ''
   toasts: Toast[] = []
   systemLight = false
@@ -175,7 +192,8 @@ class Derby {
       this.active = was ? tabs.findIndex((x) => x.task === was.task) : -1
       if (this.active < 0 && this.tabs.length) this.active = 0
       this.sel = this.tabs[this.active]?.task ?? this.tasks.find((t) => !t.archived)?.id ?? this.tasks[0]?.id ?? ''
-      if (this.task(this.sel)?.archived) this.left = 'archive'
+      const sel = this.task(this.sel)
+      if (sel?.archived) this.showInPanel(sel)
       this.trimTabs()
     } catch (e) {
       this.failed = errorText(e)
@@ -390,8 +408,14 @@ class Derby {
     this.overlay = 'none'
     this.view = 'board'
     const t = this.task(taskId)
-    if (t) this.left = t.archived ? 'archive' : 'tasks'
+    if (t) this.showInPanel(t)
     this.persistTabs()
+  }
+
+  /** showInPanel opens the left panel's tab with the task (Tasks or Archive) and makes it visible there. */
+  private showInPanel(t: Task) {
+    this.left = t.archived ? 'archive' : 'tasks'
+    this.reveal(t)
   }
 
   pickTask(id: string) {
@@ -399,7 +423,7 @@ class Derby {
     if (!t) return
     this.overlay = 'none'
     this.view = 'board'
-    this.left = t.archived ? 'archive' : 'tasks'
+    this.showInPanel(t)
     this.confirmDelete = ''
     if (!t.steps.length) {
       this.sel = id
@@ -423,8 +447,7 @@ class Derby {
     this.sel = tb.task
     this.view = 'board'
     const t = this.task(tb.task)
-    if (t?.archived) this.left = 'archive'
-    else if (t) this.left = 'tasks'
+    if (t) this.showInPanel(t)
     this.persistTabs()
   }
 
@@ -435,13 +458,33 @@ class Derby {
     this.persistTabs()
   }
 
+  /** isCollapsed: whether a project or a sister family is folded; the
+   *  Archive's families start folded. */
   isCollapsed(projectId: string): boolean {
-    return !!this.collapsed[this.left + ':' + projectId]
+    return this.collapsed[this.left + ':' + projectId] ?? (this.left === 'archive' && projectId.startsWith(SISTERS))
   }
 
   toggleCollapsed(projectId: string) {
-    const k = this.left + ':' + projectId
-    this.collapsed[k] = !this.collapsed[k]
+    this.collapsed[this.left + ':' + projectId] = !this.isCollapsed(projectId)
+  }
+
+  pickArchiveProject(id: string) {
+    this.archiveProject = id
+    try {
+      localStorage.setItem('derby.archive.project', id)
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  /** reveal makes an archived task visible in the Archive: lists its
+   *  project (unless every project is listed) and unfolds its family. */
+  private reveal(t: Task) {
+    if (!t.archived) return
+    const ids = this.sisterGroups.get(t.id)
+    const family = ids ? this.tasks.filter((x) => x.archived && ids.includes(x.id)) : [t]
+    if (this.archiveScope && !family.some((x) => x.project === this.archiveScope)) this.pickArchiveProject(t.project)
+    if (ids) this.collapsed['archive:' + this.familyKey(t)] = false
   }
 
   /** sisterGroups: the families of tasks linked as sisters (the same work in
@@ -476,9 +519,10 @@ class Derby {
     return time(b[key]) - time(a[key])
   }
 
-  /** panelFamilies: the sister families in the list, each shown first in
-   *  its own category, with the big sister (the task that started the
-   *  others) first. A family keeps its category with a single task in the
+  /** panelFamilies: the sister families in the list, with the big sister
+   *  (the task that started the others) first. In Tasks each is shown
+   *  first in its own category; in the Archive it is folded into one entry
+   *  (archiveEntries). A family keeps its category with a single task in the
    *  list, e.g. once its sisters' PRs were merged and they moved to the
    *  Archive. */
   panelFamilies(): Task[][] {
@@ -511,10 +555,33 @@ class Derby {
     return SISTERS + [...(this.sisterGroups.get(t.id) ?? [t.id])].sort()[0]
   }
 
-  /** The tasks in the left panel, in display order: the sister families, then each project's. */
+  /** The tasks in the left panel, in display order: the sister families, then each project's
+   *  (in the Archive, its entries' unfolded tasks). */
   visibleTasks(): Task[] {
+    if (this.left === 'archive') return this.archiveEntries().flatMap((e) => (e.family && this.isCollapsed(e.key) ? [] : e.tasks))
     const families = this.panelFamilies().filter((f) => !this.isCollapsed(this.familyKey(f[0]))).flat()
     return [...families, ...this.groups.filter((p) => !this.isCollapsed(p.id)).flatMap((p) => this.panelTasks(p.id))]
+  }
+
+  /** The project the Archive lists: the picked one while it still exists, else '' (every project). */
+  get archiveScope(): string {
+    return this.groups.some((g) => g.id === this.archiveProject) ? this.archiveProject : ''
+  }
+
+  /** archiveEntries: the Archive's list, newest first: the picked project's
+   *  archived tasks, each sister family folded into one entry listed in
+   *  every project it has an archived task in. */
+  archiveEntries(): ArchiveEntry[] {
+    const p = this.archiveScope
+    const time = (t: Task) => Date.parse(t.archivedAt) || 0
+    const all = this.panelFamilies()
+    const families = all.filter((f) => !p || f.some((t) => t.project === p)).map((tasks) => ({ key: this.familyKey(tasks[0]), family: true, tasks }))
+    const inFamily = new Set(all.flat().map((t) => t.id))
+    const singles = this.listed()
+      .filter((t) => (!p || t.project === p) && !inFamily.has(t.id))
+      .map((t) => ({ key: t.id, family: false, tasks: [t] }))
+    const newest = (e: ArchiveEntry) => Math.max(...e.tasks.map(time))
+    return [...families, ...singles].sort((a, b) => newest(b) - newest(a))
   }
 
   moveTask(delta: number) {

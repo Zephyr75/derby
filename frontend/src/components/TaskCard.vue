@@ -2,14 +2,14 @@
 // A task in the left panel: its reference and title, its status and its PR.
 // In a sister family it also names its project, says what its part of the
 // work does on hover, and the big sister (the task that started the others)
-// has a flag.
+// has a flag. The Archive of every project names each task's project too.
 import { derby, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 import StatusBadge from './ui/StatusBadge.vue'
 import type { Task } from '../lib/types'
 
-defineProps<{ task: Task; family?: boolean; big?: boolean }>()
+defineProps<{ task: Task; family?: boolean; big?: boolean; project?: boolean }>()
 
 const prTitle = (t: Task) => {
   const b = derby.prBadge(t)!
@@ -27,7 +27,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
       <span v-if="big" class="big" title="Started the sister tasks"><Icon name="flag" :size="11" /></span>
       <TaskRef :issue="task.issue" :task="task.id" />
       <span class="title">{{ taskName(task) }}</span>
-      <span v-if="family" class="proj">{{ task.projectName }}</span>
+      <span v-if="family || project" class="proj">{{ task.projectName }}</span>
     </span>
     <span class="row">
       <StatusBadge :kind="task.status.kind" :label="task.status.label" />
