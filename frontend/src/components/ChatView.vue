@@ -1360,7 +1360,7 @@ textarea:disabled {
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--elev);
+  background: var(--bg);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;

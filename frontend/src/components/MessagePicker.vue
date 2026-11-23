@@ -79,7 +79,6 @@ watch(open, async (on) => {
 
 const close = () => (derby.messages = false)
 function pick(m: Mark) {
-  close()
   emit('go', m.turn)
 }
 function scrollTo() {
