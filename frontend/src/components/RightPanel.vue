@@ -165,8 +165,11 @@ async function archive() {
     flex-direction: column;
     min-height: 0;
   }
+  /* 76px = the centre's tab bar (32) and toolbar (44): the lines meet */
   .head {
-    padding: 14px 16px;
+    height: 76px;
+    padding: 0 16px;
+    justify-content: center;
     border-bottom: 1px solid var(--border);
     display: flex;
     flex-direction: column;
