@@ -180,8 +180,8 @@ const tip = computed(() => `Your messages (${label(derby.settings?.keymap.messag
   overflow: hidden;
 }
 input {
-  height: 32px;
-  padding: 0 12px;
+  height: 36px;
+  padding: 0 14px;
   border: 0;
   border-bottom: 1px solid var(--border);
   outline: none;
@@ -192,7 +192,7 @@ input {
 .rows {
   display: flex;
   flex-direction: column;
-  padding: 4px;
+  padding: 6px;
   max-height: 320px;
   overflow: auto;
 }
@@ -202,9 +202,9 @@ input {
   gap: 8px;
   width: 100%;
   flex: none;
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
   border: 0;
   text-align: left;
   font-size: var(--fs-13);

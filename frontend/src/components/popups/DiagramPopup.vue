@@ -42,13 +42,13 @@ function key(e: KeyboardEvent) {
 
 <template>
   <div ref="box" class="box popup" role="dialog" aria-label="Diagram" tabindex="-1" @keydown="key">
-    <div class="head">
+    <div class="head pop-head">
       <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show sidebar' : 'Hide sidebar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
       <Icon name="eye" />
       <span class="title">{{ cur?.title || derby.diagramOf?.file }}</span>
       <span class="muted small">{{ cur?.step }}{{ cur?.step ? ' · ' : '' }}<span class="mono">{{ derby.diagramOf?.file }}</span></span>
       <span class="grow"></span>
-      <button class="x" aria-label="Close" title="Close (Esc)" @click="derby.closeDiagram()"><Icon name="close" :size="14" /></button>
+      <button class="pop-x" aria-label="Close" title="Close (Esc)" @click="derby.closeDiagram()"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div v-if="!sb.hidden.value" class="side-wrap" :style="{ width: sb.width.value + 'px' }">
@@ -73,15 +73,6 @@ function key(e: KeyboardEvent) {
     flex-direction: column;
     outline: none;
   }
-  .head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: none;
-    height: 40px;
-    padding: 0 8px 0 14px;
-    border-bottom: 1px solid var(--border);
-  }
   .title {
     font-weight: 600;
     min-width: 0;
@@ -96,22 +87,18 @@ function key(e: KeyboardEvent) {
   .grow {
     flex: 1;
   }
-  .x,
   .toggle {
-    width: 26px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: var(--muted);
-  }
-  .toggle {
     margin-right: 4px;
   }
-  .x:hover,
   .toggle:hover {
     background: var(--hover);
     color: var(--text);

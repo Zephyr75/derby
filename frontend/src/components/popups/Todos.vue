@@ -26,13 +26,13 @@ function go(t: Task) {
 <template>
   <button class="scrim dim" aria-label="Close the todo lists" @click="derby.overlay = 'none'"></button>
   <div class="box popup pop pop-half" role="dialog" aria-label="Todo lists">
-    <div class="head">
+    <div class="head pop-head">
       <Icon name="todo" :size="15" />
       <span class="title">Todos</span>
       <span class="muted small">{{ total }} open</span>
       <span class="grow"></span>
       <label class="hide small"><input v-model="derby.hideDone" type="checkbox" />Hide done</label>
-      <button class="x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
+      <button class="pop-x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <section v-for="t in tasks" :key="t.id">
@@ -52,15 +52,6 @@ function go(t: Task) {
 </template>
 
 <style scoped>
-.head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 42px;
-  flex: none;
-  padding: 0 10px 0 14px;
-  border-bottom: 1px solid var(--border);
-}
 .title {
   font-weight: 600;
 }
@@ -76,38 +67,23 @@ function go(t: Task) {
   gap: 6px;
   color: var(--muted);
 }
-.x {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted);
-}
-.x:hover {
-  background: var(--hover);
-  color: var(--text);
-}
 .body {
   flex: 1;
   min-height: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 12px 10px 16px;
+  gap: 18px;
+  padding: 14px 12px 20px;
 }
 .task {
   display: flex;
   align-items: baseline;
   gap: 8px;
   width: 100%;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
   color: var(--text);
   text-align: left;

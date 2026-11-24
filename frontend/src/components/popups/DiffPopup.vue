@@ -202,13 +202,13 @@ function key(e: KeyboardEvent) {
 
 <template>
   <div ref="box" class="box popup" role="dialog" aria-label="Changes" tabindex="-1" @keydown="key">
-    <div class="head">
+    <div class="head pop-head">
       <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show sidebar' : 'Hide sidebar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
       <Dropdown class="picker" :items="stepItems" :value="stepId" :placeholder="step ? label(step) : 'Step'" strong title="Other steps" @pick="chooseStep" />
       <span class="title">changes</span>
       <span class="grow"></span>
       <button v-if="!derby.artifactOf" class="other" title="Show report" @click="derby.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
-      <button class="x" aria-label="Close" title="Close (Esc)" @click="close"><Icon name="close" :size="14" /></button>
+      <button class="pop-x" aria-label="Close" title="Close (Esc)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div v-if="!sb.hidden.value" class="side-wrap" :style="{ width: sb.width.value + 'px' }">
@@ -278,11 +278,11 @@ function key(e: KeyboardEvent) {
     display: flex;
     align-items: center;
     gap: 5px;
-    height: 24px;
+    height: 28px;
     margin-right: 4px;
-    padding: 0 8px;
+    padding: 0 10px;
     border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: var(--text);
     font-size: var(--fs-12);
@@ -293,14 +293,6 @@ function key(e: KeyboardEvent) {
   .other:hover {
     background: var(--hover);
   }
-  .head {
-    display: flex;
-    align-items: center;
-    flex: none;
-    height: 40px;
-    padding: 0 8px 0 14px;
-    border-bottom: 1px solid var(--border);
-  }
   .title {
     font-weight: 600;
   }
@@ -309,21 +301,6 @@ function key(e: KeyboardEvent) {
   }
   .grow {
     flex: 1;
-  }
-  .x {
-    width: 26px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--muted);
-  }
-  .x:hover {
-    background: var(--hover);
-    color: var(--text);
   }
   .body {
     flex: 1;
@@ -337,14 +314,14 @@ function key(e: KeyboardEvent) {
     border-right: 1px solid var(--border);
   }
   .toggle {
-    width: 26px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-right: 4px;
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: var(--muted);
   }

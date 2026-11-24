@@ -68,7 +68,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     min-width: 0;
     height: 26px;
     padding: 0 8px 0 10px;
-    border-radius: 4px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     background: transparent;
     color: var(--text);
@@ -99,15 +99,15 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     max-width: 560px;
     max-height: 50vh;
     overflow: auto;
-    padding: 4px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
   }
   .item {
     flex: none; /* a long list scrolls instead of squeezing the rows */
-    padding: 5px 8px;
+    padding: 6px 10px;
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: var(--text);
     text-align: left;

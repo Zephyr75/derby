@@ -66,8 +66,8 @@ function key(e: KeyboardEvent) {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 12px;
-    height: 40px;
+    padding: 0 16px;
+    height: 46px;
     border-bottom: 1px solid var(--border);
   }
   .ico {
@@ -86,7 +86,7 @@ function key(e: KeyboardEvent) {
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    padding: 4px 4px 6px;
+    padding: 6px;
     overflow: auto;
   }
   .row {
@@ -95,8 +95,8 @@ function key(e: KeyboardEvent) {
     gap: 10px;
     width: 100%;
     flex: none;
-    height: 34px;
-    padding: 0 10px;
+    height: 36px;
+    padding: 0 12px;
     border-radius: 6px;
     border: 0;
     text-align: left;
@@ -127,7 +127,7 @@ function key(e: KeyboardEvent) {
     height: 6px;
   }
   .none {
-    padding: 14px 12px;
+    padding: 16px 12px;
     color: var(--muted);
   }
 </style>
