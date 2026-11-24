@@ -49,7 +49,7 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(derby.settings?.prompts
         <span class="grow"></span>
         <div v-if="projects.length > 1" class="proj">
           <span class="muted">Example task of</span>
-          <Dropdown :items="projectItems" :value="project" @pick="project = $event" />
+          <Dropdown label="Project of the example task" :items="projectItems" :value="project" @pick="project = $event" />
         </div>
         <button class="pop-x" aria-label="Close" @click="close"><Icon name="close" :size="14" /></button>
       </div>
