@@ -263,7 +263,38 @@ func (g Git) Push(ctx context.Context, worktree, branch string) error {
 	// With lease: a branch rebased on its base after an earlier push is
 	// replaced, unless someone else pushed to it meanwhile.
 	_, err := g.Run(ctx, worktree, "push", "--force-with-lease", "-u", "origin", branch)
+	if err != nil && authFailure(err) {
+		// No usable credential helper, e.g. derby was started by an app
+		// whose helper is gone: use the GitHub CLI's.
+		if gh, e := exec.LookPath("gh"); e == nil {
+			cmd := exec.CommandContext(ctx, g.bin(), "-C", worktree, "-c", "credential.helper=", "-c", "credential.helper=!"+gh+" auth git-credential", "push", "--force-with-lease", "-u", "origin", branch)
+			cmd.Env = scrubGitConfig(os.Environ())
+			if out, e := cmd.CombinedOutput(); e == nil {
+				return nil
+			} else if g.Log != nil {
+				g.Log("gh credential retry: " + strings.TrimSpace(string(out)))
+			}
+		}
+	}
 	return err
+}
+
+func authFailure(err error) bool {
+	m := err.Error()
+	return strings.Contains(m, "could not read Username") || strings.Contains(m, "unable to get password") || strings.Contains(m, "git-credential")
+}
+
+// scrubGitConfig drops the environment's git config and prompt overrides
+// that point at a credential helper of another app.
+func scrubGitConfig(env []string) []string {
+	out := []string{"GIT_TERMINAL_PROMPT=0"}
+	for _, e := range env {
+		if strings.HasPrefix(e, "GIT_CONFIG_") || strings.HasPrefix(e, "COPILOT_TRAMPOLINE_") || strings.HasPrefix(e, "GIT_TERMINAL_PROMPT=") {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 // privateIndex runs git in worktree with its own index file, so the
