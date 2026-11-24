@@ -49,16 +49,17 @@ const short = computed(() => dir.value.replace(/^\/(?:Users|home)\/[^/]+(?=\/)/,
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    padding: 10px 6px;
+    padding: 14px 8px;
+    gap: 2px;
   }
   .head {
-    padding: 4px 10px 10px;
+    padding: 4px 12px 12px;
     font-size: var(--fs-12);
     color: var(--muted);
   }
   .item {
-    height: 30px;
-    padding: 0 10px;
+    height: 32px;
+    padding: 0 12px;
     border-radius: 6px;
     text-align: left;
     font-size: var(--fs-13);
@@ -101,14 +102,14 @@ const short = computed(() => dir.value.replace(/^\/(?:Users|home)\/[^/]+(?=\/)/,
     position: relative;
     flex: 999 1 640px;
     min-width: 0;
-    padding: 28px 40px 48px;
+    padding: 36px 48px 56px;
     overflow: auto;
   }
   .col {
     max-width: 980px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 24px;
   }
   .col :deep(h1) {
     margin: 0;

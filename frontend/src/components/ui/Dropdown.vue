@@ -13,7 +13,7 @@ export interface DropItem {
   tagClass?: string // its colour: a status class (s-failed, s-waiting…)
 }
 
-const props = withDefaults(defineProps<{ items: DropItem[]; value?: string; placeholder?: string; wide?: boolean; strong?: boolean; disabled?: boolean }>(), {
+const props = withDefaults(defineProps<{ items: DropItem[]; value?: string; placeholder?: string; label?: string; wide?: boolean; strong?: boolean; disabled?: boolean }>(), {
   value: '',
   placeholder: '',
 })
@@ -27,6 +27,13 @@ function choose(it: DropItem) {
   open.value = false
   emit('pick', it.value)
 }
+// Escape closes an open menu and stops there; a closed one lets it reach the
+// parent (e.g. a dialog that closes on Escape).
+function onEscape(e: KeyboardEvent) {
+  if (!open.value) return
+  e.stopPropagation()
+  open.value = false
+}
 // Closes on a click anywhere else (WebKit does not focus buttons on click, so
 // focus events cannot tell).
 const outside = (e: PointerEvent) => root.value && !root.value.contains(e.target as Node) && (open.value = false)
@@ -35,8 +42,8 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
 </script>
 
 <template>
-  <span ref="root" class="dd" :class="{ wide }" @keydown.esc.stop="open = false">
-    <button type="button" class="chip" :class="{ on: open, strong }" :disabled="disabled" aria-haspopup="menu" :aria-expanded="open" @click="open = !open">
+  <span ref="root" class="dd" :class="{ wide }" @keydown.esc="onEscape">
+    <button type="button" class="chip" :class="{ on: open, strong }" :disabled="disabled" aria-haspopup="menu" :aria-label="label" :aria-expanded="open" @click="open = !open">
       <slot>
         <span v-if="picked?.tag" :class="['tag', picked.tagClass]">{{ picked.tag }}</span>
         <span class="label">{{ picked?.label ?? placeholder }}</span>
@@ -68,7 +75,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     min-width: 0;
     height: 26px;
     padding: 0 8px 0 10px;
-    border-radius: 4px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     background: transparent;
     color: var(--text);
@@ -99,15 +106,15 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
     max-width: 560px;
     max-height: 50vh;
     overflow: auto;
-    padding: 4px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
   }
   .item {
     flex: none; /* a long list scrolls instead of squeezing the rows */
-    padding: 5px 8px;
+    padding: 6px 10px;
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     background: transparent;
     color: var(--text);
     text-align: left;

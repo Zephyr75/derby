@@ -352,6 +352,36 @@ input[type='checkbox']:focus-visible {
   color: var(--approval);
 }
 
+/* Header of a pop-up and its icon buttons (close, open elsewhere…). */
+.pop-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 44px;
+  padding: 0 10px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.pop-head .title {
+  font-weight: 600;
+}
+.pop-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+.pop-x:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
 /* Zed-style popup surface */
 .popup {
   background: var(--elev);

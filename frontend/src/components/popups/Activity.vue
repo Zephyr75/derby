@@ -42,7 +42,7 @@ function open(t: Task) {
 <template>
   <button class="scrim" aria-label="Close activity" @click="derby.overlay = 'none'"></button>
   <div class="box popup" role="dialog" aria-label="Activity">
-    <div class="head">
+    <div class="head pop-head">
       <span class="title">Activity</span>
     </div>
     <div class="list">
@@ -80,15 +80,6 @@ function open(t: Task) {
     flex-direction: column;
     overflow: hidden;
   }
-  .head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 36px;
-    flex: none;
-    padding: 0 12px;
-    border-bottom: 1px solid var(--border);
-  }
   .title {
     font-weight: 600;
   }
@@ -100,7 +91,7 @@ function open(t: Task) {
   }
   .list {
     overflow: auto;
-    padding: 4px 4px 6px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
   }
@@ -113,7 +104,7 @@ function open(t: Task) {
     display: flex;
     align-items: center;
     gap: 7px;
-    padding: 8px 8px 4px;
+    padding: 10px 10px 6px;
     font-size: var(--fs-11-5);
     color: var(--muted);
   }
@@ -128,7 +119,7 @@ function open(t: Task) {
     gap: 10px;
     width: 100%;
     flex: none;
-    padding: 6px 8px;
+    padding: 8px 10px;
     border: 0;
     border-radius: 6px;
     background: transparent;

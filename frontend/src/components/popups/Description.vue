@@ -53,8 +53,8 @@ const openGitHub = () => url.value && derby.attempt('Could not open the issue', 
       <div class="line">
         <TaskRef :issue="t.issue" :task="t.id" />
         <span class="heading" :title="heading">{{ heading }}</span>
-        <button v-if="url" class="x" title="Open the issue on GitHub" aria-label="Open on GitHub" @click="openGitHub"><Icon name="external" :size="14" /></button>
-        <button class="x" aria-label="Close" @click="close"><Icon name="close" :size="14" /></button>
+        <button v-if="url" class="pop-x" title="Open the issue on GitHub" aria-label="Open on GitHub" @click="openGitHub"><Icon name="external" :size="14" /></button>
+        <button class="pop-x" aria-label="Close" @click="close"><Icon name="close" :size="14" /></button>
       </div>
       <span v-if="meta" class="meta">{{ meta }}</span>
     </div>
@@ -92,7 +92,7 @@ const openGitHub = () => url.value && derby.attempt('Could not open the issue', 
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 12px 10px 12px 16px;
+  padding: 14px 10px 14px 18px;
   border-bottom: 1px solid var(--border);
 }
 .line {
@@ -118,27 +118,11 @@ const openGitHub = () => url.value && derby.attempt('Could not open the issue', 
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.x {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted);
-}
-.x:hover {
-  background: var(--hover);
-  color: var(--text);
-}
 .body {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 16px 16px 22px;
+  gap: 24px;
+  padding: 20px 18px 28px;
   overflow: auto;
   user-select: text;
 }

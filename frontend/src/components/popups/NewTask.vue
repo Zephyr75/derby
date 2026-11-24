@@ -234,7 +234,7 @@ function key(e: KeyboardEvent) {
     <div class="head">
       <Dropdown class="proj" :items="projectItems" :value="project" placeholder="Pick a project" title="The project to work in" @pick="onProject" />
       <span class="grow"></span>
-      <button class="x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
+      <button class="pop-x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div class="issue-line">
@@ -293,7 +293,7 @@ function key(e: KeyboardEvent) {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 10px 10px 0 12px;
+    padding: 12px 12px 0 14px;
   }
   .proj :deep(.chip) {
     border-color: transparent;
@@ -303,28 +303,13 @@ function key(e: KeyboardEvent) {
   .grow {
     flex: 1;
   }
-  .x {
-    display: grid;
-    place-items: center;
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    border: 0;
-    border-radius: 5px;
-    background: transparent;
-    color: var(--muted);
-  }
-  .x:hover {
-    background: var(--hover);
-    color: var(--text);
-  }
   .body {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-height: 0;
-    padding: 10px 20px 8px;
+    padding: 12px 22px 10px;
   }
   .issue-line {
     flex: none;

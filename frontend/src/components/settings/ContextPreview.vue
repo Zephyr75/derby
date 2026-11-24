@@ -6,6 +6,7 @@ import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import { derby } from '../../lib/state'
 import type { Agent, ContextPart } from '../../lib/types'
+import Dropdown from '../ui/Dropdown.vue'
 import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{ agent: Agent }>()
@@ -14,6 +15,7 @@ const parts = ref<ContextPart[] | null>(null) // null: closed
 const project = ref('')
 const box = ref<HTMLElement | null>(null)
 const projects = computed(() => derby.settings?.config.projects ?? [])
+const projectItems = computed(() => projects.value.map((p, i) => ({ value: i ? p.id : '', label: p.name })))
 const load = debounce(async () => {
   if (parts.value === null) return
   parts.value = (await derby.attempt('Could not build the context', () => api.AgentContext(JSON.parse(JSON.stringify(props.agent)), project.value))) ?? []
@@ -42,17 +44,14 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(derby.settings?.prompts
   <Teleport v-if="parts !== null" to="body">
     <button class="scrim dim" aria-label="Close the context preview" @click="close"></button>
     <div ref="box" class="box popup pop pop-big" role="dialog" :aria-label="`Full context of ${agent.name}`" tabindex="-1" data-own-escape @keydown="key">
-      <div class="head">
+      <div class="head pop-head">
         <span class="title">Full context of {{ agent.name }}</span>
         <span class="grow"></span>
-        <label v-if="projects.length > 1" class="proj">
+        <div v-if="projects.length > 1" class="proj">
           <span class="muted">Example task of</span>
-          <select v-model="project" aria-label="Project of the example task">
-            <option value="">{{ projects[0].name }}</option>
-            <option v-for="p in projects.slice(1)" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </select>
-        </label>
-        <button class="x" aria-label="Close" @click="close"><Icon name="close" :size="14" /></button>
+          <Dropdown label="Project of the example task" :items="projectItems" :value="project" @pick="project = $event" />
+        </div>
+        <button class="pop-x" aria-label="Close" @click="close"><Icon name="close" :size="14" /></button>
       </div>
       <div class="body">
         <span v-if="!parts.length" class="muted">Building the context…</span>
@@ -85,15 +84,6 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(derby.settings?.prompts
 .box {
   outline: none;
 }
-.head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 42px;
-  flex-shrink: 0;
-  padding: 0 10px 0 14px;
-  border-bottom: 1px solid var(--border);
-}
 .head .title {
   font-weight: 600;
 }
@@ -106,32 +96,14 @@ watch(() => [JSON.stringify(props.agent), JSON.stringify(derby.settings?.prompts
   gap: 6px;
   font-size: var(--fs-12);
 }
-.proj select {
-  font-size: var(--fs-12);
-}
-.x {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted);
-}
-.x:hover {
-  background: var(--hover, var(--surface));
-  color: var(--text);
-}
 .body {
   flex: 1;
   min-height: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 16px;
 }
 .part summary {
   display: flex;
