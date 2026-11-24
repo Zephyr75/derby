@@ -73,21 +73,46 @@ func (a *App) emitAllTasks() {
 	}
 }
 
+// issueRef is an issue as New task takes it: 123, #123, owner/name#123 or
+// the issue's URL. Without a repository it is in the project's issues
+// repository; with one it may be elsewhere (an issue of another repository).
+var issueRef = regexp.MustCompile(`^(?:(?:https://github\.com/)?([\w.-]+/[\w.-]+)(?:#|/issues/))?#?(\d+)$`)
+
+// issueTarget splits an issue reference into the repository holding it and
+// its number.
+func (a *App) issueTarget(p settings.Project, ref string) (repo, num string, err error) {
+	m := issueRef.FindStringSubmatch(strings.TrimSpace(ref))
+	if m == nil {
+		return "", "", errors.New("the issue must be a number, owner/name#number or an issue URL")
+	}
+	repo = m[1]
+	if repo == "" {
+		repo = a.settings.Config().IssuesOf(p)
+	}
+	if repo == "" {
+		return "", "", errors.New("the project has no GitHub repo")
+	}
+	return repo, m[2], nil
+}
+
 // IssueTitle fetches an issue's title for the New task dialog.
 func (a *App) IssueTitle(projectID, issue string) (string, error) {
 	p, ok := a.settings.Project(projectID)
 	if !ok {
 		return "", fmt.Errorf("unknown project %q", projectID)
 	}
-	repo := a.settings.Config().IssuesOf(p)
-	if repo == "" {
-		return "", errors.New("the project has no GitHub repo")
+	repo, num, err := a.issueTarget(p, issue)
+	if err != nil {
+		return "", err
 	}
-	return a.gh.IssueTitle(a.ctx, repo, issue)
+	return a.gh.IssueTitle(a.ctx, repo, num)
 }
 
 // MyIssues lists the open issues assigned to you (the gh user) in the
-// repository holding the project's issues.
+// repository holding the project's issues, then, when the project uses a
+// common issues repository, in the project's own repository: the issues of
+// a repository are not always filed in the common one. Each carries its
+// repository.
 func (a *App) MyIssues(projectID string) ([]github.Issue, error) {
 	p, ok := a.settings.Project(projectID)
 	if !ok {
@@ -97,7 +122,16 @@ func (a *App) MyIssues(projectID string) ([]github.Issue, error) {
 	if repo == "" {
 		return nil, errors.New("the project has no GitHub repo")
 	}
-	return a.gh.MyIssues(a.ctx, repo)
+	is, err := a.gh.MyIssues(a.ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+	if p.Repo != "" && p.Repo != repo {
+		if own, err := a.gh.MyIssues(a.ctx, p.Repo); err == nil { // a repository without issues must not hide the others
+			is = append(is, own...)
+		}
+	}
+	return is, nil
 }
 
 var nonWord = regexp.MustCompile(`[^a-z0-9 ]+`)
@@ -142,8 +176,6 @@ func titleFromDescription(desc string) string {
 	return line
 }
 
-var digits = regexp.MustCompile(`^[0-9]+$`)
-
 // CreateTask creates a task, its branch and worktree, and optionally starts
 // the first agent. branch must start with the prefix in Settings; "" picks
 // prefix + the task's slug.
@@ -155,18 +187,25 @@ func (a *App) CreateTask(projectID, issue, description, branch string, runPlan b
 // createTask is CreateTask; issueRepo is the repository holding the issue
 // when it is not the project's (a sister task), else "".
 func (a *App) createTask(projectID, issue, issueRepo, description, branch string, runPlan bool, files []string) (TaskView, error) {
-	issue = strings.TrimPrefix(strings.TrimSpace(issue), "#")
+	issue = strings.TrimSpace(issue)
 	description = strings.TrimSpace(description)
 	branch = strings.TrimSpace(branch)
 	if issue == "" && description == "" {
 		return TaskView{}, errors.New("add a GitHub issue number, a description, or both")
 	}
-	if issue != "" && !digits.MatchString(issue) {
-		return TaskView{}, errors.New("the issue must be a number")
-	}
 	p, ok := a.settings.Project(projectID)
 	if !ok {
 		return TaskView{}, fmt.Errorf("unknown project %q", projectID)
+	}
+	if issue != "" {
+		m := issueRef.FindStringSubmatch(issue)
+		if m == nil {
+			return TaskView{}, errors.New("the issue must be a number, owner/name#number or an issue URL")
+		}
+		if m[1] != "" {
+			issueRepo = m[1]
+		}
+		issue = m[2]
 	}
 	if issueRepo == "" { // not a sister task: where the project's issues live
 		issueRepo = a.settings.Config().IssuesOf(p)
@@ -419,6 +458,7 @@ func (a *App) OpenInZed(taskID, stepID string) ([]string, error) {
 		return nil, errors.New("the worktree was removed")
 	}
 	var lines []string
+	targets := []string{path}
 	if stepID != "" {
 		if _, err := a.db.Step(stepID); err != nil {
 			return nil, err
@@ -428,18 +468,18 @@ func (a *App) OpenInZed(taskID, stepID string) ([]string, error) {
 			sha = ch.SHA // its segment's commit
 		}
 		if sha != "" {
-			// Zed's own commit view, in the task's worktree: no extra folder,
-			// and no new Zed project when the worktree is already open.
+			// Zed's own commit view, in the task's worktree. Zed shows a commit
+			// only in a repo it has open, so the folder goes in the same call.
 			// Uncommitted work opens the worktree, where Zed shows it.
 			full, err := a.git.Run(a.ctx, path, "rev-parse", sha)
 			if err != nil {
 				return nil, err
 			}
-			path = "zed://git/commit/" + full + "?repo=" + url.QueryEscape(path)
+			targets = append(targets, "zed://git/commit/"+full+"?repo="+url.QueryEscape(path))
 		}
 	}
-	lines = append(lines, "$ "+cmd+" "+path)
-	return lines, zed.Open(cmd, path)
+	lines = append(lines, "$ "+cmd+" "+strings.Join(targets, " "))
+	return lines, zed.Open(cmd, targets...)
 }
 
 // OpenProjectInZed opens a project's repository.

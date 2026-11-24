@@ -354,6 +354,7 @@ export interface TaskIssue {
 export interface Issue {
   number: number
   title: string
+  repo: string // owner/name holding it: the issues repository, or the project's own
   priority: string // the issue's Priority field (Urgent, High, …), '' when unset
 }
 

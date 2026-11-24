@@ -2,7 +2,7 @@
 // derby's icons, from Lucide (lucide.dev), by the names derby uses.
 import { computed, type Component } from 'vue'
 import {
-  Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, Folder, FolderOpen, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu,
+  Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, FoldVertical, Folder, FolderOpen, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu, UnfoldVertical,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Split, Square, SquareTerminal, TriangleAlert, Undo2, X,
   ArrowDown, ArrowUp, Bot, Brain, Flag, UsersRound, ChevronUp, Hammer, Lightbulb, ListPlus, SendHorizontal, UserRound, CircleX, Globe, ListChecks, LoaderCircle, MessageSquare, ShieldAlert, Sparkles, Wrench,
   Monitor, Moon, Sun, CircleDot, Code, TextAlignStart, CircleCheck, CircleDashed, CircleMinus, CornerDownRight,
@@ -51,6 +51,8 @@ const icons: Record<string, Component> = {
   archive: Archive,
   eye: Eye,
   diff: Diff,
+  fold: FoldVertical,
+  unfold: UnfoldVertical,
   revert: Undo2,
   issue: CircleDot, // GitHub's open-issue icon
   code: Code, // Zed

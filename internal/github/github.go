@@ -162,6 +162,7 @@ func (g GH) Checks(ctx context.Context, repo string, n int) ([]Check, error) {
 type Issue struct {
 	Number   int    `json:"number"`
 	Title    string `json:"title"`
+	Repo     string `json:"repo"`     // owner/name holding it
 	Priority string `json:"priority"` // the "Priority" issue field (Urgent, High, …), "" when unset
 }
 
@@ -198,7 +199,7 @@ func (g GH) MyIssues(ctx context.Context, repo string) ([]Issue, error) {
 		if r.PullRequest != nil { // the issues endpoint lists PRs too
 			continue
 		}
-		i := Issue{Number: r.Number, Title: r.Title}
+		i := Issue{Number: r.Number, Title: r.Title, Repo: repo}
 		for _, f := range r.Fields {
 			if strings.EqualFold(f.Name, "priority") && f.Option != nil {
 				i.Priority = f.Option.Name

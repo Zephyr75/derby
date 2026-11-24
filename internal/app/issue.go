@@ -69,11 +69,11 @@ func (a *App) IssuePreview(projectID, issue string) (artifacts.Artifact, error) 
 	if !ok {
 		return artifacts.Artifact{}, fmt.Errorf("unknown project %q", projectID)
 	}
-	repo := a.settings.Config().IssuesOf(p)
-	if repo == "" {
-		return artifacts.Artifact{}, errors.New("the project has no GitHub repo")
+	repo, num, err := a.issueTarget(p, issue)
+	if err != nil {
+		return artifacts.Artifact{}, err
 	}
-	d, err := a.gh.Issue(a.ctx, repo, issue)
+	d, err := a.gh.Issue(a.ctx, repo, num)
 	if err != nil {
 		return artifacts.Artifact{}, err
 	}

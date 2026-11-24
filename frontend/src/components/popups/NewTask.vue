@@ -20,6 +20,10 @@ const pre = presets[derby.previewNew]
 
 const project = ref(pre?.p ?? derby.selTask?.project ?? derby.projects[0]?.id ?? '')
 const issue = ref(pre?.i ?? '')
+// The repository of the picked issue when it is not the project's issues repository.
+const issueRepo = ref('')
+// What the API takes: a number, or owner/name#number for another repository.
+const issueRef = computed(() => (issueRepo.value ? `${issueRepo.value}#${issue.value.trim()}` : issue.value.trim()))
 const desc = ref(pre?.d ?? '')
 const files = ref<string[]>([])
 const issueTitle = ref('')
@@ -43,7 +47,7 @@ async function loadPreview() {
   previewError.value = ''
   if (!nIssue.value || !issuesRepo.value) return
   try {
-    const a = await api.IssuePreview(project.value, nIssue.value)
+    const a = await api.IssuePreview(project.value, issueRef.value)
     if (want === pseq) preview.value = a
   } catch (e) {
     if (want === pseq) previewError.value = errorText(e)
@@ -81,8 +85,8 @@ const branchOk = computed(() => branch.value.startsWith(prefix.value) && branch.
 const hint = computed(
   () =>
     ({
-      issue: `Claude plans from issue #${nIssue.value}`,
-      both: `Claude plans from issue #${nIssue.value} and your instructions`,
+      issue: `Claude plans from issue ${issueRepo.value}#${nIssue.value}`,
+      both: `Claude plans from issue ${issueRepo.value}#${nIssue.value} and your instructions`,
       local: 'LOCAL task: Claude works from your instructions',
       none: 'Pick an issue, describe the task, or both',
     })[mode.value],
@@ -93,7 +97,11 @@ const valid = computed(() => mode.value !== 'none' && !!p.value && !busy.value &
 
 function onIssue(e: Event) {
   const el = e.target as HTMLInputElement
-  issue.value = el.value.replace(/[^0-9]/g, '')
+  // An issue URL or owner/name#number pasted here names its repository too.
+  const m = el.value.trim().match(/^(?:(?:https:\/\/github\.com\/)?([\w.-]+\/[\w.-]+)(?:#|\/issues\/))?#?(\d+)\b/)
+  if (m?.[1]) issueRepo.value = m[1] !== issuesRepo.value ? m[1] : ''
+  issue.value = m ? m[2] : el.value.replace(/[^0-9]/g, '')
+  if (!issue.value) issueRepo.value = ''
   el.value = issue.value
   issueTitle.value = ''
   titleError.value = ''
@@ -107,7 +115,7 @@ async function fetchTitle() {
   if (!preview.value) void loadPreview()
   const want = nIssue.value
   try {
-    const t = await api.IssueTitle(project.value, want)
+    const t = await api.IssueTitle(project.value, issueRef.value)
     if (want === nIssue.value) issueTitle.value = t
   } catch (e) {
     if (want === nIssue.value) titleError.value = errorText(e)
@@ -139,10 +147,13 @@ watch(
 // The issue's Priority field, coloured with the status colours of the theme.
 const priorityClass: Record<string, string> = { urgent: 's-failed', high: 's-waiting', medium: 's-running', low: 's-idle' }
 const hasTask = (n: number) => derby.tasks.some((t) => t.project === project.value && t.issue === String(n))
+const shortRepo = (r: string) => r.split('/').pop() ?? r
+// Issues of another repository than the issues repository are labelled with it.
+const otherRepo = (is: Issue) => (is.repo && is.repo !== issuesRepo.value ? is.repo : '')
 const mineItems = computed(() =>
   (mine.value ?? []).map((is) => ({
-    value: String(is.number),
-    label: `#${is.number} ${is.title}${hasTask(is.number) ? ' (has a task)' : ''}`,
+    value: `${is.repo}#${is.number}`,
+    label: `${otherRepo(is) ? shortRepo(is.repo) : ''}#${is.number} ${is.title}${hasTask(is.number) ? ' (has a task)' : ''}`,
     tag: is.priority,
     tagClass: priorityClass[is.priority.toLowerCase()] ?? 's-idle',
     disabled: hasTask(is.number),
@@ -153,9 +164,10 @@ const mineTip = computed(() =>
 )
 const mineLabel = computed(() => (mine.value === null ? 'Assigned to you…' : mine.value.length ? `Assigned to you · ${mine.value.length}` : 'None assigned'))
 function pickMine(v: string) {
-  const is = mine.value?.find((x) => String(x.number) === v)
+  const is = mine.value?.find((x) => `${x.repo}#${x.number}` === v)
   if (!is) return
   issue.value = String(is.number)
+  issueRepo.value = otherRepo(is)
   issueTitle.value = is.title
   titleError.value = ''
   void loadPreview()
@@ -183,6 +195,7 @@ async function addProject() {
 
 function pickProject(id: string) {
   project.value = id
+  issueRepo.value = ''
   issueTitle.value = ''
   preview.value = null
   titleError.value = ''
@@ -194,7 +207,7 @@ async function create() {
   busy.value = true
   error.value = ''
   try {
-    const t = await api.CreateTask(project.value, nIssue.value, nDesc.value, branch.value, true, files.value)
+    const t = await api.CreateTask(project.value, issueRef.value, nDesc.value, branch.value, true, files.value)
     derby.overlay = 'none'
     // The task:changed event may arrive after the call returns.
     if (!derby.task(t.id)) derby.tasks.push(t)
@@ -230,7 +243,7 @@ function key(e: KeyboardEvent) {
         <span v-if="titleError" class="itext err" :title="titleError">{{ titleError }}</span>
         <span v-else-if="issueTitle" class="itext" :title="issueTitle">{{ issueTitle }}</span>
         <span v-else class="itext faint">{{ issuesRepo ? '' : 'the project has no GitHub repo' }}</span>
-        <Dropdown v-if="issuesRepo" class="mine" :items="mineItems" :value="nIssue" :disabled="!mine?.length" :title="mineTip" @pick="pickMine">
+        <Dropdown v-if="issuesRepo" class="mine" :items="mineItems" :value="issueRepo ? `${issueRepo}#${nIssue}` : `${issuesRepo}#${nIssue}`" :disabled="!mine?.length" :title="mineTip" @pick="pickMine">
           <span class="mine-label">{{ mineLabel }}</span><Icon name="chevron" :size="12" />
         </Dropdown>
       </div>

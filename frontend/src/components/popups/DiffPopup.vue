@@ -223,7 +223,7 @@ function key(e: KeyboardEvent) {
         <NotesBar v-if="task?.notes.length" class="notes" :task="task" />
         <div class="fhead">
           <span class="grow"></span>
-          <button v-if="files.length > 1" class="zed" :title="allFolded ? 'Unfold all files' : 'Fold all files'" @click="foldAll">{{ allFolded ? 'Unfold all' : 'Fold all' }}</button>
+          <button v-if="files.length > 1" class="ibtn" :title="allFolded ? 'Unfold all files' : 'Fold all files'" :aria-label="allFolded ? 'Unfold all files' : 'Fold all files'" @click="foldAll"><Icon :name="allFolded ? 'unfold' : 'fold'" :size="15" /></button>
           <span class="views" role="radiogroup" aria-label="Diff view">
             <button role="radio" :aria-checked="!splitView" :class="{ on: !splitView }" title="Unified" aria-label="Unified" @click="splitView = false">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="2.6" width="10" height="4.4" rx="1" /><rect x="3" y="9" width="10" height="4.4" rx="1" fill="currentColor" fill-opacity="0.5" /></svg>
@@ -232,7 +232,7 @@ function key(e: KeyboardEvent) {
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.6" y="3" width="4.4" height="10" rx="1" fill="currentColor" fill-opacity="0.5" /><rect x="9" y="3" width="4.4" height="10" rx="1" /></svg>
             </button>
           </span>
-          <button class="zed" title="Open in Zed" @click="openInZed"><Icon name="diff" :size="13" />Diff</button>
+          <button class="ibtn" title="Open the diff in Zed" aria-label="Open the diff in Zed" @click="openInZed"><Icon name="diff" :size="15" /></button>
         </div>
         <div ref="scroller" class="scroll" @scroll.passive="spy">
           <p v-if="!changes" class="empty">Loading…</p>
@@ -397,7 +397,9 @@ function key(e: KeyboardEvent) {
     display: flex;
     gap: 2px;
   }
+  .ibtn,
   .views button {
+    flex: none;
     width: 24px;
     height: 24px;
     display: flex;
@@ -408,29 +410,11 @@ function key(e: KeyboardEvent) {
     background: transparent;
     color: var(--muted);
   }
-  .views button:hover {
-    background: var(--hover);
-    color: var(--text);
-  }
+  .ibtn:hover,
+  .views button:hover,
   .views button.on {
     background: var(--hover);
     color: var(--text);
-  }
-  .zed {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    height: 24px;
-    padding: 0 8px;
-    border: 1px solid transparent; /* Zed: ghost buttons, a fill on hover */
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text);
-    font-size: var(--fs-12);
-  }
-  .zed:hover:not(:disabled) {
-    background: var(--hover);
   }
   .scroll {
     position: relative;
