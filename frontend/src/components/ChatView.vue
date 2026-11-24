@@ -1205,7 +1205,7 @@ button:hover > .disc,
   background: var(--hover);
   color: var(--text);
 }
-/* generating: py-2 px-22px, a dots spinner; awaiting confirmation, a sand one and its label */
+/* generating: py-2 px-22px, a dots spinner; awaiting confirmation, a breathing dot and its label */
 .generating {
   display: flex;
   align-items: center;
@@ -1214,8 +1214,7 @@ button:hover > .disc,
   font-size: var(--fs-12);
   color: var(--muted);
 }
-.dots::before,
-.sand::before {
+.dots::before {
   display: inline-block;
   width: 8px;
   font-family: var(--mono);
@@ -1223,9 +1222,13 @@ button:hover > .disc,
   content: '⠋';
   animation: dots 0.8s steps(1) infinite;
 }
-.sand::before {
-  content: '⠁';
-  animation: sand 1.2s steps(1) infinite;
+.sand {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: sand 1.6s ease-in-out infinite; /* transform and opacity only: runs on the compositor, no steps */
 }
 @keyframes dots {
   0% { content: '⠋'; }
@@ -1240,14 +1243,8 @@ button:hover > .disc,
   90% { content: '⠏'; }
 }
 @keyframes sand {
-  0% { content: '⠁'; }
-  12% { content: '⠂'; }
-  25% { content: '⠄'; }
-  37% { content: '⡀'; }
-  50% { content: '⢀'; }
-  62% { content: '⠠'; }
-  75% { content: '⠐'; }
-  87% { content: '⠈'; }
+  0%, 100% { transform: scale(0.6); opacity: 0.35; }
+  50% { transform: scale(1); opacity: 1; }
 }
 
 /* the message editor: py-2, top border, on the chat's own background; its toolbar under the text */

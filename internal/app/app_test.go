@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -570,6 +571,65 @@ func TestEachReviewCommitsItsOwnDiff(t *testing.T) {
 	full := run(t, wt, "git", "rev-parse", shas[store.StepID(tv.ID, "review-1")])
 	if err != nil || !strings.Contains(strings.Join(lines, "\n"), "zed://git/commit/"+full+"?repo=") {
 		t.Fatalf("impl-1 opened %v %v", lines, err)
+	}
+}
+
+func TestOpenInZedPassesFolderThenCommit(t *testing.T) {
+	a, repo := newTestApp(t)
+	reviewCommits(t, a)
+	a.settings.UpdateConfig(func(c *settings.Config) { c.ZedCommand = "true" })
+	tv, _ := a.CreateTask("core", "", "zed folder and commit", "", true, nil)
+	waitFor(t, "plan", func() bool { return stepState(a, store.StepID(tv.ID, "plan-1")) == store.Done })
+	wt := filepath.Join(repo, ".worktrees", tv.Slug)
+	// A step without a commit opens only the worktree.
+	lines, err := a.OpenInZed(tv.ID, store.StepID(tv.ID, "plan-1"))
+	if err != nil || strings.Join(lines, "\n") != "$ true "+wt {
+		t.Fatalf("plan opened %v %v", lines, err)
+	}
+	if _, err := a.StartStep(tv.ID, "impl", "", 0); err != nil {
+		t.Fatal(err)
+	}
+	rev := store.StepID(tv.ID, "review-1")
+	waitFor(t, "review commit", func() bool { s, _ := a.db.Step(rev); return s.SHA != "" })
+	s, _ := a.db.Step(rev)
+	full := run(t, wt, "git", "rev-parse", s.SHA)
+	// A step with a commit opens the worktree and the commit URL in one call, folder first.
+	lines, err = a.OpenInZed(tv.ID, rev)
+	want := "$ true " + wt + " zed://git/commit/" + full + "?repo=" + url.QueryEscape(wt)
+	if err != nil || strings.Join(lines, "\n") != want {
+		t.Fatalf("got %v %v, want %q", lines, err, want)
+	}
+}
+
+func TestIssueTarget(t *testing.T) {
+	a, _ := newTestApp(t)
+	a.settings.UpdateConfig(func(c *settings.Config) { c.IssuesRepo = "pony-lab/pony-core" })
+	common := settings.Project{Repo: "pony-lab/Pony_ReactGroom", CommonIssues: true}
+	own := settings.Project{Repo: "pony-lab/Pony_ReactGroom"}
+	none := settings.Project{}
+	for _, c := range []struct {
+		name, ref string
+		p         settings.Project
+		repo, num string
+		wantErr   bool
+	}{
+		{"bare number, common issues", "1255", common, "pony-lab/pony-core", "1255", false},
+		{"hash number", " #1255 ", common, "pony-lab/pony-core", "1255", false},
+		{"bare number, own issues", "7", own, "pony-lab/Pony_ReactGroom", "7", false},
+		{"owner/name#n", "pony-lab/Pony_ReactGroom#1255", common, "pony-lab/Pony_ReactGroom", "1255", false},
+		{"issue URL", "https://github.com/pony-lab/Pony_ReactGroom/issues/1255", common, "pony-lab/Pony_ReactGroom", "1255", false},
+		{"dotted repo name", "a.b/c-d_e#3", own, "a.b/c-d_e", "3", false},
+		{"junk", "abc", common, "", "", true},
+		{"repo without number", "pony-lab/pony-core", common, "", "", true},
+		{"pull URL", "https://github.com/pony-lab/pony-core/pull/5", common, "", "", true},
+		{"other host", "https://example.com/a/b/issues/5", common, "", "", true},
+		{"bare number, project without repo", "5", none, "", "", true},
+		{"explicit repo, project without repo", "a/b#5", none, "a/b", "5", false},
+	} {
+		repo, num, err := a.issueTarget(c.p, c.ref)
+		if (err != nil) != c.wantErr || repo != c.repo || num != c.num {
+			t.Errorf("%s: issueTarget(%q) = %q, %q, %v", c.name, c.ref, repo, num, err)
+		}
 	}
 }
 
