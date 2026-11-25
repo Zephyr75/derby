@@ -127,7 +127,7 @@ esac
 
 // The Push agent opens the PR itself: after it succeeds derby finds the PR of
 // the branch, Copilot's step starts with the PR's title and description in
-// COPILOT-n.md, and Explain starts by itself too.
+// COPILOT-n.md; Explain is manual and stays unstarted.
 func TestAfterPushFindsThePR(t *testing.T) {
 	a, _ := newTestApp(t)
 	a.gh.Bin = fakeGH(t)
@@ -136,7 +136,9 @@ func TestAfterPushFindsThePR(t *testing.T) {
 	_ = a.db.SaveStep(store.Step{ID: id, TaskID: tv.ID, Key: "push-1", Agent: "push", N: 1, Seq: 1, State: store.Done, StartedAt: time.Now()})
 	a.complete(id)
 	waitFor(t, "copilot started", func() bool { _, err := a.db.Step(store.StepID(tv.ID, "copilot-1")); return err == nil })
-	waitFor(t, "explain started", func() bool { _, err := a.db.Step(store.StepID(tv.ID, "explain-1")); return err == nil })
+	if _, err := a.db.Step(store.StepID(tv.ID, "explain-1")); err == nil {
+		t.Fatal("Explain started by itself")
+	}
 	task, _ := a.db.Task(tv.ID)
 	if task.PRNumber != 7 || task.PRState != "open" || !strings.HasSuffix(task.PRURL, "/pull/7") {
 		t.Fatalf("task PR: %+v", task)
@@ -155,8 +157,10 @@ func TestAfterPushWithoutPR(t *testing.T) {
 	id := store.StepID(tv.ID, "push-1")
 	_ = a.db.SaveStep(store.Step{ID: id, TaskID: tv.ID, Key: "push-1", Agent: "push", N: 1, Seq: 1, State: store.Done, StartedAt: time.Now()})
 	a.complete(id)
-	waitFor(t, "explain started", func() bool { _, err := a.db.Step(store.StepID(tv.ID, "explain-1")); return err == nil })
-	if _, err := a.db.Step(store.StepID(tv.ID, "copilot-1")); err == nil {
-		t.Fatal("Copilot started without a PR")
+	time.Sleep(300 * time.Millisecond)
+	for _, key := range []string{"copilot-1", "explain-1"} {
+		if _, err := a.db.Step(store.StepID(tv.ID, key)); err == nil {
+			t.Fatalf("%s started without a PR", key)
+		}
 	}
 }

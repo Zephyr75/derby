@@ -33,13 +33,13 @@ function go(t: Task) {
     <div class="head pop-head">
       <Icon name="todo" :size="15" />
       <span class="title">Todos</span>
-      <span class="pill tabs" role="tablist">
-        <button role="tab" :aria-selected="tab === 'active'" :class="{ on: tab === 'active' }" @click="tab = 'active'">Tasks <span class="count">{{ openActive }}</span></button>
-        <button role="tab" :aria-selected="tab === 'archived'" :class="{ on: tab === 'archived' }" @click="tab = 'archived'">Archived <span class="count">{{ openArchived }}</span></button>
-      </span>
       <span class="grow"></span>
       <label class="hide small"><input v-model="derby.hideDone" type="checkbox" />Hide done</label>
       <button class="pop-x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" :aria-selected="tab === 'active'" :class="{ on: tab === 'active' }" @click="tab = 'active'">Tasks <span class="count">{{ openActive }}</span></button>
+      <button role="tab" :aria-selected="tab === 'archived'" :class="{ on: tab === 'archived' }" @click="tab = 'archived'">Archived <span class="count">{{ openArchived }}</span></button>
     </div>
     <div class="body">
       <section v-for="t in tasks" :key="t.id">
@@ -69,11 +69,38 @@ function go(t: Task) {
 .small {
   font-size: var(--fs-12);
 }
+/* as the left panel's tabs: the open one runs into the list */
+.tabs {
+  display: flex;
+  flex: none;
+  height: 32px;
+}
 .tabs > button {
-  padding: 0 10px;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-13);
+}
+.tabs > button + button {
+  border-left: 1px solid var(--border);
+}
+.tabs > button:hover {
+  color: var(--text);
+}
+.tabs > button.on {
+  border-bottom-color: transparent;
+  color: var(--text);
+  font-weight: 500;
 }
 .count {
   color: var(--faint);
+  font-weight: 400;
 }
 .on .count {
   color: var(--muted);

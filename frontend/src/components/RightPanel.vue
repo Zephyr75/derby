@@ -305,7 +305,7 @@ async function archive() {
   .d-waiting { background: var(--waiting-dot); } /* Claude waits for an answer */
   .d-failed { background: var(--approval-dot); }
   .pending {
-    border: 1px dashed var(--muted);
+    border: 1px solid var(--muted);
   }
   .line {
     flex: 1;

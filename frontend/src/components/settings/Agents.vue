@@ -304,7 +304,7 @@ function pick(id: string) {
     margin-top: 6px;
     height: 28px;
     border-radius: 6px;
-    border: 1px dashed var(--border);
+    border: 1px solid var(--border);
     background: transparent;
     color: var(--muted);
   }

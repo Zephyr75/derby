@@ -89,7 +89,7 @@ const prChip = computed(() => {
           <button v-if="pr.ready === 'draft'" class="tb" title="Mark ready for review" @click="pr.markReady"><Icon name="check" :size="13" />Mark ready</button>
           <button v-if="pr.live" class="tb" :disabled="pr.refreshing" title="Refresh now" @click="pr.refresh"><Icon name="rerun" :size="13" />Refresh</button>
           <button v-if="t.prUrl" class="tb" title="Copy the link" @click="pr.copyLink"><Icon name="copy" :size="13" />Copy link</button>
-          <button v-if="t.prUrl" class="tb" title="Open the PR on GitHub" @click="pr.open(t.prUrl)"><Icon name="external" :size="13" />Open on GitHub</button>
+          <button v-if="t.prUrl" class="tb" title="Open the PR on GitHub" @click="pr.open(t.prUrl)"><Icon name="external" :size="13" />Open PR</button>
         </span>
       </div>
       <PRTracker :task="t" :step="step" />

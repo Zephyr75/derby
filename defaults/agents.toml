@@ -134,7 +134,7 @@ name = "Copilot"
 trigger = "after:push"
 writes = "COPILOT-{n}.md"
 builtin = true
-next = ["discuss", "impl"]
+next = ["explain", "discuss", "impl"]
 on_fail = ["impl", "discuss"]
 
 [[agent]]
@@ -143,7 +143,7 @@ name = "Explain"
 command = "/derby:explain {task} -- {guidance}"
 model = "sonnet"
 effort = "medium"
-trigger = "after:push"
+trigger = "manual"
 writes = "EXPLAIN-{n}.md"
 next = ["discuss", "impl"]
 on_fail = ["explain"]

@@ -902,7 +902,7 @@ button:hover > .disc,
 }
 .card.failed,
 .tcard.failed {
-  border-style: dashed;
+  border-color: var(--approval-dot);
 }
 .chead {
   display: flex;
