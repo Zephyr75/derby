@@ -18,7 +18,7 @@ Suggestions that build on what derby already does. Effort: **S** small, **M** me
 - **CI checks on the task card** (`gh pr checks`): the PR shows red or green next to its number. **S**
 - **Human review comments into FEEDBACK.md**, not only Copilot's, with a one-click "Implement feedback" step. **M**
 - **Better commit messages**: build the commit message from the IMPLEMENT artifact's summary (conventional commits), with an optional squash before Push. **S**
-- **Merge from derby**: a Merge button once checks pass and the PR is approved, then auto-archive. **S**
+- **Merge from derby**: a Merge button once checks pass and the PR is approved. **S**
 - **Bulk cleanup**: remove worktrees of tasks merged more than N days ago, and show the disk used by `.worktrees/`. **S**
 
 ## Sessions and terminal

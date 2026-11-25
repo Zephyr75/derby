@@ -581,9 +581,9 @@ func TestOpenInZedPassesFolderThenCommit(t *testing.T) {
 	tv, _ := a.CreateTask("core", "", "zed folder and commit", "", true, nil)
 	waitFor(t, "plan", func() bool { return stepState(a, store.StepID(tv.ID, "plan-1")) == store.Done })
 	wt := filepath.Join(repo, ".worktrees", tv.Slug)
-	// A step without a commit opens only the worktree.
+	// A step without a commit opens only the worktree, and says so.
 	lines, err := a.OpenInZed(tv.ID, store.StepID(tv.ID, "plan-1"))
-	if err != nil || strings.Join(lines, "\n") != "$ true "+wt {
+	if err != nil || strings.Join(lines, "\n") != "$ true "+wt+"\nStep has no commit yet: only the worktree was opened." {
 		t.Fatalf("plan opened %v %v", lines, err)
 	}
 	if _, err := a.StartStep(tv.ID, "impl", "", 0); err != nil {
@@ -598,6 +598,65 @@ func TestOpenInZedPassesFolderThenCommit(t *testing.T) {
 	want := "$ true " + wt + " zed://git/commit/" + full + "?repo=" + url.QueryEscape(wt)
 	if err != nil || strings.Join(lines, "\n") != want {
 		t.Fatalf("got %v %v, want %q", lines, err, want)
+	}
+}
+
+func TestOpenInZedSaysWhenStepHasNoCommit(t *testing.T) {
+	a, repo := newTestApp(t)
+	a.settings.UpdateConfig(func(c *settings.Config) { c.ZedCommand = "true" })
+	tv, _ := a.CreateTask("core", "", "zed no commit", "", false, nil)
+	wt := filepath.Join(repo, ".worktrees", tv.Slug)
+	_ = a.db.SaveStep(store.Step{ID: store.StepID(tv.ID, "plan-1"), TaskID: tv.ID, Key: "plan-1", Agent: "plan", N: 1, Seq: 1, State: store.Done})
+	lines, err := a.OpenInZed(tv.ID, store.StepID(tv.ID, "plan-1"))
+	want := "$ true " + wt + "\nStep has no commit yet: only the worktree was opened."
+	if err != nil || strings.Join(lines, "\n") != want {
+		t.Fatalf("got %v %v, want %q", lines, err, want)
+	}
+}
+
+func TestMergedOrClosedPRIsNotArchived(t *testing.T) {
+	fake, _ := filepath.Abs("testdata/fake-gh.sh")
+	for _, state := range []string{"merged", "closed"} {
+		t.Run(state, func(t *testing.T) {
+			a, _ := newTestApp(t)
+			a.gh.Bin = fake
+			t.Setenv("FAKE_GH_STATE", strings.ToUpper(state))
+			tv, _ := a.CreateTask("core", "", "pr "+state, "", false, nil)
+			_ = a.updateTask(tv.ID, func(t *store.Task) error { t.PRNumber, t.PRState = 7, "open"; return nil })
+			task, _ := a.db.Task(tv.ID)
+			a.pollPR(task)
+			got, _ := a.db.Task(tv.ID)
+			if got.PRState != state || got.Archived || !got.ArchivedAt.IsZero() {
+				t.Fatalf("state %q archived %v at %v", got.PRState, got.Archived, got.ArchivedAt)
+			}
+			// Polling ends by itself: the next poll skips the task.
+			t.Setenv("FAKE_GH_STATE", "OPEN")
+			a.pollPR(got)
+			if again, _ := a.db.Task(tv.ID); again.PRState != state {
+				t.Fatalf("polled again: %q", again.PRState)
+			}
+			// Only the user archives, and the archived text says when the PR ended up.
+			if err := a.ArchiveTask(tv.ID); err != nil {
+				t.Fatal(err)
+			}
+			v, _ := a.db.Task(tv.ID)
+			if !v.Archived || v.PRState != state {
+				t.Fatalf("after archive: %+v", v)
+			}
+		})
+	}
+}
+
+func TestOpenPRStaysOpenWhenPolled(t *testing.T) {
+	a, _ := newTestApp(t)
+	a.gh.Bin, _ = filepath.Abs("testdata/fake-gh.sh")
+	t.Setenv("FAKE_GH_STATE", "OPEN")
+	tv, _ := a.CreateTask("core", "", "pr open", "", false, nil)
+	_ = a.updateTask(tv.ID, func(t *store.Task) error { t.PRNumber, t.PRState = 7, "open"; return nil })
+	task, _ := a.db.Task(tv.ID)
+	a.pollPR(task)
+	if got, _ := a.db.Task(tv.ID); got.PRState != "open" || got.Archived {
+		t.Fatalf("%+v", got)
 	}
 }
 
@@ -921,18 +980,43 @@ func TestStatus(t *testing.T) {
 		kind  string
 		label string
 	}{
-		"next":     {store.Task{}, []StepView{step("plan", 1, store.Done, "")}, "waiting", "Plan 1 · Waiting for next step"},
-		"done":     {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}}, "done", "Copilot 1 · Success"},
-		"failure":  {store.Task{}, []StepView{step("impl", 1, store.Done, ""), step("review", 1, store.Done, store.Failure)}, "failed", "Review 1 · Failure"},
-		"running":  {open, []StepView{step("impl", 2, store.Running, "")}, "running", "Implement 2 · Running"},
-		"waiting":  {open, []StepView{step("impl", 2, store.Idle, "")}, "waiting", "Implement 2 · Waiting"},
-		"approval": {store.Task{}, []StepView{step("impl", 1, store.Approval, "")}, "approval", "Implement 1 · Waiting"},
-		"ended":    {store.Task{}, []StepView{step("impl", 1, store.Failed, "")}, "failed", "Implement 1 · Failure"},
-		"talk":     {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, step("discuss", 1, store.Done, "")}, "done", "Discuss 1 · Success"},
-		"changed":  {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, {Step: store.Step{Agent: "discuss", N: 1, State: store.Done}, Name: "Discuss 1", Diff: true}}, "waiting", "Discuss 1 · Waiting for next step"},
+		"next":           {store.Task{}, []StepView{step("plan", 1, store.Done, "")}, "waiting", "Plan 1 · Waiting for next step"},
+		"done":           {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}}, "done", "Copilot 1 · Success"},
+		"failure":        {store.Task{}, []StepView{step("impl", 1, store.Done, ""), step("review", 1, store.Done, store.Failure)}, "failed", "Review 1 · Failure"},
+		"running":        {open, []StepView{step("impl", 2, store.Running, "")}, "running", "Implement 2 · Running"},
+		"waiting":        {open, []StepView{step("impl", 2, store.Idle, "")}, "waiting", "Implement 2 · Waiting"},
+		"approval":       {store.Task{}, []StepView{step("impl", 1, store.Approval, "")}, "approval", "Implement 1 · Waiting"},
+		"merged":         {store.Task{PRNumber: 7, PRState: "merged"}, []StepView{step("impl", 1, store.Done, "")}, "done", "PR merged"},
+		"closed":         {store.Task{PRNumber: 7, PRState: "closed"}, []StepView{step("impl", 1, store.Failed, "")}, "done", "PR closed"},
+		"merged idle":    {store.Task{PRNumber: 7, PRState: "merged"}, []StepView{step("impl", 2, store.Idle, "")}, "done", "PR merged"},
+		"merged running": {store.Task{PRNumber: 7, PRState: "merged"}, []StepView{step("impl", 2, store.Running, "")}, "running", "Implement 2 · Running"},
+		"ended":          {store.Task{}, []StepView{step("impl", 1, store.Failed, "")}, "failed", "Implement 1 · Failure"},
+		"talk":           {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, step("discuss", 1, store.Done, "")}, "done", "Discuss 1 · Success"},
+		"changed":        {open, []StepView{step("push", 1, store.Done, ""), {Step: store.Step{Agent: copilotAgent, N: 1, State: store.Done}, Name: "Copilot 1", External: true}, {Step: store.Step{Agent: "discuss", N: 1, State: store.Done}, Name: "Discuss 1", Diff: true}}, "waiting", "Discuss 1 · Waiting for next step"},
 	} {
 		if s := statusOf(c.task, c.steps); s.Kind != c.kind || s.Label != c.label {
 			t.Errorf("%s: %+v, want %s %q", name, s, c.kind, c.label)
+		}
+	}
+}
+
+func TestNextTextOfFinishedPR(t *testing.T) {
+	agents := settings.DefaultAgents()
+	steps := []StepView{{Step: store.Step{Agent: "push", N: 1, State: store.Done}, Name: "Commit and push"}}
+	for _, c := range []struct {
+		task store.Task
+		want string
+	}{
+		{store.Task{PRNumber: 7, PRState: "merged"}, "PR #7 was merged. Archive the task when you are done."},
+		{store.Task{PRNumber: 7, PRState: "closed"}, "PR #7 was closed. Archive the task when you are done."},
+		{store.Task{PRNumber: 7, PRState: "merged", Archived: true}, " PR #7 was merged."},
+	} {
+		nx := nextOf(c.task, steps, agents)
+		if !strings.Contains(nx.Text, c.want) || (!c.task.Archived && len(nx.Options) != 0) {
+			t.Errorf("%+v: %q %v", c.task, nx.Text, nx.Options)
+		}
+		if strings.Contains(nx.Text, "when PR") {
+			t.Errorf("claims the archive happened at merge: %q", nx.Text)
 		}
 	}
 }
@@ -959,6 +1043,7 @@ func TestNextAfterOutcome(t *testing.T) {
 		task  store.Task
 		want  string
 	}{
+		"pr merged":        {append(base, step("push", 1, ""), copilotStep(1, store.Done, "")), store.Task{PRNumber: 7, PRState: "merged"}, ""},
 		"review passed":    {base, store.Task{}, "Test 1, Implement 2, Discuss 1"},
 		"review failed":    {[]StepView{step("plan", 1, ""), step("impl", 1, ""), step("review", 1, store.Failure)}, store.Task{}, "Implement 2, Discuss 1"},
 		"test failed":      {append(base, step("test", 1, store.Failure)), store.Task{}, "Implement 2, Discuss 1"},
