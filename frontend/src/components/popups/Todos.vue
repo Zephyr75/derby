@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Every todo list: the open tasks with todos (and the selected task), the
-// archived ones that still have open todos, then Others, for the todos of
-// no task. A task's name opens it.
-import { computed } from 'vue'
+// Every todo list: the open tasks with todos (and the selected task), then
+// Others, for the todos of no task; the Archived tab has the todos of archived
+// tasks. A task's name opens it.
+import { computed, ref } from 'vue'
 import { derby, taskName } from '../../lib/state'
 import type { Task, Todo } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
@@ -10,11 +10,15 @@ import TaskRef from '../ui/TaskRef.vue'
 import TodoList from '../TodoList.vue'
 
 const open = (ts: Todo[]) => ts.filter((x) => !x.done).length
-const tasks = computed(() => {
-  const shown = derby.tasks.filter((t) => t.id === derby.sel || (t.archived ? open(t.todos) > 0 : t.todos.length > 0))
-  return shown.sort((a, b) => Number(a.archived) - Number(b.archived) || a.projectName.localeCompare(b.projectName) || a.id.localeCompare(b.id))
-})
-const total = computed(() => open(derby.todos) + derby.tasks.reduce((n, t) => n + open(t.todos), 0))
+const tab = ref<'active' | 'archived'>(derby.selTask?.archived ? 'archived' : 'active')
+const byName = (a: Task, b: Task) => a.projectName.localeCompare(b.projectName) || a.id.localeCompare(b.id)
+const tasks = computed(() =>
+  tab.value === 'archived'
+    ? derby.tasks.filter((t) => t.archived && t.todos.length).sort(byName)
+    : derby.tasks.filter((t) => !t.archived && (t.id === derby.sel || t.todos.length)).sort(byName),
+)
+const openActive = computed(() => open(derby.todos) + derby.tasks.reduce((n, t) => n + (t.archived ? 0 : open(t.todos)), 0))
+const openArchived = computed(() => derby.tasks.reduce((n, t) => n + (t.archived ? open(t.todos) : 0), 0))
 
 function go(t: Task) {
   derby.overlay = 'none'
@@ -29,7 +33,10 @@ function go(t: Task) {
     <div class="head pop-head">
       <Icon name="todo" :size="15" />
       <span class="title">Todos</span>
-      <span class="muted small">{{ total }} open</span>
+      <span class="pill tabs" role="tablist">
+        <button role="tab" :aria-selected="tab === 'active'" :class="{ on: tab === 'active' }" @click="tab = 'active'">Tasks <span class="count">{{ openActive }}</span></button>
+        <button role="tab" :aria-selected="tab === 'archived'" :class="{ on: tab === 'archived' }" @click="tab = 'archived'">Archived <span class="count">{{ openArchived }}</span></button>
+      </span>
       <span class="grow"></span>
       <label class="hide small"><input v-model="derby.hideDone" type="checkbox" />Hide done</label>
       <button class="pop-x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
@@ -39,11 +46,12 @@ function go(t: Task) {
         <button class="task" :title="`Open ${taskName(t)}`" @click="go(t)">
           <TaskRef :issue="t.issue" :task="t.id" />
           <span class="name">{{ taskName(t) }}</span>
-          <span class="muted small">{{ t.projectName }}{{ t.archived ? ' · archived' : '' }}</span>
+          <span class="muted small">{{ t.projectName }}</span>
         </button>
         <TodoList :todos="t.todos" :hide-done="derby.hideDone" @change="derby.setTodos(t, $event)" :run="derby.todoAgent(t)?.name ?? 'Implement'" :blocked="derby.todoBlocked(t)" @run="derby.runTodo(t, $event)" />
       </section>
-      <section>
+      <p v-if="tab === 'archived' && !tasks.length" class="muted small none">No archived task has todos.</p>
+      <section v-if="tab === 'active'">
         <span class="task static"><span class="name">Others</span><span class="muted small">not related to a task</span></span>
         <TodoList :todos="derby.todos" :hide-done="derby.hideDone" @change="derby.setTodos(null, $event)" />
       </section>
@@ -60,6 +68,19 @@ function go(t: Task) {
 }
 .small {
   font-size: var(--fs-12);
+}
+.tabs > button {
+  padding: 0 10px;
+}
+.count {
+  color: var(--faint);
+}
+.on .count {
+  color: var(--muted);
+}
+.none {
+  margin: 0;
+  padding: 0 8px;
 }
 .hide {
   display: flex;

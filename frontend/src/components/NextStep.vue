@@ -125,6 +125,8 @@ onUpdated(fit)
 <style scoped>
 .box {
   flex: none;
+  min-height: var(--dock-h); /* as the chat's message editor beside it: their top lines meet */
+  box-sizing: border-box;
   border-top: 1px solid var(--border);
   padding: 10px 12px 12px;
   display: flex;

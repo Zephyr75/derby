@@ -11,7 +11,14 @@ import type { Task } from '../lib/types'
 
 defineProps<{ task: Task; family?: boolean; big?: boolean; project?: boolean }>()
 
+// A merged PR on its way to production: where it is, and the next branch.
+const mergedTitle = (t: Task) => {
+  const path = [t.baseBranch, ...t.stages]
+  const at = t.release || t.baseBranch
+  return `PR #${t.pr} · merged · in ${at}` + (at !== path[path.length - 1] ? `, then ${path[path.indexOf(at) + 1]}` : '')
+}
 const prTitle = (t: Task) => {
+  if (t.prState === 'merged') return mergedTitle(t)
   const b = derby.prBadge(t)!
   const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'No CI yet', Conflict: 'Conflicts' }[b.label] ?? b.label
   return `PR #${t.pr} · ${what}` + (b.ready === 'draft' ? ' · Draft' : b.ready === 'ready' ? ' · Ready' : '')

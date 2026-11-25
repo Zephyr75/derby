@@ -8,8 +8,9 @@ import ChangesView from './Changes.vue'
 import PRSummary from './PRSummary.vue'
 import ArtifactView from './ArtifactView.vue'
 import TodoList from './TodoList.vue'
+import TaskPage from './TaskPage.vue'
 import { useCompact } from '../lib/compact'
-import { summary } from '../lib/markdown'
+import { prSummary, summary } from '../lib/markdown'
 import type { Artifact, Changes } from '../lib/types'
 
 const step = computed(() => derby.selStep)
@@ -68,12 +69,11 @@ watch(
   () => loadChanges(step.value?.id, 800),
 )
 
-// The Copilot step's explanation Claude could not write: it says so.
-const failed = computed(() => step.value?.agent === 'copilot' && !!art.value?.body.startsWith('_Derby could not write'))
 const file = computed(() => art.value?.file || step.value?.artifact || '')
-// The report's TL;DR and ELI5 only (its first paragraph without them): the
-// expand button opens the whole of it.
-const parts = computed(() => (art.value?.exists ? summary(art.value.body).map((p) => ({ ...p, art: { ...art.value!, body: p.md } })) : []))
+// The report's TLDR and ELI5 only (its first paragraph without them; for a plan
+// its Options, for the Copilot step the PR's title and the start of its
+// description): the expand button opens the whole of it.
+const parts = computed(() => (art.value?.exists ? (step.value?.external ? prSummary : summary)(art.value.body).map((p) => ({ ...p, art: { ...art.value!, body: p.md } })) : []))
 // The four tabs always show, in equal parts; Changes is off while the step
 // changed no files, PR while the task has none, and Report stands in for them.
 const task = computed(() => derby.selTask)
@@ -119,13 +119,16 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
       </template>
       <PRSummary v-else-if="tab === 'pr' && task" :task="task" />
       <ChangesView v-else-if="tab === 'changes'" :changes="changes" />
+      <template v-else-if="derby.onTaskStep && task">
+        <PaneHead title="Task" :tip="task.source" />
+        <TaskPage compact />
+      </template>
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
       <template v-else>
         <PaneHead :title="file || 'Report'" :tip="art?.path">
-          <button v-if="failed" title="Retry the explanation" aria-label="Retry the explanation" @click="derby.attempt('Could not retry the explanation', () => api.RetryExplanation(step!.id))"><Icon name="rerun" :size="13" /></button>
           <button v-if="art?.exists" title="Expand" aria-label="Open the whole report" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
         </PaneHead>
-        <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "Copilot's review arrives" : 'Claude writes it' }}.</p>
+        <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "the PR's title and description are in" : 'Claude writes it' }}.</p>
         <p v-else-if="!parts.length" class="empty">The report is empty.</p>
         <section v-for="p in parts" :key="p.label" class="part">
           <div v-if="p.label" class="plabel">{{ p.label }}</div>

@@ -33,9 +33,6 @@ export interface Agent {
   model: string
   trigger: string // manual | after:<id> (when that step succeeds)
   writes: string
-  commit: boolean // derby commits when it succeeds: its artifact's title line and body are the message
-  push: boolean // then pushes the branch (needs commit)
-  openPR: boolean // then opens or updates the draft PR from its artifact (needs push)
   revert: boolean // its latest step can be reverted while nothing is committed after it
   rerun: boolean // its step can be run again while it is the latest
   choose: boolean // when its artifact lists Options, Next step asks which one to take
@@ -47,7 +44,6 @@ export interface Agent {
   next: string[] // agents Next step offers after it succeeds, first highlighted
   onFail: string[] // agents Next step offers after it fails (empty: itself again)
   effort: string // low | medium | high | xhigh | max
-  projects: string[] // ids of the projects that offer it (empty: every project)
   instructions: string
 }
 
@@ -160,6 +156,7 @@ export interface Config {
   claudeCommand: string
   maxLiveSessions: number
   notifications: boolean
+  useDefaults: boolean // agents, prompts and skills are the repository's defaults/, not ~/.derby's
   maxTabs: number
   rules: string // followed by every agent
   branchPrefix: string // every new task's branch starts with it
@@ -184,6 +181,7 @@ export interface Prompt {
   name: string
   where: string // where derby uses it
   vars: string // what derby replaces in it
+  skill: string // set: an internal skill, /derby:<skill> in every session; where is its description
   default: string
   text: string // the text in use
 }
@@ -216,13 +214,11 @@ export interface Step {
   live: boolean
   auto: boolean
   artifact: string
-  commits: boolean
   diff: boolean // Diff has something to open: its segment's commit, or the uncommitted work
   revert: boolean // after the latest commit: Revert puts the worktree back to its start and removes it and later steps
   paused: boolean // stopped by the user until Resume
   rerun: boolean // Rerun applies: the latest step, of an agent that can be rerun
   skip: boolean // the check and cross buttons apply: the latest step, or one not finished
-  gitError: string // why derby's commit, push or PR after it failed
   external: boolean // run by derby, not Claude: the Copilot review step
 }
 
@@ -246,7 +242,7 @@ export interface Next {
   approval: string
   markDone: string
   warning: string // e.g. the plan lists options: name one in the guidance
-  elsewhere: string[] // before a step that commits: repositories outside the worktree with uncommitted agent edits
+  elsewhere: string[] // repositories outside the worktree with uncommitted agent edits
   sisters: SisterOffer[] // repositories the plan also needs, with no sister task yet
   ghost: { name: string; after: string } | null
 }
@@ -269,6 +265,8 @@ export interface Task {
   pr: number
   prUrl: string
   prState: string
+  release: string // once merged: the furthest of its stages (qa, master or main) that has the merge commit
+  stages: string[] // the branches a merged PR travels through after its base
   worktreeRemoved: boolean
   projectName: string
   repo: string

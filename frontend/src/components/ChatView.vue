@@ -311,16 +311,26 @@ const title = (t: ToolCall) => renderInline(view(t).title)
 const confirming = (t: ToolCall) => (approval.value || asking.value) && pending.value === t
 
 // Claude's question form, answered in the chat: the options picked (from 1)
-// and the typed answers, by question; reset for each new form.
+// and the typed answers, by question. Each new form starts with the
+// recommended option picked (else the first), for you to confirm or change.
 const picks = ref<Record<number, number[]>>({})
 const typed = ref<Record<number, string>>({})
 const answering = ref(false)
+function recommended(t: ToolCall | undefined) {
+  const out: Record<number, number[]> = {}
+  if (t?.call.tool !== 'AskUserQuestion') return out
+  questions(t.call).forEach((q, i) => {
+    if (q.options.length) out[i] = [1 + Math.max(0, q.options.findIndex((o) => /\(recommended\)/i.test(o.label)))]
+  })
+  return out
+}
 watch(
   () => pending.value?.call.id,
   () => {
-    picks.value = {}
+    picks.value = recommended(pending.value ?? undefined)
     typed.value = {}
   },
+  { immediate: true },
 )
 const picked = (q: number, k: number) => (picks.value[q] ?? []).includes(k)
 function pickOption(q: number, k: number, multi: boolean) {
@@ -1250,6 +1260,8 @@ button:hover > .disc,
 /* the message editor: py-2, top border, on the chat's own background; its toolbar under the text */
 .foot {
   flex: none;
+  min-height: var(--dock-h); /* its natural height, with 4 lines of text and the toolbar: Next step's box matches it */
+  box-sizing: border-box;
   padding: 8px 0;
   border-top: 1px solid var(--border);
   background: var(--bg);

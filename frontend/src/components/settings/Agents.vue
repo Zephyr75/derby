@@ -2,6 +2,7 @@
 // Settings > Agents: the pipeline and one agent's definition. Edits save to
 // ~/.derby/agents.toml and regenerate the agent's /derby: command. The first
 // agent starts every task; Copilot is built in (derby runs it, not Claude).
+// With the defaults in use (Settings > General) the page only shows them.
 import { computed, ref } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
@@ -17,6 +18,7 @@ const firstId = computed(() => claudeAgents.value[0]?.id ?? '')
 const selId = ref(claudeAgents.value[0]?.id ?? '')
 const A = computed(() => agents.value.find((a) => a.id === selId.value) ?? claudeAgents.value[0])
 const confirmDelete = ref(false)
+const locked = computed(() => !!derby.settings?.config.useDefaults)
 
 const models: [string, string][] = [['fable', 'Fable'], ['opus', 'Opus'], ['sonnet', 'Sonnet'], ['haiku', 'Haiku']]
 const efforts = ['low', 'medium', 'high', 'xhigh', 'max']
@@ -33,12 +35,6 @@ function changed() {
   save()
 }
 
-/** toggleProject adds or removes a project from those that offer the agent (none: all). */
-function toggleProject(id: string) {
-  const ps = A.value?.projects ?? []
-  set('projects', ps.includes(id) ? ps.filter((x) => x !== id) : [...ps, id])
-}
-
 function set<K extends keyof Agent>(k: K, v: Agent[K]) {
   if (!A.value) return
   A.value[k] = v
@@ -49,7 +45,7 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
 
 const nameOf = (id: string) => agents.value.find((x) => x.id === id)?.name ?? id
 const afterName = (a: Agent) => nameOf(afterOf(a.trigger))
-const sub = (a: Agent) => (a.builtin ? 'run by Derby, explained by ' + modelLabel(a.model) + ' · ' : modelLabel(a.model) + ' · ') + (isAuto(a) ? 'automatic after ' + afterName(a) : a.builtin ? 'not started' : 'manual')
+const sub = (a: Agent) => (a.builtin ? 'run by Derby · ' : modelLabel(a.model) + ' · ') + (isAuto(a) ? 'automatic after ' + afterName(a) : a.builtin ? 'not started' : 'manual')
 
 // "Starts after X" would loop when X (or what X waits for) starts after this agent.
 function loops(a: Agent, target: string) {
@@ -60,14 +56,14 @@ function loops(a: Agent, target: string) {
   return false
 }
 // Claude agents start by hand or after another Claude agent; Copilot after
-// an agent that opens the PR (it reviews that PR), or never by itself.
+// the agent that opens the PR (it reviews that PR), or never by itself.
 const triggers = computed(() => {
   const a = A.value
   if (!a) return []
   if (a.builtin)
     return [
       { value: 'manual', label: 'Only when a review arrives on its own', disabled: false },
-      ...claudeAgents.value.filter((x) => x.openPR).map((x) => ({ value: 'after:' + x.id, label: 'Automatically when ' + x.name + ' opened or updated the PR', disabled: false })),
+      ...claudeAgents.value.map((x) => ({ value: 'after:' + x.id, label: 'Automatically when ' + x.name + ' succeeds', disabled: false })),
     ]
   const out = [{ value: 'manual', label: 'Manually, with play', disabled: false }]
   for (const x of claudeAgents.value) {
@@ -95,8 +91,8 @@ function addAgent() {
   const id = idFor(name)
   s.agents.push({
     id, name, command: `/derby:${id} {task} -- {guidance}`, model: 'sonnet', trigger: 'manual', writes: id.toUpperCase() + '-{n}.md',
-    commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: false,
-    ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], onFail: [], projects: [], effort: 'xhigh',
+    revert: false, rerun: false, choose: false, builtin: false,
+    ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], onFail: [], effort: 'xhigh',
     instructions: 'Describe what this agent reads, what it does and what it writes.',
   })
   selId.value = id
@@ -143,20 +139,6 @@ type ListKey = 'next' | 'onFail'
 const addable = (k: ListKey) => claudeAgents.value.filter((x) => !(A.value?.[k] ?? []).includes(x.id)).map((x) => ({ value: x.id, label: x.name }))
 const addTo = (k: ListKey, id: string) => A.value && set(k, [...(A.value[k] ?? []), id])
 const dropFrom = (k: ListKey, id: string) => A.value && set(k, (A.value[k] ?? []).filter((x) => x !== id))
-// The git boxes run in order, each needing the one before: ticking one
-// ticks those before it, unticking one unticks those after it.
-type GitKey = 'commit' | 'push' | 'openPR'
-const gitOrder: GitKey[] = ['commit', 'push', 'openPR']
-function setGit(k: GitKey, on: boolean) {
-  const a = A.value
-  if (!a) return
-  const i = gitOrder.indexOf(k)
-  gitOrder.forEach((g, j) => {
-    if (on && j <= i) a[g] = true
-    if (!on && j >= i) a[g] = false
-  })
-  changed()
-}
 function pick(id: string) {
   selId.value = id
   confirmDelete.value = false
@@ -167,7 +149,8 @@ function pick(id: string) {
 <template>
   <div class="intro">
     <h1>Agents</h1>
-    <p>Each step of a task runs one agent: a Claude Code session started with the agent's command, model and instructions, in Claude Code's auto mode. The first agent starts every task; the order below is the pipeline.</p>
+    <p>Each step of a task runs one agent: a Claude Code session started with the agent's command, model and instructions, in Claude Code's auto mode. The first agent starts every task; the order below is the pipeline. Nothing about an agent is built into Derby: commit, push and the PR are in the Push agent's instructions.</p>
+    <p v-if="locked" class="locked">Derby's default agents are in use (Settings &gt; General): they are shown here but cannot be edited.</p>
   </div>
 
   <div class="pipeline">
@@ -189,30 +172,13 @@ function pick(id: string) {
     </div>
 
     <div v-if="A" class="editor card">
+      <fieldset class="lock" :disabled="locked">
       <template v-if="A.builtin">
         <p class="special">
           Built in: Derby runs it, because it works with GitHub. It asks Copilot to review the PR, then waits for the review and the CI checks (checked every
-          minute), and fails when there is something to fix; the PR tab shows both. When it passes, the task is done (green). Meanwhile Claude explains the
-          PR's changes in {{ A.writes.replace('{n}', 'n') }}, with the model and instructions below.
+          minute), and fails when there is something to fix; the PR tab shows both. When it passes, the task is done (green). Its report,
+          {{ A.writes.replace('{n}', 'n') }}, holds the PR's title and description.
         </p>
-        <div class="field">
-          <span>Model of the explanation</span>
-          <div class="segs">
-            <button v-for="[v, l] in models" :key="v" class="seg" :class="{ on: A.model === v }" @click="set('model', v)">{{ l }}</button>
-          </div>
-        </div>
-        <div class="field">
-          <span>Effort</span>
-          <div class="segs">
-            <button v-for="v in efforts" :key="v" class="seg" :class="{ on: (A.effort || 'xhigh') === v }" @click="set('effort', v)">{{ v }}</button>
-          </div>
-        </div>
-        <label class="field"
-          >Instructions of the explanation
-          <textarea class="area mono" rows="7" :value="A.instructions" @input="set('instructions', val($event))"></textarea>
-          <span class="hint flat">Placeholders: {{ '{pr} {base} {file}' }} (the file to write, which becomes {{ A.writes.replace('{n}', 'n') }}). Derby's Diagrams prompt follows them.</span>
-        </label>
-        <ContextPreview :agent="A" />
       </template>
       <template v-else>
         <span class="muted small">ID <span class="mono">{{ A.id }}</span>: made from the name when the agent was created, used by triggers and step names</span>
@@ -239,26 +205,7 @@ function pick(id: string) {
         <span>Starts</span>
         <Dropdown class="starts" :items="triggers" :value="A.trigger" @pick="set('trigger', $event)" />
       </div>
-      <div class="field">
-        <span>Offered in</span>
-        <div class="segs">
-          <button class="seg" :class="{ on: !A.projects?.length }" @click="set('projects', [])">All projects</button>
-          <button v-for="p in derby.projects" :key="p.id" class="seg" :class="{ on: A.projects?.includes(p.id) }" @click="toggleProject(p.id)">{{ p.name }}</button>
-        </div>
-        <span class="hint flat">Tasks of the other projects never offer it or start it by itself.</span>
-      </div>
       <template v-if="!A.builtin">
-        <div class="field">
-          <span>When its step succeeds, Derby</span>
-          <div class="checks">
-            <label title="Commits with its report's title and body"><input type="checkbox" :checked="A.commit" @change="setGit('commit', checked($event))" /> commits</label>
-            <span class="muted" aria-hidden="true">→</span>
-            <label title="Pushes the branch (needs Commit)"><input type="checkbox" :checked="A.push" @change="setGit('push', checked($event))" /> pushes</label>
-            <span class="muted" aria-hidden="true">→</span>
-            <label title="Opens or updates the draft PR (needs Push)"><input type="checkbox" :checked="A.openPR" @change="setGit('openPR', checked($event))" /> opens the PR</label>
-          </div>
-          <span class="hint">In that order, stopping at the first that fails; Next step then says why and offers to run it again.</span>
-        </div>
         <div class="field">
           <span>Its steps</span>
           <label class="box"><input type="checkbox" :checked="A.revert" @change="set('revert', checked($event))" /> Can be reverted</label>
@@ -298,11 +245,19 @@ function pick(id: string) {
           <button class="btn" :class="confirmDelete ? 'danger' : 'ghost'" @click="remove">{{ confirmDelete ? 'Remove ' + A.name + '?' : 'Remove' }}</button>
         </div>
       </template>
+      </fieldset>
     </div>
   </div>
 </template>
 
 <style scoped>
+  /* the editor's fields, disabled while the defaults are in use */
+  .lock {
+    display: contents;
+  }
+  .locked {
+    color: var(--waiting) !important;
+  }
   .pipeline {
     display: flex;
     align-items: center;

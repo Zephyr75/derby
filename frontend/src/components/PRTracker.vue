@@ -1,13 +1,35 @@
 <script setup lang="ts">
-// A PR as flat lists, like the TODOs and Changes tabs: Copilot's review
-// comments to tick and send to a fixing step, then the CI checks.
-import { reactive } from 'vue'
+// The Copilot step's page: the PR's title and description, then, as flat lists
+// like the TODOs and Changes tabs, Copilot's review comments to tick and send
+// to a fixing step, and the CI checks. Its toolbar (in the centre view) has the
+// PR's own buttons.
+import { computed, reactive, ref, watch } from 'vue'
+import { api } from '../lib/api'
+import { derby } from '../lib/state'
 import { usePR, word } from '../lib/pr'
-import type { Feedback, Step, Task } from '../lib/types'
+import type { Artifact, Feedback, Step, Task } from '../lib/types'
 import Icon from './ui/Icon.vue'
+import ArtifactView from './ArtifactView.vue'
 
 const props = defineProps<{ task: Task; step?: Step }>()
 const pr = reactive(usePR(props))
+
+// COPILOT-n.md: the PR's title (its first line) and description.
+const doc = ref<Artifact | null>(null)
+let seq = 0
+watch(
+  () => [props.step?.id, derby.artifactRev] as const,
+  ([id]) => {
+    const mine = ++seq
+    if (!id) return void (doc.value = null)
+    api.ReadArtifact(id).then(
+      (a) => mine === seq && (doc.value = a),
+      () => mine === seq && (doc.value = null),
+    )
+  },
+  { immediate: true },
+)
+const text = computed(() => /^#\s+(.*)\n*([\s\S]*)$/.exec(doc.value?.exists ? doc.value.body.trim() : '') ?? [])
 
 const dot = (b: string) => (b === 'fail' || b === 'cancel' ? 'd-fail' : b === 'pending' ? 'd-run' : b === 'skipping' ? 'd-skip' : 'd-pass')
 const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') + 1)}:${f.line}` : 'on the PR')
@@ -16,16 +38,11 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
 <template>
   <div :class="['prv', { page: step }]">
     <div class="inner">
-      <header class="head">
-        <Icon :name="pr.ready === 'draft' ? 'pr-draft' : 'pr'" :size="14" :class="pr.ready === 'ready' ? 'c-pass' : 'muted'" />
-        <span class="num">#{{ task.pr }}</span>
-        <span v-if="pr.ready" class="muted" :title="pr.ready === 'ready' ? 'Ready for review' : 'Draft'">{{ pr.ready === 'ready' ? 'Ready' : 'Draft' }}</span>
-        <span class="branch" :title="`${task.branch} → ${task.baseBranch}`">{{ task.branch }} → {{ task.baseBranch }}</span>
-        <button v-if="pr.ready === 'draft'" class="tb" title="Mark ready for review" aria-label="Mark ready" @click="pr.markReady"><Icon name="check" :size="13" /><span class="lbl">Mark ready</span></button>
-        <button v-if="pr.live" class="ib" :disabled="pr.refreshing" title="Refresh now" aria-label="Refresh" @click="pr.refresh"><Icon name="rerun" :size="13" /></button>
-        <button v-if="task.prUrl" class="ib" title="Copy link" aria-label="Copy link" @click="pr.copyLink"><Icon name="copy" :size="13" /></button>
-        <button v-if="task.prUrl" class="ib" title="Open on GitHub" aria-label="Open PR" @click="pr.open(task.prUrl)"><Icon name="external" :size="13" /></button>
-      </header>
+      <section v-if="text[1]" class="desc">
+        <h2 class="ptitle">{{ text[1] }}</h2>
+        <ArtifactView v-if="text[2]" :art="{ ...doc!, body: text[2] }" :task="task.id" />
+        <p v-else class="empty">No description.</p>
+      </section>
 
       <section v-if="task.feedback.length || pr.live">
         <div class="sh">
@@ -141,31 +158,18 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
     color: var(--waiting);
   }
 
-  /* like the TODOs tab's head */
-  .head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    padding: 0 0 8px;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-  .num {
-    font-weight: 600;
+  .ptitle {
+    margin: 0;
     font-size: var(--fs-14);
+    font-weight: 600;
   }
-  .branch {
-    /* takes only the room left, so it is the one cut short */
-    flex: 1 1 0;
-    max-width: max-content;
-    min-width: 0;
-    margin-right: auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--faint);
-    font-family: var(--mono);
-    font-size: var(--fs-12);
+  .desc {
+    gap: 8px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .desc :deep(.md > :last-child) {
+    margin-bottom: 0;
   }
 
   section {
@@ -242,9 +246,6 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
   }
   .sh .tb:last-child {
     margin-right: -7px;
-  }
-  .head .ib:last-child {
-    margin-right: -4px;
   }
 
   /* a comment, like a todo */

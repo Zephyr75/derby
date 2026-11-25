@@ -9,6 +9,8 @@
   --ui-font: 'Geist', system-ui, sans-serif;
   --mono: 'Geist Mono', ui-monospace, monospace;
   --ui-size: 13px;
+  /* the bottom of the left panel (Next step) and of the chat (message editor) are this tall at least, so their top lines align */
+  --dock-h: 132px;
   /* every text size, relative to the UI font size (13px by default, Settings >
      Appearance): --fs-12 is 12px at 13px and grows with it */
   --fs-10-5: calc(var(--ui-size) * 10.5 / 13);

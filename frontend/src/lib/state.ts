@@ -9,9 +9,9 @@ import { copyText } from './window'
 import { modes, themeDef, themes } from './themes'
 import { unsuccessful, type Option, type Proc, type Settings, type Step, type TabRef, type Task, type Agent, type Note, type Todo, type StatusKind, type ThemeMode, fill } from './types'
 
-export type Overlay = 'none' | 'palette' | 'scope' | 'new' | 'activity' | 'views' | 'todos' | 'description'
+export type Overlay = 'none' | 'palette' | 'scope' | 'new' | 'activity' | 'views' | 'todos'
 export type ScopeMode = 'project' | 'worktree' | 'branch'
-export type SettingsTab = 'agents' | 'context' | 'projects' | 'appearance' | 'shortcuts' | 'about'
+export type SettingsTab = 'general' | 'agents' | 'context' | 'projects' | 'appearance' | 'shortcuts' | 'about'
 
 export interface Toast {
   id: number
@@ -21,6 +21,10 @@ export interface Toast {
 }
 
 let toastSeq = 0
+
+/** The id of a task's first step, Task: built in, it shows the task itself (its
+ *  issue, comments and instructions). Derby runs nothing for it, so it is not in task.steps. */
+export const taskStepId = (taskId: string) => taskId + '/task'
 
 /** Panel widths: defaults, limits, and the per-viewer saved value. */
 export const PANELS = {
@@ -75,7 +79,7 @@ class Derby {
   /** The chat's list of the user's messages is open. */
   messages = false
   view: 'board' | 'settings' = 'board'
-  settingsTab: SettingsTab = 'context'
+  settingsTab: SettingsTab = 'general'
   overlay: Overlay = 'none'
   rightTab: 'preview' | 'changes' | 'pr' | 'todos' = 'preview'
   todos: Todo[] = [] // Others: the todos of no task
@@ -122,6 +126,11 @@ class Derby {
   get activeTab(): TabRef | null {
     const tb = this.active >= 0 ? this.tabs[this.active] : undefined
     return tb && tb.task === this.sel ? tb : null
+  }
+  /** The open tab shows the task's built-in Task step. */
+  get onTaskStep(): boolean {
+    const tb = this.activeTab
+    return !!tb && !!this.selTask && tb.step === taskStepId(tb.task)
   }
   get selStep(): Step | null {
     const tb = this.activeTab
@@ -185,7 +194,7 @@ class Derby {
       const was = saved[b.tabs?.active ?? -1]
       const tabs: TabRef[] = []
       for (const tb of saved) {
-        if (!this.task(tb.task)?.steps.some((s) => s.id === tb.step)) continue
+        if (tb.step !== taskStepId(tb.task) && !this.task(tb.task)?.steps.some((s) => s.id === tb.step)) continue
         const cur = tabs.find((x) => x.task === tb.task)
         if (!cur) tabs.push({ task: tb.task, step: tb.step })
         else if (!(was?.task === tb.task && cur.step === was.step)) cur.step = tb.step
@@ -230,7 +239,7 @@ class Derby {
 
   /** In the browser mock, URL params pick a screen like the preview's
    *  artboards: ?sel=core:4349&left=archive&overlay=palette&q=unlock&
-   *  view=settings&tab=appearance&theme=copilot&mode=light&scope=branch&step=plan-1 */
+   *  view=settings&tab=appearance&theme=copilot&mode=light&scope=branch&step=plan-1&session=chat */
   private applyPreviewParams() {
     const q = new URLSearchParams(location.search)
     const sel = q.get('sel')
@@ -247,8 +256,9 @@ class Derby {
     if (mode && this.settings) this.settings.config.appearance.mode = mode
     if (q.get('view') === 'settings') {
       this.view = 'settings'
-      this.settingsTab = (q.get('tab') as SettingsTab) || 'context'
+      this.settingsTab = (q.get('tab') as SettingsTab) || 'general'
     }
+    if (q.get('session') === 'chat' && this.settings) this.settings.config.appearance.sessionView = 'chat'
     const scope = q.get('scope')
     if (scope === 'project' || scope === 'worktree' || scope === 'branch') this.scope = scope
     const overlay = q.get('overlay')
@@ -269,7 +279,7 @@ class Derby {
     // shows the task's last step, or closes when none is left.
     const ix = this.tabs.findIndex((tb) => tb.task === t.id)
     const tb = this.tabs[ix]
-    if (tb && !t.steps.some((s) => s.id === tb.step)) {
+    if (tb && tb.step !== taskStepId(t.id) && !t.steps.some((s) => s.id === tb.step)) {
       if (t.steps.length) tb.step = t.steps[t.steps.length - 1].id
       else this.dropTab(ix)
       this.persistTabs()
@@ -281,6 +291,7 @@ class Derby {
     const prev = before.steps[before.steps.length - 1]
     for (const s of t.steps) {
       if (known.has(s.id) || !s.auto) continue
+      if (tb.step === taskStepId(t.id) && before.steps.length) continue // reading the task: stay
       if (tb.step !== prev?.id && known.has(tb.step)) continue
       tb.step = s.id
       this.persistTabs()
@@ -427,18 +438,23 @@ class Derby {
     this.view = 'board'
     this.showInPanel(t)
     this.confirmDelete = ''
-    if (!t.steps.length) {
-      this.sel = id
-      this.active = -1
-      return
-    }
     const ix = this.tabs.findIndex((tb) => tb.task === id)
     if (ix >= 0) {
       this.active = ix
       this.tabUsed[id] = Date.now()
       this.sel = id
       this.persistTabs()
-    } else this.openStep(id, t.steps[t.steps.length - 1].id)
+    } else this.openStep(id, t.steps.length ? t.steps[t.steps.length - 1].id : taskStepId(id))
+  }
+
+  /** openTask shows the task's Task step. */
+  openTask(taskId: string) {
+    this.openStep(taskId, taskStepId(taskId))
+  }
+
+  /** latestPR: the task's latest Copilot step, which describes its PR. */
+  latestPR(t: Task): Step | undefined {
+    return [...t.steps].reverse().find((s) => s.external)
   }
 
   focusTab(i: number) {
@@ -708,7 +724,7 @@ class Derby {
    *  merged, closed) and, while open, whether it is a draft. */
   prBadge(t: Task): { kind: StatusKind; label: string; ready: '' | 'draft' | 'ready' } | null {
     if (!t.pr) return null
-    if (t.prState === 'merged') return { kind: 'done', label: 'Merged', ready: '' }
+    if (t.prState === 'merged') return { kind: 'done', label: t.release ? 'In ' + t.release : 'Merged', ready: '' }
     if (t.prState && t.prState !== 'open') return { kind: 'idle', label: 'Closed', ready: '' }
     const ready = t.draft ? 'draft' : 'ready'
     const b = new Set(t.checks.map((c) => c.bucket))
@@ -724,16 +740,11 @@ class Derby {
     return !!last?.external && last.state === 'done' && !unsuccessful(last) && last.verdict !== 'skipped'
   }
 
-  /** fixers: the agents Copilot offers when there is something to fix (Implement, Discuss by default) that the task's project offers; the first does the fixes. */
-  fixers(t: Task): Agent[] {
-    const ags = (this.settings?.agents ?? []).filter((a) => !a.projects?.length || a.projects.includes(t.project))
+  /** fixers: the agents Copilot offers when there is something to fix (Implement, Discuss by default); the first does the fixes. */
+  fixers(_t: Task): Agent[] {
+    const ags = this.settings?.agents ?? []
     const ids = ags.find((a) => a.builtin)?.onFail ?? []
-    const out = ids.map((id) => ags.find((a) => a.id === id)).filter((a): a is Agent => !!a && !a.builtin)
-    if (!out.length) {
-      const impl = ags.find((a) => a.id === 'impl')
-      if (impl) out.push(impl)
-    }
-    return out
+    return ids.map((id) => ags.find((a) => a.id === id)).filter((a): a is Agent => !!a && !a.builtin)
   }
 
   /** busy: a step of the task is working or waiting for the user (a waiting Copilot step aside). */
@@ -755,9 +766,9 @@ class Derby {
     return true
   }
 
-  /** todoAgent: the agent a todo's play button starts, Implement or else the first fixer. */
+  /** todoAgent: the agent a todo's play button starts, the first fixer (Implement by default). */
   todoAgent(t: Task): Agent | undefined {
-    return this.fixers(t).find((a) => a.id === 'impl') ?? this.fixers(t)[0]
+    return this.fixers(t)[0]
   }
 
   /** todoBlocked: why a todo's play button can't start a step on the task now, or ''. */

@@ -11,21 +11,27 @@ import { useCompact } from '../lib/compact'
 import { unsuccessful, type Step } from '../lib/types'
 
 const t = computed(() => derby.selTask)
-const openIssue = () => t.value && derby.attempt('Could not open the issue', () => api.OpenURL(`https://github.com/${t.value!.issueRepo || t.value!.repo}/issues/${t.value!.issue}`))
-const openPR = () => t.value && derby.attempt('Could not open the PR', () => api.OpenURL(t.value!.prUrl || `https://github.com/${t.value!.repo}/pull/${t.value!.pr}`))
+// The buttons are shortcuts to the task's own steps, so there is no need to
+// open GitHub: Issue (or Task) to the Task step, PR to the latest Copilot step,
+// which describes the PR and links to it. A PR without a Copilot step opens on GitHub.
+const openTask = () => t.value && derby.openTask(t.value.id)
+const openPR = () => {
+  const task = t.value
+  if (!task) return
+  const cop = derby.latestPR(task)
+  if (cop) derby.openStep(task.id, cop.id)
+  else derby.attempt('Could not open the PR', () => api.OpenURL(task.prUrl || `https://github.com/${task.repo}/pull/${task.pr}`))
+}
 // GitHub's PR icons, as in the left panel: merged, closed, draft, open.
 const prIcon = computed(() => (t.value?.prState === 'merged' ? 'rebase' : t.value?.prState && t.value.prState !== 'open' ? 'pr-closed' : t.value?.draft ? 'pr-draft' : 'pr'))
-// Issue opens it on GitHub; a task without one has a description instead.
+// A task with an issue has an Issue button, one without a Task button.
 const hasIssue = computed(() => !!(t.value?.issue && (t.value.issueRepo || t.value.repo)))
-// The title shows the issue, its comments and the user's instructions.
-const canDescribe = computed(() => hasIssue.value || !!t.value?.description)
 const titleTip = computed(() => {
   const task = t.value
   if (!task) return ''
-  const full = task.name && task.name !== task.title ? task.title + '\n\n' : ''
+  const full = task.name && task.name !== task.title ? task.title : ''
   const sisters = sisterTitle(task.id)
-  const show = hasIssue.value ? 'Show issue' : task.description ? 'Show description' : 'No description'
-  return full + (sisters ? sisters + '\n\n' : '') + show
+  return [full, sisters].filter(Boolean).join('\n\n')
 })
 // Rebase always shows, before Archive; it's off unless the branch is behind
 // and a step can rebase it now.
@@ -99,14 +105,13 @@ async function archive() {
     <Splitter side="right" />
     <template v-if="t">
       <div class="head">
-        <button class="title-row" :class="{ plain: !canDescribe }" :disabled="!canDescribe" :title="titleTip" @click="derby.openOverlay('description')">
+        <div class="title-row" :title="titleTip">
           <TaskRef :issue="t.issue" />
           <span class="title">{{ taskName(t) }}</span>
-        </button>
+        </div>
         <div ref="bar" class="bar" :class="{ compact }">
-          <button v-if="hasIssue" class="hb" title="Open issue on GitHub" aria-label="Issue" @click="openIssue"><Icon name="issue" /><span class="label">Issue</span></button>
-          <button v-else class="hb" :class="{ off: !t.description }" :aria-disabled="!t.description" :title="t.description ? 'Show description' : 'No description'" aria-label="Task" @click="t.description && derby.openOverlay('description')"><Icon name="description" /><span class="label">Task</span></button>
-          <button class="hb" :class="{ off: !t.pr }" :aria-disabled="!t.pr" :title="t.pr ? 'Open PR on GitHub' : 'No PR yet'" aria-label="PR" @click="t.pr && openPR()"><Icon :name="prIcon" /><span class="label">PR</span></button>
+          <button class="hb" :title="hasIssue ? 'Show the issue, its comments and your instructions' : 'Show the task'" :aria-label="hasIssue ? 'Issue' : 'Task'" @click="openTask"><Icon :name="hasIssue ? 'issue' : 'description'" /><span class="label">{{ hasIssue ? 'Issue' : 'Task' }}</span></button>
+          <button class="hb" :class="{ off: !t.pr }" :aria-disabled="!t.pr" :title="t.pr ? 'Show the PR: its description, review and checks' : 'No PR yet'" aria-label="PR" @click="t.pr && openPR()"><Icon :name="prIcon" /><span class="label">PR</span></button>
           <button v-if="!t.archived && !t.worktreeRemoved" class="hb" title="Open in Zed" aria-label="Zed" @click="derby.openWorktree()"><Icon name="code" /><span class="label">Zed</span></button>
           <button class="hb" title="Open reports folder" aria-label="Reports" @click="openRunDir"><Icon name="folder" /><span class="label">Reports</span></button>
           <button class="hb" :class="{ warn: t.behind && !t.archived, off: !canRebase }" :aria-disabled="!canRebase" :title="rebaseTitle" aria-label="Rebase" @click="canRebase && rebase()"><Icon name="rebase" /><span class="label">Rebase</span></button>
@@ -115,7 +120,13 @@ async function archive() {
       </div>
 
       <div ref="timeline" class="timeline" :class="{ sized: derby.timelineHeight > 0 }" :style="derby.timelineHeight > 0 ? { height: derby.timelineHeight + 'px' } : {}">
-        <p v-if="!t.steps.length" class="none">No steps yet.</p>
+        <div class="row" :class="{ on: derby.onTaskStep }">
+          <span class="rail">
+            <span class="sdot d-done"></span>
+            <span v-if="t.steps.length || t.next.ghost" class="line"></span>
+          </span>
+          <button class="step" :title="t.source" @click="derby.openTask(t.id)"><span class="name-row"><span class="name">Task</span></span></button>
+        </div>
         <div v-for="(s, i) in t.steps" :key="s.id" class="row" :class="{ on: derby.selStep?.id === s.id }">
           <span class="rail">
             <span :class="['sdot', dotCls(s)]"></span>
@@ -176,8 +187,7 @@ async function archive() {
     gap: 8px;
     flex: none;
   }
-  /* The issue ref and the task's name, one button: a click shows its issue,
-     comments and instructions. */
+  /* The issue ref and the task's name */
   .title-row {
     display: flex;
     align-items: center;
@@ -187,19 +197,7 @@ async function archive() {
     min-width: 0;
     margin: 0 -5px;
     padding: 2px 5px;
-    border: 0;
-    border-radius: 5px;
-    background: transparent;
     color: var(--text);
-    font: inherit;
-    text-align: left;
-  }
-  .title-row:not(.plain):hover {
-    background: var(--hover);
-  }
-  .title-row.plain {
-    cursor: default;
-    opacity: 1;
   }
   .title {
     min-width: 0;

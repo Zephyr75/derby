@@ -17,7 +17,7 @@ ui:            ## the UI alone in a browser, on the preview's mock data
 	cd frontend && npm run dev
 
 test:
-	go test ./internal/...
+	go test ./internal/... && cd frontend && npm test
 
 check:
 	go vet ./internal/... && cd frontend && npm run check

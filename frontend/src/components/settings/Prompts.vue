@@ -1,11 +1,16 @@
 <script setup lang="ts">
 // Settings > Context > Prompts: every text Derby gives agents besides their
-// instructions (prompts.toml): around them, and the fix steps' guidance.
-import { reactive } from 'vue'
+// instructions (prompts.toml): around them, and the fix steps' guidance. With
+// skills, the internal skills Derby ships (each a prompt with a skill name,
+// /derby:<skill> in every session) instead.
+import { computed, reactive } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import { derby } from '../../lib/state'
 
+const props = defineProps<{ skills?: boolean }>()
+const locked = computed(() => !!derby.settings?.config.useDefaults)
+const shown = computed(() => (derby.settings?.prompts ?? []).filter((p) => !!p.skill === !!props.skills))
 const savers: Record<string, (t: string) => void> = {}
 const drafts = reactive<Record<string, string>>({})
 function edit(id: string, e: Event) {
@@ -26,24 +31,29 @@ const rows = (text: string) => Math.max(8, Math.min(30, text.split('\n').reduce(
 
 <template>
   <div class="prompts">
-    <p class="muted small">Every text Derby gives agents besides their instructions, saved in {{ derby.settings?.dir ?? '~/.derby' }}/prompts.toml: around each agent's command (Preview full context in Settings › Agents shows the result), the files it writes for them, and the guidance of the steps the PR tab starts. Words in braces are replaced by Derby; prompts marked “Go template” use <code v-pre>{{.Field}}</code>, and fall back to their default if they no longer work. An emptied prompt goes back to its default.</p>
-    <div v-for="p in derby.settings?.prompts ?? []" :key="p.id" class="editor card">
+    <p v-if="skills" class="muted small">Skills are Claude Code skills Derby ships with its agents, saved in {{ derby.settings?.dir ?? '~/.derby' }}/prompts.toml: an agent's instructions name the one to use. Each one's description, the first line below its name, is what tells Claude when to use it. An emptied skill goes back to its default.</p>
+    <p v-else class="muted small">Every text Derby gives agents besides their instructions, saved in {{ derby.settings?.dir ?? '~/.derby' }}/prompts.toml: around each agent's command (Preview full context in Settings › Agents shows the result), the files it writes for them, and the guidance of the steps the PR tab starts. Words in braces are replaced by Derby; prompts marked “Go template” use <code v-pre>{{.Field}}</code>, and fall back to their default if they no longer work. An emptied prompt goes back to its default.</p>
+    <p v-if="locked" class="muted small locked">Derby's default {{ skills ? 'skills are' : 'prompts are' }} in use (Settings &gt; General): they are shown here but cannot be edited.</p>
+    <div v-for="p in shown" :key="p.id" class="editor card">
       <div class="title">
-        <span class="name">{{ p.name }}</span>
+        <span class="name">{{ p.name }}<span v-if="p.skill" class="mono muted small"> /derby:{{ p.skill }}</span></span>
         <span class="muted small">{{ p.where }}</span>
         <span class="muted small mono">{{ p.vars }}</span>
       </div>
       <label :for="'prompt-' + p.id" class="sr-only">{{ p.name }}</label>
-      <textarea :id="'prompt-' + p.id" class="area mono" :rows="rows(textOf(p.id, p.text))" :value="textOf(p.id, p.text)" @input="edit(p.id, $event)"></textarea>
+      <textarea :id="'prompt-' + p.id" class="area mono" :rows="rows(textOf(p.id, p.text))" :value="textOf(p.id, p.text)" :disabled="locked" @input="edit(p.id, $event)"></textarea>
       <div v-if="textOf(p.id, p.text).trim() !== p.default.trim()" class="row">
         <span class="muted small">Edited</span>
-        <button class="btn ghost" @click="reset(p.id)">Reset to default</button>
+        <button class="btn ghost" :disabled="locked" @click="reset(p.id)">Reset to default</button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+  .locked {
+    color: var(--waiting);
+  }
   .prompts {
     display: flex;
     flex-direction: column;

@@ -39,12 +39,6 @@ function setCommon(p: Project, e: Event) {
   save(p)
 }
 const issuesRepo = computed(() => derby.settings?.config.issuesRepo ?? '')
-function setIssuesRepo(e: Event) {
-  const v = (e.target as HTMLInputElement).value.trim()
-  if (!derby.settings) return
-  derby.settings.config.issuesRepo = v
-  void derby.attempt('Could not save the issues repository', () => api.SetIssuesRepo(v))
-}
 
 async function add() {
   const p = await derby.attempt('Could not add the project', () => api.AddProject())
@@ -71,12 +65,6 @@ async function remove(p: Project) {
   confirmRemove.value = ''
   await derby.attempt('Could not remove the project', () => api.RemoveProject(p.id))
 }
-function setPrefix(e: Event) {
-  const v = (e.target as HTMLInputElement).value.trim()
-  if (!v || !derby.settings) return
-  derby.settings.config.branchPrefix = v
-  void derby.attempt('Could not save the branch prefix', () => api.SetBranchPrefix(v))
-}
 const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.OpenProjectInZed(id))
 </script>
 
@@ -95,16 +83,6 @@ const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.
       <span class="label">{{ c.label }}</span>
       <span class="detail">{{ c.detail }}</span>
     </div>
-    <label class="check">
-      <span class="label">Branch prefix</span>
-      <span class="detail grow">every new task's branch starts with it</span>
-      <input class="input mono prefix" :value="derby.settings?.config.branchPrefix" placeholder="ar-" spellcheck="false" @change="setPrefix" />
-    </label>
-    <label class="check">
-      <span class="label">Issues repository</span>
-      <span class="detail grow">where the issues of projects set to use it live, e.g. one repo for all the team's issues</span>
-      <input class="input mono prefix wide" :value="issuesRepo" placeholder="owner/name" spellcheck="false" @change="setIssuesRepo" />
-    </label>
     <div class="check">
       <span class="grow muted small">{{ checking ? 'Checking…' : 'zed, gh and each repository are checked when this page opens.' }}</span>
       <button class="btn ghost" @click="runChecks">Check again</button>
@@ -126,7 +104,7 @@ const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.
       <label class="field" title="Worktrees start from it; PRs target it">Base branch<input class="input mono" :value="p.baseBranch" @input="set(p, 'baseBranch', $event)" /></label>
       <label class="field">Worktrees folder<input class="input mono" :value="p.worktreesDir + '/'" @input="set(p, 'worktreesDir', $event)" /></label>
     </div>
-    <label class="issues" :title="issuesRepo ? '' : 'Set the issues repository first'">
+    <label class="issues" :title="issuesRepo ? '' : 'Set the issues repository first (Settings > General)'">
       <input type="checkbox" :checked="p.commonIssues" :disabled="!issuesRepo" @change="setCommon(p, $event)" />
       Issues come from {{ issuesRepo || 'the issues repository' }}<span class="muted">, not {{ p.repo || 'its own repo' }}: New task lists them and its PRs close them there</span>
     </label>

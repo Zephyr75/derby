@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { derby, resumeCommand, taskName } from '../lib/state'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { api } from '../lib/api'
+import { derby, resumeCommand, taskName, taskStepId } from '../lib/state'
+import { usePR } from '../lib/pr'
+import { unsuccessful } from '../lib/types'
 import Icon from './ui/Icon.vue'
 import Terminal from './Terminal.vue'
 import ChatView from './ChatView.vue'
 import PRTracker from './PRTracker.vue'
+import TaskPage from './TaskPage.vue'
 import Toasts from './Toasts.vue'
 
 // One tab per task: its dot says whether one of its steps waits for approval
@@ -14,7 +18,7 @@ const tabs = computed(() =>
     const t = derby.task(tb.task)
     const steps = t?.steps ?? []
     const kind = steps.some((s) => s.state === 'approval') ? 'approval' : steps.some((s) => s.state === 'running' || s.state === 'idle') ? 'live' : 'off'
-    const step = steps.find((x) => x.id === tb.step)?.name ?? ''
+    const step = tb.step === taskStepId(tb.task) ? 'Task' : (steps.find((x) => x.id === tb.step)?.name ?? '')
     return { i, id: tb.task, kind, label: `${t?.issue ? '#' + t.issue : 'LOCAL'} · ${step}`, tip: t ? taskName(t) : '', project: t?.projectName ?? '', on: i === derby.active && !!derby.activeTab }
   }),
 )
@@ -38,6 +42,19 @@ const chip = computed(() => {
   return { cls: 's-idle', text: s.live ? 'Resumed' : 'Resumed on click' }
 })
 
+// The task's Task step: a link to the issue when there is one.
+const issueUrl = computed(() => (t.value?.issue ? `https://github.com/${t.value.issueRepo || t.value.repo}/issues/${t.value.issue}` : ''))
+const openIssue = () => derby.attempt('Could not open the issue', () => api.OpenURL(issueUrl.value))
+
+// The Copilot step, which describes the PR: its toolbar has the PR's buttons.
+const pr = reactive(usePR(reactive({ get task() { return t.value! }, get step() { return step.value ?? undefined } })))
+const prChip = computed(() => {
+  const s = step.value
+  if (!s) return null
+  if (s.state === 'running') return { cls: 's-running', text: 'Waiting for Copilot' }
+  if (unsuccessful(s)) return { cls: 's-approval', text: 'Needs fixes' }
+  return s.verdict === 'skipped' ? { cls: 's-idle', text: 'Stopped waiting' } : { cls: 's-done', text: 'Passed' }
+})
 </script>
 
 <template>
@@ -54,7 +71,29 @@ const chip = computed(() => {
       <span class="grow"></span>
     </div>
 
-    <PRTracker v-if="step && t && step.external" :task="t" :step="step" />
+    <template v-if="derby.onTaskStep && t">
+      <div class="toolbar">
+        <span class="chip badge s-idle"><span class="dot"></span>Task</span>
+        <span class="muted small">{{ t.source }}</span>
+        <span class="tbs">
+          <button v-if="issueUrl" class="tb" title="Open the issue on GitHub" @click="openIssue"><Icon name="external" :size="13" />Open issue</button>
+        </span>
+      </div>
+      <TaskPage />
+    </template>
+    <template v-else-if="step && t && step.external">
+      <div class="toolbar">
+        <span v-if="prChip" :class="['chip', 'badge', prChip.cls]"><span class="dot"></span>{{ prChip.text }}</span>
+        <span class="muted small ttl" :title="`${t.branch} → ${t.baseBranch}`">PR #{{ t.pr }}{{ pr.ready ? ' · ' + (pr.ready === 'ready' ? 'Ready' : 'Draft') : '' }} · {{ t.branch }} → {{ t.baseBranch }}</span>
+        <span class="tbs">
+          <button v-if="pr.ready === 'draft'" class="tb" title="Mark ready for review" @click="pr.markReady"><Icon name="check" :size="13" />Mark ready</button>
+          <button v-if="pr.live" class="tb" :disabled="pr.refreshing" title="Refresh now" @click="pr.refresh"><Icon name="rerun" :size="13" />Refresh</button>
+          <button v-if="t.prUrl" class="tb" title="Copy the link" @click="pr.copyLink"><Icon name="copy" :size="13" />Copy link</button>
+          <button v-if="t.prUrl" class="tb" title="Open the PR on GitHub" @click="pr.open(t.prUrl)"><Icon name="external" :size="13" />Open on GitHub</button>
+        </span>
+      </div>
+      <PRTracker :task="t" :step="step" />
+    </template>
     <template v-else-if="step && t">
       <div class="toolbar">
         <span v-if="chip" :class="['chip', 'badge', chip.cls]"><span class="dot"></span>{{ chip.text }}</span>

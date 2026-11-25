@@ -28,17 +28,17 @@ export const mockTrusting = new Set<string>()
 const ISSUE_TITLES: Record<string, string> = { '1190': 'Pause rides when the battery drops under 5%', '4356': 'Retry BLE unlock on flaky connections' }
 
 const agents: Agent[] = [
-  { id: 'plan', name: 'Plan', command: '/derby:plan {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'PLAN.md', commit: false, push: false, openPR: false, revert: false, rerun: false, choose: true, builtin: false, ignoreRules: false, showDiff: false, sisters: true, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['plan'],
+  { id: 'plan', name: 'Plan', command: '/derby:plan {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'PLAN.md', revert: false, rerun: false, choose: true, builtin: false, ignoreRules: false, showDiff: false, sisters: true, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', onFail: ['plan'],
     instructions: 'Read the task source: the GitHub issue, the description, or both.\nExplore the repo and decide an approach.\nWrite PLAN.md with Goal, Approach (a mermaid flowchart), Files and Out of scope.\nDo not edit code. End with front matter status: done.' },
-  { id: 'impl', name: 'Implement', command: '/derby:implement {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'IMPLEMENT-{n}.md', commit: false, push: false, openPR: false, revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: [], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss', 'plan'],
+  { id: 'impl', name: 'Implement', command: '/derby:implement {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'IMPLEMENT-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: [], effort: 'xhigh', onFail: ['impl', 'discuss', 'plan'],
     instructions: 'Read PLAN.md, and the newest REVIEW-n.md, TEST-n.md and COPILOT-n.md when they exist.\nImplement the plan in this worktree and run the relevant tests.\nDo not commit: Derby commits your changes when the Review step ends.\nWrite IMPLEMENT-{n}.md with Changes, Tests and Notes for the reviewer. End with status: done.' },
-  { id: 'discuss', name: 'Discuss', command: '/derby:discuss {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'DISCUSS-{n}.md', commit: false, push: false, openPR: false, revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: ['review', 'impl'], effort: 'xhigh', projects: [], onFail: ['discuss', 'impl'],
+  { id: 'discuss', name: 'Discuss', command: '/derby:discuss {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'DISCUSS-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: ['review', 'impl'], effort: 'xhigh', onFail: ['discuss', 'impl'],
     instructions: 'This step is a conversation: implement the plan together with the user.\nOnly when the user says the work is done, write DISCUSS-{n}.md: What changed, Files, Notes for the reviewer.\nEnd with status: done.' },
-  { id: 'review', name: 'Review', command: '/derby:review {task}', model: 'opus', trigger: 'after:impl', writes: 'REVIEW-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: true, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['test', 'impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss'],
+  { id: 'review', name: 'Review', command: '/derby:review {task}', model: 'opus', trigger: 'after:impl', writes: 'REVIEW-{n}.md', revert: false, rerun: true, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['test', 'impl', 'discuss'], effort: 'xhigh', onFail: ['impl', 'discuss'],
     instructions: 'Review the uncommitted changes in this worktree (git status, git diff HEAD) against PLAN.md.\nWrite REVIEW-{n}.md with the findings, most important first. End with status: done if the changes are ready, or status: failed if they need changes.\nNever edit code, and do not commit: Commit and push commits once the tests pass.' },
-  { id: 'test', name: 'Test', command: '/derby:test {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'TEST-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['push', 'impl', 'discuss'], effort: 'xhigh', projects: [], onFail: ['impl', 'discuss'],
+  { id: 'test', name: 'Test', command: '/derby:test {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'TEST-{n}.md', revert: false, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['push', 'impl', 'discuss'], effort: 'xhigh', onFail: ['impl', 'discuss'],
     instructions: 'Read PLAN.md, the IMPLEMENT files and the REVIEW files.\nWrite tests for the reviewed changes, following the repo\'s test conventions.\nRun them. Change only tests, never the code under test.\nWrite TEST-{n}.md with Tests added, How to run and Results. End with status: done.' },
-  { id: 'push', name: 'Commit and push', command: '/derby:push {task}', model: 'haiku', trigger: 'manual', writes: 'PUSH.md', commit: true, push: true, openPR: true, revert: false, rerun: false, choose: false, builtin: false, ignoreRules: true, showDiff: false, sisters: false, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', projects: [], onFail: [],
+  { id: 'push', name: 'Push', command: '/derby:push {task}', model: 'haiku', trigger: 'manual', writes: 'PUSH.md', revert: false, rerun: false, choose: false, builtin: false, ignoreRules: true, showDiff: false, sisters: false, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', onFail: [],
     instructions: 'First rebase on origin/{base} when it has new commits (git rebase --autostash); on a conflict, abort and end with status: failed.\nWrite PUSH.md: a title line, then a body summarising PLAN.md and the IMPLEMENT files.\nAdd Closes #{issue} when the task has an issue.\nDo not push: Derby pushes, opens the PR and collects the Copilot review.' },
 ]
 
@@ -55,12 +55,15 @@ let others: Todo[] = [{ id: 'o1', text: 'Update the Slack profile picture', done
 const settings: Settings = {
   config: {
     appearance: { theme: 'fleet', mode: 'dark', uiFont: 'Geist', uiFontSize: 13, termFont: 'Geist Mono', termFontSize: 12.5, sessionView: 'terminal' },
-    zedCommand: 'zed', claudeCommand: 'claude', maxLiveSessions: 6, notifications: true, maxTabs: 5, branchPrefix: 'ar-', issuesRepo: '', foldWords: ['package-lock.json', 'go.sum', '.min.', 'node_modules', 'generated'],
+    zedCommand: 'zed', claudeCommand: 'claude', maxLiveSessions: 6, notifications: true, useDefaults: false, maxTabs: 5, branchPrefix: 'ar-', issuesRepo: '', foldWords: ['package-lock.json', 'go.sum', '.min.', 'node_modules', 'generated'],
     rules: 'Never edit generated files under gen/.\nRun the tests you touched before writing the artifact.', projects,
   },
   agents, context,
   keymap: { toggleLeft: ['Alt+E'], toggleRight: ['Alt+A'], messages: ['Alt+S'], close: ['Escape'] },
-  prompts: [],
+  prompts: [
+    { id: 'step', name: 'How a step works', where: "Every agent's system prompt, after the Derby step block", vars: '', skill: '', default: '# How a step works\n- Work from the guidance, then the step this one follows.', text: '# How a step works\n- Work from the guidance, then the step this one follows.' },
+    { id: 'regressionTests', name: 'regression-tests', where: "Run pony-core's regression tests on the local stack, an offline copy of QA in Docker, and report each suite's result. Never against QA or prod.", vars: '', skill: 'regression-tests', default: '# Regression tests\nRun make regtest-local.', text: '# Regression tests\nRun make regtest-local.' },
+  ],
   dir: '~/.derby',
 }
 
@@ -69,7 +72,7 @@ interface Fx {
   diff?: [string, string][]; changes?: string[]; findings?: string[]; copilot?: string[]; options?: boolean // the plan lists options
 }
 interface MockStep { key: string; agent: string; n: number; state: Step['state']; guide?: string; session: string; sha?: string; verdict?: string; manual?: boolean }
-interface MockTask { feedback?: Feedback[]; rejected?: Task['rejected']; sisterOf?: string[]; sister?: boolean; part?: string; offers?: SisterOffer[]; notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
+interface MockTask { feedback?: Feedback[]; rejected?: Task['rejected']; sisterOf?: string[]; sister?: boolean; part?: string; offers?: SisterOffer[]; notes?: Note[]; todos?: Todo[]; labels?: string[]; draft?: boolean; checks?: CICheck[]; id: string; project: string; issue: string; slug: string; title: string; description: string; branch?: string; archived?: boolean; pr?: number; prState?: string; release?: string; archivedOn?: string; steps: MockStep[]; fx: Fx; removed?: boolean }
 
 const RUNS = 'https://github.com/pony-org/pony-infra/actions/runs'
 function fb(id: string, author: string, path: string, line: number, body: string, more: Partial<Feedback> = {}): Feedback {
@@ -164,7 +167,7 @@ const T: MockTask[] = [
       fb('r6', 'Copilot', 'functions/lag/handler.py', 31, 'Log the partition id with the lag value.', { resolvedBy: 'antoinepony' }),
     ],
     rejected: { r3: { step: 'infra:219/impl-1', name: 'Implement 1' } } },
-  { id: 'core:4349', project: 'core', issue: '4349', slug: '4349', title: 'Geofence import from city GeoJSON', description: '', archived: true, pr: 812, prState: 'merged', archivedOn: '2026-10-28',
+  { id: 'core:4349', project: 'core', issue: '4349', slug: '4349', title: 'Geofence import from city GeoJSON', description: '', archived: true, pr: 812, prState: 'merged', release: 'qa', archivedOn: '2026-10-28',
     fx: { goal: 'Import parking and no-ride zones from the city open-data GeoJSON instead of the manual CSV.', files: ['internal/zones/geojson.go', 'internal/zones/import.go'], test: 'go test ./internal/zones/...',
       testOut: 'ok   pony-core/internal/zones   1.12s', flow: ['Fetch GeoJSON', 'Validate polygons', 'Upsert zones'], diff: [['+', 'func ParseGeoJSON(r io.Reader) ([]Zone, error) {']],
       changes: ['GeoJSON parser', 'Import command uses the parser'], findings: ['Polygon winding order validated'],
@@ -175,7 +178,7 @@ const T: MockTask[] = [
       { key: 'review-1', agent: 'review', n: 1, state: 'done', sha: '6d3e20b', verdict: '', session: '71bc04de' },
       { key: 'push-1', agent: 'push', n: 1, state: 'done', session: 'd2a6f5e9' },
     ] },
-  { sisterOf: ['core:4370'], part: 'adds the queue the telemetry batches go through', id: 'infra:212', project: 'infra', issue: '212', slug: '212', title: 'Queue for battery telemetry ingestion', description: '', archived: true, pr: 66, prState: 'merged', archivedOn: '2026-11-12', fx: {},
+  { sisterOf: ['core:4370'], part: 'adds the queue the telemetry batches go through', id: 'infra:212', project: 'infra', issue: '212', slug: '212', title: 'Queue for battery telemetry ingestion', description: '', archived: true, pr: 66, prState: 'merged', release: 'main', archivedOn: '2026-11-12', fx: {},
     steps: [
       { key: 'plan-1', agent: 'plan', n: 1, state: 'done', session: '1d2e3f40' },
       { key: 'impl-1', agent: 'impl', n: 1, state: 'done', session: '2e3f4051' },
@@ -200,7 +203,7 @@ const T: MockTask[] = [
 
 const proj = (id: string) => projects.find((p) => p.id === id) ?? projects[0]
 // derby's own step after a push: it waits for Copilot's review.
-const copilotA: Agent = { id: 'copilot', name: 'Copilot', command: '', model: 'opus', trigger: 'manual', writes: 'COPILOT-{n}.md', commit: false, push: false, openPR: false, revert: false, rerun: false, choose: false, builtin: true, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], effort: 'xhigh', projects: [], onFail: [], instructions: '' }
+const copilotA: Agent = { id: 'copilot', name: 'Copilot', command: '', model: 'opus', trigger: 'manual', writes: 'COPILOT-{n}.md', revert: false, rerun: false, choose: false, builtin: true, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], effort: 'xhigh', onFail: [], instructions: '' }
 const agent = (id: string) => (id === 'copilot' ? copilotA : agents.find((a) => a.id === id) ?? agents[0])
 const displayName = (a: Agent, n: number) => (a.writes.includes('{n}') ? `${a.name} ${n}` : a.name)
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -213,8 +216,8 @@ function stepView(t: MockTask, s: MockStep, i: number): Step {
     id: `${t.id}/${s.key}`, taskId: t.id, key: s.key, agent: s.agent, n: s.n, seq: i + 1, state: s.state, guidance: s.guide ?? '',
     session: s.session, sha: s.sha ?? '', verdict: s.verdict ?? '', model: a.model, completed: s.state === 'done', startedAt: '', endedAt: '',
     name: displayName(a, s.n), live: s.state !== 'done' && !paused && s.agent !== 'copilot', auto: !!a.trigger.startsWith('after:'),
-    artifact: a.writes.replace('{n}', String(s.n)), commits: a.commit, diff: !!s.sha, revert: false,
-    paused, gitError: '',
+    artifact: a.writes.replace('{n}', String(s.n)), diff: !!s.sha, revert: false,
+    paused,
     rerun: i === t.steps.length - 1 && a.rerun && !open,
     skip: i === t.steps.length - 1 || s.state !== 'done',
     external: s.agent === 'copilot',
@@ -251,9 +254,9 @@ function derive(t: MockTask): Task {
     const appr = steps.find((s) => s.state === 'approval')
     const run = steps.find((s) => s.state === 'running')
     const idx = agents.indexOf(la)
-    const fixA = agents.slice(0, Math.max(0, idx)).reverse().find((a) => !afterOf(a.trigger) && !a.push)
+    const fixA = agents.slice(0, Math.max(0, idx)).reverse().find((a) => !afterOf(a.trigger) && a.id !== 'push')
     const fix = fixA ? opt(fixA, count(fixA.id) + 1) : undefined
-    const pushFixA = [...agents].reverse().find((a) => !afterOf(a.trigger) && !a.push)
+    const pushFixA = [...agents].reverse().find((a) => !afterOf(a.trigger) && a.id !== 'push')
     const pushFix = pushFixA ? opt(pushFixA, count(pushFixA.id) + 1) : undefined
     if (appr) { next.approval = appr.id; next.text = 'Claude Code wants to run a command. Answer in the terminal, or allow it once here.' }
     else if (run?.external) { next.text = `Waiting for Copilot's review and the CI checks of PR #${t.pr} (checked every minute). Start a fix any time, or Mark done to stop waiting.`; next.markDone = run.id; if (pushFix) next.options.push(pushFix) }
@@ -268,7 +271,7 @@ function derive(t: MockTask): Task {
       next.text = `${last.name} failed: ${last.artifact} says why.`
       const again = opt(la, count(la.id) + 1)
       next.options = !fix ? [again] : afterOf(la.trigger) ? [fix, again] : [again, fix]
-    } else if (la.openPR) {
+    } else if (la.id === 'push') {
       next.text = `PR #${t.pr} is open. The task moves to Archive when the PR is merged or closed.`
       if (fix) { next.text += ` If Copilot or the CI checks ask for changes, start ${fix.label}, then push again.`; next.options.push(fix) }
     } else {
@@ -281,7 +284,7 @@ function derive(t: MockTask): Task {
     next.warning = `${last.artifact} lists several options. Read them, then name the one to take in the guidance before starting ${next.options[0].label}.`
   return {
     id: t.id, project: t.project, slug: t.slug, issue: t.issue, title: t.title, name: NAMES[t.id] ?? '', description: t.description, createdAt: '',
-    archived: !!t.archived, archivedAt: t.archivedOn ?? '', pr: t.pr ?? 0, prUrl: t.pr ? `https://github.com/pony-org/${t.project}/pull/${t.pr}` : '', prState: t.prState ?? '', worktreeRemoved: !!t.removed,
+    archived: !!t.archived, archivedAt: t.archivedOn ?? '', pr: t.pr ?? 0, prUrl: t.pr ? `https://github.com/pony-org/${t.project}/pull/${t.pr}` : '', prState: t.prState ?? '', release: t.release ?? '', stages: t.prState === 'merged' ? ['qa', 'main'] : [], worktreeRemoved: !!t.removed,
     projectName: p.name, repo: p.repo, issueRepo: '', sister: !!t.sister, sisters: (t.sisterOf ?? []).map((id) => ({ id, project: proj(find(id).project).name, part: find(id).part ?? '' })), part: t.part ?? '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
     branch: t.branch ?? 'ar-' + t.slug, runDir: `~/.derby/runs/${p.name}/${t.slug}`,
     source: t.issue && t.description ? `GitHub issue #${t.issue} + description · ${p.repo}` : t.issue ? `GitHub issue #${t.issue} · ${p.repo}` : 'LOCAL · description only, no GitHub issue',
@@ -403,13 +406,14 @@ function mockArtifact(stepId: string): Artifact {
     const flow = fx.flow?.length ? fx.flow : ['Read source', 'Change code', 'Test']
     const mer = flow.map((n, i) => `  n${i}${n.endsWith('?') ? `{"${n}"}` : `["${n}"]`}`).join('\n') + '\n' + flow.slice(1).map((_, i) => `  n${i} --> n${i + 1}`).join('\n')
     return { ...base, exists: true, front: [{ k: 'status', v: 'done' }, { k: 'source', v: t.issue ? (t.description ? 'issue+description' : 'issue') : 'local' }],
-      body: `**TLDR**: ${t.title}. The plan touches ${(fx.files ?? ['README.md']).length} files and keeps the public behaviour as it is, so nothing outside them needs to change.\n\n**ELI5**: Before fixing a leaking pipe you trace where it runs. This is that tracing, written down so the next step can follow it.\n\n## Source\n\n${derive(t).source}\n\n## Goal\n\n${fx.goal ?? t.description ?? t.title}\n\n## Approach\n\n\`\`\`mermaid\nflowchart TD\n${mer}\n\`\`\`\n\n## Files\n\n${list(fx.files ?? ['README.md'])}\n` + (s.guide ? `\n## Guidance\n\n${s.guide}\n` : '') }
+      body: `**TLDR**: ${t.title}. The plan touches ${(fx.files ?? ['README.md']).length} files and keeps the public behaviour as it is, so nothing outside them needs to change.\n\n**ELI5**: Before fixing a leaking pipe you trace where it runs. This is that tracing, written down so the next step can follow it.\n\n## Source\n\n${derive(t).source}\n\n## Goal\n\n${fx.goal ?? t.description ?? t.title}\n\n## Approach\n\n\`\`\`mermaid\nflowchart TD\n${mer}\n\`\`\`\n\n## Files\n\n${list(fx.files ?? ['README.md'])}\n` + (fx.options ? `\n## Options\n\n| Option | Pros | Cons | Size |\n|---|---|---|---|\n| A. Retry in the client | One place, easy to test | Every platform repeats it | +40 / -5 |\n| B. Retry in the gateway | Riders on old apps benefit too | Hides real failures from the app | +120 / -10 |\n\nA is recommended: it keeps the change in this repository.\n` : '') + (s.guide ? `\n## Guidance\n\n${s.guide}\n` : '') }
   }
   if (s.agent === 'impl') return { ...base, exists: true, front: [{ k: 'status', v: 'done' }, { k: 'commit', v: s.sha ?? '' }],
-    body: `## TL;DR\n\nImplemented the plan in one commit, \`${s.sha ?? 'HEAD'}\`. ${fx.test ? `\`${fx.test}\` passes.` : 'The tests pass.'}\n\n### ELI5\n\nThe recipe was written last step; this step cooked it and tasted the result.\n\n## Changes\n\n${list(fx.changes?.length ? fx.changes : ['Implemented the plan'])}\n\n## Tests\n\n\`\`\`console\n$ ${fx.test ?? 'make test'}\n${fx.testOut ?? 'ok'}\n\`\`\`\n\n## Notes for the reviewer\n\nBehaviour outside the files listed in PLAN.md is unchanged.\n` }
+    body: `## TLDR\n\nImplemented the plan in one commit, \`${s.sha ?? 'HEAD'}\`. ${fx.test ? `\`${fx.test}\` passes.` : 'The tests pass.'}\n\n### ELI5\n\nThe recipe was written last step; this step cooked it and tasted the result.\n\n## Changes\n\n${list(fx.changes?.length ? fx.changes : ['Implemented the plan'])}\n\n## Tests\n\n\`\`\`console\n$ ${fx.test ?? 'make test'}\n${fx.testOut ?? 'ok'}\n\`\`\`\n\n## Notes for the reviewer\n\nBehaviour outside the files listed in PLAN.md is unchanged.\n` }
   if (s.agent === 'review') return { ...base, exists: true, front: [{ k: 'status', v: s.verdict === 'failed' ? 'failed' : 'done' }, { k: 'reviewed', v: prevSha(t, s.key) }],
     body: `**TLDR**\n\n${s.verdict === 'failed' ? 'Not ready: the findings below need another implement step.' : 'Ready to push. Nothing blocking, the diff matches the plan.'}\n\n## Findings\n\n${list(fx.findings?.length ? fx.findings : ['No blocking findings'])}\n\n## Verdict\n\n${s.verdict === 'failed' ? 'Address the findings above in the next implement step.' : 'Ready to push.'}\n` }
-  return { ...base, exists: true, front: [{ k: 'pr', v: '#' + t.pr }], body: `## Copilot review (PR #${t.pr})\n\n${list(fx.copilot ?? ['No comments'])}\n` }
+  if (s.agent === 'explain') return { ...base, exists: true, front: [{ k: 'status', v: 'done' }], body: `**TLDR**: ${t.title}, explained from the ground up.\n\n## What changed\n\n${list(fx.changes?.length ? fx.changes : ['Implemented the plan'])}\n` }
+  return { ...base, exists: true, front: [{ k: 'pr', v: '#' + t.pr }], body: `# feat(${t.project}): ${t.title} #${t.issue}\n\nRiders on older phones saw "Unlock failed" when the link dropped mid-handshake. The app now retries the handshake before it shows the error.\n\nCloses #${t.issue}\n\n## Choices\n\nThe retry lives in the client, since the gateway cannot tell a real failure from a flaky link.\n\n## Flow\n\nBefore: connect, handshake, error. After: connect, handshake, retry twice, then error.\n` }
 }
 
 // ---- the mock service ----
@@ -496,7 +500,7 @@ export const api: Api = {
   RerunChecks: () => ok(undefined),
   ResolveThread: () => ok(undefined),
   RequestCopilotReview: () => ok(undefined),
-  RetryExplanation: () => ok(undefined),
+  SetUseDefaults: (on) => { settings.config.useDefaults = on; emit('settings:changed', settings); return ok(undefined) },
   Diagrams: () => ok([]),
   CreateSister: () => Promise.reject('Sister tasks need the desktop app'),
   OpenURL: () => ok(undefined),

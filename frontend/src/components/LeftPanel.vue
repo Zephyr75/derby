@@ -198,8 +198,7 @@ aside {
   font-size: var(--fs-12);
   color: var(--muted);
 }
-/* the Archive: a family folded into a row like a task's, its tasks under an
-   indent guide (Zed's project panel) when unfolded */
+/* the Archive: a family folded into a row like a task's, its tasks indented when unfolded */
 .group.fam {
   height: 36px;
   margin-top: 0;
@@ -219,7 +218,6 @@ aside {
   gap: 2px;
   margin-left: 19px;
   padding-left: 4px;
-  border-left: 1px solid var(--border);
 }
 .nothing {
   padding: 4px 12px;

@@ -92,6 +92,10 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
         <span class="name">Prompts</span>
         <span class="sub">what Derby adds to agents</span>
       </button>
+      <button class="list-btn" :class="{ on: selId === 'skills' }" @click="selId = 'skills'">
+        <span class="name">Skills</span>
+        <span class="sub">internal, for agents to use</span>
+      </button>
       <button v-for="k in keys" :key="k" class="list-btn" :class="{ on: selId === k }" @click="selId = k">
         <span class="name">{{ derby.project(k)?.name ?? 'General' }}</span>
         <span class="sub">{{ derby.project(k) ? 'project context' : 'every project' }}</span>
@@ -110,6 +114,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
         <textarea id="rulestext" class="area mono" rows="12" :value="derby.settings?.config.rules ?? ''" placeholder="e.g. Never run git commit or git push&#10;Never touch migrations/" @input="setRules"></textarea>
       </div>
       <Prompts v-else-if="selId === 'prompts'" />
+      <Prompts v-else-if="selId === 'skills'" skills />
       <div v-else class="editor card">
         <div class="title">
           <span class="name">{{ proj ? proj.name : 'General context' }}</span>

@@ -1,17 +1,17 @@
 <script setup lang="ts">
-// What a task is about, opened from its name in the right panel: its issue
-// (description, images and comments, read again from GitHub) and the
-// instructions the user wrote when creating it.
+// The task itself, so there is no need to open GitHub: the Task step's page in
+// the centre, and its short form (compact) in the right panel's Report tab. It
+// shows the user's instructions, the issue (its description and images, read
+// again from GitHub) and its comments.
 import { computed, ref, watch } from 'vue'
-import { api, errorText } from '../../lib/api'
-import { derby, taskName } from '../../lib/state'
-import Icon from '../ui/Icon.vue'
-import TaskRef from '../ui/TaskRef.vue'
-import ArtifactView from '../ArtifactView.vue'
-import type { Artifact, TaskIssue } from '../../lib/types'
+import { api, errorText } from '../lib/api'
+import { derby } from '../lib/state'
+import ArtifactView from './ArtifactView.vue'
+import type { Artifact, TaskIssue } from '../lib/types'
+
+defineProps<{ compact?: boolean }>()
 
 const t = computed(() => derby.selTask)
-const close = () => (derby.overlay = 'none')
 
 const issue = ref<TaskIssue | null>(null)
 const error = ref('')
@@ -34,7 +34,7 @@ watch(
 )
 
 const md = (body: string): Artifact => ({ path: '', file: '', exists: true, front: null, body })
-const heading = computed(() => issue.value?.title || (t.value ? taskName(t.value) : ''))
+const heading = computed(() => issue.value?.title || t.value?.title || '')
 const meta = computed(() => {
   const i = issue.value
   if (!t.value?.issue) return 'No GitHub issue · LOCAL task'
@@ -42,23 +42,15 @@ const meta = computed(() => {
   if (i.offline) return `${i.repo} · the copy made when the task was created (GitHub: ${i.offline})`
   return [i.state, i.author && `opened by ${i.author}`, i.created, i.labels.join(', '), i.repo].filter(Boolean).join(' · ')
 })
-const url = computed(() => issue.value?.url || (t.value?.issue ? `https://github.com/${t.value.issueRepo || t.value.repo}/issues/${t.value.issue}` : ''))
-const openGitHub = () => url.value && derby.attempt('Could not open the issue', () => api.OpenURL(url.value))
 </script>
 
 <template>
-  <button class="scrim dim" aria-label="Close the description" @click="close"></button>
-  <div v-if="t" class="box popup pop pop-half" role="dialog" aria-label="Task description">
-    <div class="head">
-      <div class="line">
-        <TaskRef :issue="t.issue" :task="t.id" />
-        <span class="heading" :title="heading">{{ heading }}</span>
-        <button v-if="url" class="pop-x" title="Open the issue on GitHub" aria-label="Open on GitHub" @click="openGitHub"><Icon name="external" :size="14" /></button>
-        <button class="pop-x" aria-label="Close" @click="close"><Icon name="close" :size="14" /></button>
-      </div>
-      <span v-if="meta" class="meta">{{ meta }}</span>
-    </div>
-    <div class="body">
+  <div v-if="t" class="task" :class="{ page: !compact }">
+    <div class="inner">
+      <header v-if="!compact" class="head">
+        <span class="heading">{{ heading }}</span>
+        <span v-if="meta" class="meta">{{ meta }}</span>
+      </header>
       <section v-if="t.description">
         <span class="label">Your instructions</span>
         <p class="instructions">{{ t.description }}</p>
@@ -68,8 +60,10 @@ const openGitHub = () => url.value && derby.attempt('Could not open the issue', 
         <p v-if="error" class="err">Could not load issue #{{ t.issue }}: {{ error }}</p>
         <ArtifactView v-else-if="issue?.body" class="issue-md" :art="md(issue.body)" :task="t.id" :zoom="1" />
         <p v-else-if="issue" class="muted">No description.</p>
+        <p v-else class="muted">Loading the issue…</p>
       </section>
-      <section v-if="issue?.comments.length">
+      <p v-if="!t.description && !t.issue" class="muted">This task has no description.</p>
+      <section v-if="!compact && issue?.comments.length">
         <span class="label">{{ issue.comments.length }} comment{{ issue.comments.length > 1 ? 's' : '' }}</span>
         <div v-for="(c, i) in issue.comments" :key="i" class="comment">
           <div class="who">
@@ -84,47 +78,38 @@ const openGitHub = () => url.value && derby.attempt('Could not open the issue', 
 </template>
 
 <style scoped>
-.box {
-  overflow: hidden;
+/* the centre view scrolls on its own; the right panel's tab already does */
+.task.page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 24px 32px;
+  user-select: text;
+}
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.task:not(.page) .inner {
+  gap: 14px;
 }
 .head {
-  flex: none;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 14px 10px 14px 18px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
-.line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
 .heading {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--fs-14);
   font-weight: 600;
 }
 .meta {
-  padding-right: 6px;
   font-size: var(--fs-12);
   color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 20px 18px 28px;
-  overflow: auto;
-  user-select: text;
 }
 section {
   display: flex;

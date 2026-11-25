@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Settings > Appearance: one row per theme (Fleet, Catppuccin, GitHub
-// Copilot), each with Dark, Light or System, then fonts and the Zed command.
+// Copilot), each with Dark, Light or System, then fonts and the session view.
 import { computed } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
@@ -62,33 +62,6 @@ function setFont(kind: 'ui' | 'term', e: Event) {
   derby.edited()
   save()
 }
-function setNotify(e: Event) {
-  const on = (e.target as HTMLInputElement).checked
-  if (derby.settings) derby.settings.config.notifications = on
-  void derby.attempt('Could not save notifications', () => api.SetNotifications(on))
-}
-
-function setMaxTabs(e: Event) {
-  const n = Math.round(Number((e.target as HTMLInputElement).value))
-  if (!derby.settings || !(n >= 1)) return
-  derby.settings.config.maxTabs = n
-  derby.trimTabs()
-  void derby.attempt('Could not save the tab limit', () => api.SetMaxTabs(n))
-}
-
-function setFoldWords(e: Event) {
-  const words = (e.target as HTMLInputElement).value.split(',').map((w) => w.trim()).filter(Boolean)
-  if (!derby.settings) return
-  derby.settings.config.foldWords = words
-  void derby.attempt('Could not save the fold words', () => api.SetFoldWords(words))
-}
-
-function setZed(e: Event) {
-  if (!derby.settings) return
-  derby.settings.config.zedCommand = (e.target as HTMLInputElement).value
-  derby.edited()
-  save()
-}
 </script>
 
 <template>
@@ -143,22 +116,6 @@ function setZed(e: Event) {
         <button v-for="v in views" :key="v.id" role="radio" :aria-checked="derby.sessionView === v.id" :class="{ on: derby.sessionView === v.id }" @click="derby.setSessionView(v.id)"><Icon :name="v.id === 'chat' ? 'chat' : 'terminal'" :size="13" />{{ v.name }}</button>
       </span>
     </div>
-    <label class="r">
-      <span class="grow">Zed command</span>
-      <input class="val" :value="derby.settings?.config.zedCommand" @change="setZed" />
-    </label>
-    <label class="r">
-      <span class="grow">Open tabs <span class="muted small">at most, one per task; opening one more closes the oldest</span></span>
-      <input class="val num" type="number" min="1" max="30" :value="derby.settings?.config.maxTabs" @change="setMaxTabs" />
-    </label>
-    <label class="r">
-      <span class="grow">Fold words <span class="muted small">comma separated; a changed file whose path has one starts folded</span></span>
-      <input class="val wide" :value="(derby.settings?.config.foldWords ?? []).join(', ')" @change="setFoldWords" />
-    </label>
-    <label class="r">
-      <span class="grow">Desktop notifications <span class="muted small">when a step needs you or ends, while Derby is in the background</span></span>
-      <input type="checkbox" :checked="derby.settings?.config.notifications" @change="setNotify" />
-    </label>
   </div>
 </template>
 

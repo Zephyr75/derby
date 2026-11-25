@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { derby, type SettingsTab } from '../../lib/state'
 import Toasts from '../Toasts.vue'
+import General from './General.vue'
 import Agents from './Agents.vue'
 import ContextPane from './Context.vue'
 import Projects from './Projects.vue'
@@ -9,9 +10,9 @@ import Appearance from './Appearance.vue'
 import Shortcuts from './Shortcuts.vue'
 import About from './About.vue'
 
-const nav: [SettingsTab, string][] = [['about', 'About'], ['context', 'Context'], ['agents', 'Agents'], ['projects', 'Projects'], ['appearance', 'Appearance'], ['shortcuts', 'Shortcuts']]
+const nav: [SettingsTab, string][] = [['general', 'General'], ['projects', 'Projects'], ['agents', 'Agents'], ['context', 'Context'], ['appearance', 'Appearance'], ['shortcuts', 'Shortcuts'], ['about', 'About']]
 const file = computed(
-  () => ({ agents: 'agents.toml', context: 'context/ and prompts.toml', projects: 'config.toml', appearance: 'config.toml', shortcuts: 'config.toml', about: '' })[derby.settingsTab],
+  () => ({ general: 'config.toml', agents: 'agents.toml', context: 'context/ and prompts.toml', projects: 'config.toml', appearance: 'config.toml', shortcuts: 'config.toml', about: '' })[derby.settingsTab],
 )
 const dir = computed(() => derby.settings?.dir ?? '~/.derby')
 // The home folder as ~, so the path fits the panel.
@@ -29,7 +30,8 @@ const short = computed(() => dir.value.replace(/^\/(?:Users|home)\/[^/]+(?=\/)/,
 
   <section>
     <div class="col">
-      <Agents v-if="derby.settingsTab === 'agents'" />
+      <General v-if="derby.settingsTab === 'general'" />
+      <Agents v-else-if="derby.settingsTab === 'agents'" />
       <ContextPane v-else-if="derby.settingsTab === 'context'" />
       <Projects v-else-if="derby.settingsTab === 'projects'" />
       <Appearance v-else-if="derby.settingsTab === 'appearance'" />
