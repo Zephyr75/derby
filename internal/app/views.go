@@ -365,6 +365,8 @@ func statusOf(t store.Task, steps []StepView) Status {
 	}
 	last := steps[len(steps)-1]
 	switch {
+	case t.PRState == "merged" || t.PRState == "closed":
+		return Status{"done", "PR " + t.PRState, t.PRState}
 	case last.State == store.Idle:
 		return st("waiting", "Waiting", last)
 	case last.State == store.Failed || last.Unsuccessful():
@@ -422,7 +424,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 	if t.Archived {
 		day := t.ArchivedAt.Format("Jan 2")
 		if t.PRNumber > 0 && t.PRState != "open" && t.PRState != "" {
-			nx.Text = fmt.Sprintf("Archived %s when PR #%d was %s.", day, t.PRNumber, t.PRState)
+			nx.Text = fmt.Sprintf("Archived %s. PR #%d was %s.", day, t.PRNumber, t.PRState)
 		} else {
 			nx.Text = "Archived " + day + "."
 		}
@@ -513,6 +515,10 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 		return nx
 	}
 	// The last step finished.
+	if t.PRState == "merged" || t.PRState == "closed" {
+		nx.Text = fmt.Sprintf("PR #%d was %s. Archive the task when you are done.", t.PRNumber, t.PRState)
+		return nx
+	}
 	if last.External {
 		ids := successIDs(cop)
 		switch {
@@ -522,7 +528,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 		case last.Verdict == skipped:
 			nx.Text = fmt.Sprintf("Derby stopped waiting for Copilot on PR #%d.", t.PRNumber)
 		default:
-			nx.Text = fmt.Sprintf("Copilot found nothing to fix and CI passed on PR #%d. The task moves to Archive when the PR is merged or closed.", t.PRNumber)
+			nx.Text = fmt.Sprintf("Copilot found nothing to fix and CI passed on PR #%d. The PR is waiting to be merged.", t.PRNumber)
 		}
 		nx.Options = append(nx.Options, offer(ids)...)
 		return nx

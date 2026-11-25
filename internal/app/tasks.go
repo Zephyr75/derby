@@ -467,7 +467,9 @@ func (a *App) OpenInZed(taskID, stepID string) ([]string, error) {
 		if ch, err := a.StepChanges(stepID); err == nil && ch.Source == "commit" {
 			sha = ch.SHA // its segment's commit
 		}
-		if sha != "" {
+		if sha == "" {
+			lines = append(lines, "Step has no commit yet: only the worktree was opened.")
+		} else {
 			// Zed's own commit view, in the task's worktree. Zed shows a commit
 			// only in a repo it has open, so the folder goes in the same call.
 			// Uncommitted work opens the worktree, where Zed shows it.
@@ -478,7 +480,7 @@ func (a *App) OpenInZed(taskID, stepID string) ([]string, error) {
 			targets = append(targets, "zed://git/commit/"+full+"?repo="+url.QueryEscape(path))
 		}
 	}
-	lines = append(lines, "$ "+cmd+" "+strings.Join(targets, " "))
+	lines = append([]string{"$ " + cmd + " " + strings.Join(targets, " ")}, lines...)
 	return lines, zed.Open(cmd, targets...)
 }
 
@@ -740,8 +742,8 @@ func (a *App) OpenURL(link string) error {
 	return openWith(link)
 }
 
-// pollPRs archives tasks whose PR was merged or closed, and collects the CI
-// checks and Copilot reviews of the open ones.
+// pollPRs records the state of merged or closed PRs, and collects the CI
+// checks and Copilot reviews of the open ones. Only the user archives a task.
 func (a *App) pollPRs() {
 	if !a.pollMu.TryLock() {
 		return
@@ -861,12 +863,10 @@ func (a *App) pollPR(t store.Task) {
 		a.collectFeedback(t)
 		return
 	}
-	a.stopTaskSessions(t.ID)
 	_ = a.updateTask(t.ID, func(t *store.Task) error {
-		t.PRState, t.Archived, t.ArchivedAt = pr.State, true, pr.At
+		t.PRState = pr.State
 		return nil
 	})
-	a.toast("Archived "+refOf(t), fmt.Sprintf("PR #%d was %s", t.PRNumber, pr.State), false)
 }
 
 func refOf(t store.Task) string {

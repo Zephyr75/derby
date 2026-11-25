@@ -235,6 +235,7 @@ function derive(t: MockTask): Task {
     const live = steps.find((s) => s.state === 'approval' || s.state === 'running' || (s.paused && s.state !== 'done' && s.state !== 'failed'))
     if (live) status = live.state === 'running' && !live.paused ? of('running', 'Running', live) : of(live.state === 'approval' ? 'approval' : 'waiting', 'Waiting', live)
     else if (last.state === 'idle') status = of('waiting', 'Waiting', last)
+    else if (t.prState === 'merged' || t.prState === 'closed') status = st('done', `PR ${t.prState}`, t.prState)
     else if (last.state === 'failed' || unsuccessful(last)) status = of('failed', 'Failure', last)
     else status = last.external ? of('done', 'Success', last) : of('waiting', 'Waiting for next step', last)
   }
@@ -242,7 +243,7 @@ function derive(t: MockTask): Task {
   const count = (id: string) => Math.max(0, ...steps.filter((s) => s.agent === id).map((s) => s.n))
   const opt = (a: Agent, n: number, prefix = '') => ({ agent: a.id, n, label: prefix + displayName(a, n) })
   if (t.archived) {
-    next.text = (t.pr ? `Archived ${day} when PR #${t.pr} was ${t.prState}.` : `Archived ${day}.`) + (t.removed ? ' The worktree and branch were removed.' : ' The worktree is kept until you delete the task.')
+    next.text = (t.pr ? `Archived ${day}. PR #${t.pr} was ${t.prState}.` : `Archived ${day}.`) + (t.removed ? ' The worktree and branch were removed.' : ' The worktree is kept until you delete the task.')
   } else if (!last) next.options.push(opt(agents[0], 1))
   else {
     const la = agent(last.agent)
@@ -257,8 +258,9 @@ function derive(t: MockTask): Task {
     const pushFix = pushFixA ? opt(pushFixA, count(pushFixA.id) + 1) : undefined
     if (appr) { next.approval = appr.id; next.text = 'Claude Code wants to run a command. Answer in the terminal, or allow it once here.' }
     else if (run?.external) { next.text = `Waiting for Copilot's review and the CI checks of PR #${t.pr} (checked every minute). Start a fix any time, or Mark done to stop waiting.`; next.markDone = run.id; if (pushFix) next.options.push(pushFix) }
+    else if (t.prState === 'merged' || t.prState === 'closed') next.text = `PR #${t.pr} was ${t.prState}. Archive the task when you are done.`
     else if (last.external) {
-      next.text = unsuccessful(last) ? `PR #${t.pr} needs fixes: ${last.artifact} lists Copilot's comments and the failing CI checks.` : `Copilot found nothing to fix and CI passed on PR #${t.pr}. The task moves to Archive when the PR is merged or closed.`
+      next.text = unsuccessful(last) ? `PR #${t.pr} needs fixes: ${last.artifact} lists Copilot's comments and the failing CI checks.` : `Copilot found nothing to fix and CI passed on PR #${t.pr}. The PR is waiting to be merged.`
       if (pushFix) { next.text += ` Start ${pushFix.label} for fixes (Copilot comments, failing CI), then push again.`; next.options.push(pushFix) }
     }
     else if (run) next.text = `${run.name} is running. ` + (autoNext && run.id === last.id ? `${displayName(autoNext, count(autoNext.id) + 1)} starts automatically if it succeeds.` : 'You will be asked for the next step when it finishes.')
@@ -269,7 +271,7 @@ function derive(t: MockTask): Task {
       const again = opt(la, count(la.id) + 1)
       next.options = !fix ? [again] : afterOf(la.trigger) ? [fix, again] : [again, fix]
     } else if (la.openPR) {
-      next.text = `PR #${t.pr} is open. The task moves to Archive when the PR is merged or closed.`
+      next.text = `PR #${t.pr} is open. The PR is waiting to be merged.`
       if (fix) { next.text += ` If Copilot or the CI checks ask for changes, start ${fix.label}, then push again.`; next.options.push(fix) }
     } else {
       const nextA = agents.slice(idx + 1).find((a) => !a.trigger.startsWith('after:'))
