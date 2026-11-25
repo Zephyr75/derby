@@ -199,51 +199,6 @@ func (g Git) RemoveWorktree(ctx context.Context, repo, path, branch string) erro
 	return errors.Join(errs...)
 }
 
-// CommitAll stages everything in the worktree and commits it. It returns ""
-// when there was nothing to commit.
-func (g Git) CommitAll(ctx context.Context, worktree, message string) (string, error) {
-	if _, err := g.Run(ctx, worktree, "add", "-A"); err != nil {
-		return "", err
-	}
-	if _, err := g.Run(ctx, worktree, "diff", "--cached", "--quiet"); err == nil {
-		return "", nil
-	}
-	if _, err := g.Run(ctx, worktree, "commit", "-m", message); err != nil {
-		return "", err
-	}
-	return g.Run(ctx, worktree, "rev-parse", "--short", "HEAD")
-}
-
-// CanAmend reports whether sha is the worktree's HEAD and on no remote
-// branch, so amending it rewrites nothing that was pushed.
-func (g Git) CanAmend(ctx context.Context, worktree, sha string) bool {
-	head, err := g.Run(ctx, worktree, "rev-parse", "HEAD")
-	if err != nil {
-		return false
-	}
-	full, err := g.Run(ctx, worktree, "rev-parse", sha)
-	if err != nil || full != head {
-		return false
-	}
-	remote, err := g.Run(ctx, worktree, "branch", "-r", "--contains", head)
-	return err == nil && remote == ""
-}
-
-// AmendAll stages everything and amends HEAD, keeping its message. It
-// returns the new short sha, or "" when there was nothing to add.
-func (g Git) AmendAll(ctx context.Context, worktree string) (string, error) {
-	if _, err := g.Run(ctx, worktree, "add", "-A"); err != nil {
-		return "", err
-	}
-	if _, err := g.Run(ctx, worktree, "diff", "--cached", "--quiet"); err == nil {
-		return "", nil
-	}
-	if _, err := g.Run(ctx, worktree, "commit", "--amend", "--no-edit"); err != nil {
-		return "", err
-	}
-	return g.Run(ctx, worktree, "rev-parse", "--short", "HEAD")
-}
-
 // PruneViews removes every view worktree under dir that belongs to repo.
 func (g Git) PruneViews(ctx context.Context, repo, dir string) {
 	entries, err := os.ReadDir(dir)
@@ -256,45 +211,6 @@ func (g Git) PruneViews(ctx context.Context, repo, dir string) {
 		_ = os.RemoveAll(p)
 	}
 	_, _ = g.Run(ctx, repo, "worktree", "prune")
-}
-
-// Push pushes branch to origin and sets upstream.
-func (g Git) Push(ctx context.Context, worktree, branch string) error {
-	// With lease: a branch rebased on its base after an earlier push is
-	// replaced, unless someone else pushed to it meanwhile.
-	_, err := g.Run(ctx, worktree, "push", "--force-with-lease", "-u", "origin", branch)
-	if err != nil && authFailure(err) {
-		// No usable credential helper, e.g. derby was started by an app
-		// whose helper is gone: use the GitHub CLI's.
-		if gh, e := exec.LookPath("gh"); e == nil {
-			cmd := exec.CommandContext(ctx, g.bin(), "-C", worktree, "-c", "credential.helper=", "-c", "credential.helper=!"+gh+" auth git-credential", "push", "--force-with-lease", "-u", "origin", branch)
-			cmd.Env = scrubGitConfig(os.Environ())
-			if out, e := cmd.CombinedOutput(); e == nil {
-				return nil
-			} else if g.Log != nil {
-				g.Log("gh credential retry: " + strings.TrimSpace(string(out)))
-			}
-		}
-	}
-	return err
-}
-
-func authFailure(err error) bool {
-	m := err.Error()
-	return strings.Contains(m, "could not read Username") || strings.Contains(m, "unable to get password") || strings.Contains(m, "git-credential")
-}
-
-// scrubGitConfig drops the environment's git config and prompt overrides
-// that point at a credential helper of another app.
-func scrubGitConfig(env []string) []string {
-	out := []string{"GIT_TERMINAL_PROMPT=0"}
-	for _, e := range env {
-		if strings.HasPrefix(e, "GIT_CONFIG_") || strings.HasPrefix(e, "COPILOT_TRAMPOLINE_") || strings.HasPrefix(e, "GIT_TERMINAL_PROMPT=") {
-			continue
-		}
-		out = append(out, e)
-	}
-	return out
 }
 
 // privateIndex runs git in worktree with its own index file, so the

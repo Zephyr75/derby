@@ -22,10 +22,12 @@ echo "fake claude: ${@: -1}"
 case "$DERBY_STEP" in
   impl-*) echo "change $DERBY_N" >> "file-$DERBY_N.txt"
           printf -- '---\nstatus: done\n---\n# Changes\n- edited\n' > "$DERBY_ARTIFACT" ;;
-  review-*) printf -- "---\nstatus: ${FAKE_REVIEW:-done}\n---\n# Findings\n- one\n" > "$DERBY_ARTIFACT" ;;
+  review-*) printf -- "---\nstatus: ${FAKE_REVIEW:-done}\n---\n# Findings\n- one\n" > "$DERBY_ARTIFACT"
+            [ -n "$FAKE_COMMIT" ] && git add -A && git commit -q -m "review $DERBY_N" ;;
   form-*) post PreToolUse '{"tool_name":"AskUserQuestion"}'
           read -r answer; post PostToolUse '{"tool_name":"AskUserQuestion"}'
-          printf -- '---\nstatus: done\n---\nfeat(x): the title #1\n\nThe body.\n' > "$DERBY_ARTIFACT" ;;
+          printf -- '---\nstatus: done\n---\nfeat(x): the title #1\n\nThe body.\n' > "$DERBY_ARTIFACT"
+          git add -A && git commit -q -m "feat(x): the title #1" ;;
   ask-*) post Notification '{"notification_type":"permission_prompt","message":"Claude needs your permission to use Bash"}'
          read -r answer; post PostToolUse '{}'
          printf -- '---\nstatus: done\n---\n' > "$DERBY_ARTIFACT" ;;

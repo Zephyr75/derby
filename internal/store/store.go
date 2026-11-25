@@ -34,7 +34,9 @@ type Task struct {
 	ArchivedAt      time.Time `json:"archivedAt"`
 	PRNumber        int       `json:"pr"`
 	PRURL           string    `json:"prUrl"`
-	PRState         string    `json:"prState"` // open | merged | closed
+	PRState         string    `json:"prState"`  // open | merged | closed
+	MergeSHA        string    `json:"mergeSha"` // the commit that merged the PR into its base
+	Release         string    `json:"release"`  // the furthest branch after the base that has the merge commit (qa, then master or main); "" until the merge reached one
 	WorktreeRemoved bool      `json:"worktreeRemoved"`
 }
 
@@ -130,19 +132,21 @@ type taskJSON struct {
 	PRNumber        int       `json:"pr,omitempty"`
 	PRURL           string    `json:"prUrl,omitempty"`
 	PRState         string    `json:"prState,omitempty"`
+	MergeSHA        string    `json:"mergeSha,omitempty"`
+	Release         string    `json:"release,omitempty"`
 	WorktreeRemoved bool      `json:"worktreeRemoved,omitempty"`
 }
 
 func (j taskJSON) task() Task {
 	return Task{ID: j.ID, Project: j.Project, Slug: j.Slug, Issue: j.Issue, IssueRepo: j.IssueRepo, Sister: j.Sister, Title: j.Title, Name: j.Name,
 		Description: j.Description, Branch: j.Branch, CreatedAt: j.CreatedAt, Archived: j.Archived, ArchivedAt: j.ArchivedAt,
-		PRNumber: j.PRNumber, PRURL: j.PRURL, PRState: j.PRState, WorktreeRemoved: j.WorktreeRemoved}
+		PRNumber: j.PRNumber, PRURL: j.PRURL, PRState: j.PRState, MergeSHA: j.MergeSHA, Release: j.Release, WorktreeRemoved: j.WorktreeRemoved}
 }
 
 func toJSON(t Task) taskJSON {
 	return taskJSON{ID: t.ID, Project: t.Project, Slug: t.Slug, Issue: t.Issue, IssueRepo: t.IssueRepo, Sister: t.Sister, Title: t.Title, Name: t.Name,
 		Description: t.Description, Branch: t.Branch, CreatedAt: t.CreatedAt, Archived: t.Archived, ArchivedAt: t.ArchivedAt,
-		PRNumber: t.PRNumber, PRURL: t.PRURL, PRState: t.PRState, WorktreeRemoved: t.WorktreeRemoved}
+		PRNumber: t.PRNumber, PRURL: t.PRURL, PRState: t.PRState, MergeSHA: t.MergeSHA, Release: t.Release, WorktreeRemoved: t.WorktreeRemoved}
 }
 
 // Open loads the task files under home/runs and home/state.json. pathFor

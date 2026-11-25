@@ -18,7 +18,7 @@ PLAN-{n}.md sections, after the TLDR:
 2. Where it happens: an archify diagram of the systems this issue involves (PLAN-{n}-context.html): the services, databases, Firebase functions, Pub/Sub topics, queues and outside APIs on its path, and what each sends the next, from the code and config with source evidence, the ones this issue changes marked. The higher-level view the two flows below zoom into.
 3. Current flow: an archify diagram of how the code works today (PLAN-{n}-current.html), from the code with source evidence, the part that goes wrong marked.
 4. New flow: the same flow with the fix applied and what changes marked (PLAN-{n}-new.html), laid out like the current one so the two compare at a glance.
-5. Options, only when there is a real choice (designs, libraries, where the code goes): a table of each one's pros, cons and size (about +N / -M lines), then the one you recommend.
+5. Options, only when there is a real choice (designs, libraries, where the code goes): for each one a small block, short enough to read in a narrow panel: its name in bold with its size (about +N / -M lines), then a line of Pros and a line of Cons, a few words each. Then the one you recommend and why. No table.
 6. Files: a table, one row per file to change, with what changes there and why. Under it: "Estimated change: about +N / -M lines".
 7. Tests: the behaviours to verify (main path, edge cases, what must not change).
 Fail when the task cannot be done as described.'''
@@ -96,7 +96,7 @@ effort = "xhigh"
 trigger = "manual"
 writes = "TEST-{n}.md"
 allow = ["Bash(make test-path:*)", "Bash(make ruff:*)"]
-next = ["regress", "push", "impl", "discuss"]
+next = ["push", "impl", "discuss"]
 on_fail = ["impl", "discuss"]
 instructions = '''
 Read the newest PLAN (its Tests section lists what to verify), the newest IMPLEMENT or DISCUSS file (what changed) and the newest REVIEW (what it flagged). When the step this one follows is a failed TEST, run its failing tests first: they must pass now.
@@ -104,43 +104,18 @@ Write tests for the uncommitted changes (git status, git diff HEAD), following t
 First check the tests this branch already added or changed (git diff origin/{base} on the test files): update or remove the ones that no longer match the code. Never change tests that exist on {base}.
 Run them. Change only tests: if one shows a bug, keep it failing and explain it.
 Report only checks that ran, with the exact command and pass/fail counts. If a run cannot start (no credentials or network), say so; never point tests at real resources to make them run.
-TEST-{n}.md sections, after the TLDR: Tests added, How to run, Results.
-Done when the tests pass, failed when one shows a bug.'''
-
-[[agent]]
-id = "regress"
-name = "Regression"
-command = "/derby:regress {task} -- {guidance}"
-model = "haiku"
-effort = "medium"
-trigger = "manual"
-writes = "REGRESSION-{n}.md"
-next = ["push", "impl", "discuss"]
-on_fail = ["impl", "discuss"]
-projects = ["pony-core"]
-instructions = '''
-Run pony-core's regression tests (lib/regtests_v2) on the local stack: an offline copy of QA in Docker, with no internet access. Never against QA.
-First read the README.md of the local_stack checkout next to pony-core (or $LOCAL_STACK_DIR): it explains the stack and its reports.
-Use only these commands, from this worktree: make regtest-local (optionally SUITES="<scenario ids from lib/regtests_v2/runner/reg_test_registry.py>", TEST_FILTER=<substring>, JOBS=<n>), make local-stack-status, make local-stack-logs SERVICE=<service>, make local-stack-down. Never make regtest, a suite directly (python -m lib.regtests_v2…), make local-stack-export-seed (it reads QA), or anything with ENV=qa or ENV=prod.
-If this worktree's Makefile has no regtest-local target (the branch predates the local stack) or Docker is not running, say so and fail.
-Run every suite with make regtest-local (about 2 minutes once the images are built; the first run builds them), then read the run's report: summary.md, each failing suite's log in logs/, and the containers' logs in stack/.
-Change no code and no tests.
-REGRESSION-{n}.md sections, after the TLDR:
-1. Results: a table, one row per suite: passed, failed or skipped (with the reason the suite gives).
-2. Failures, when there are any: each failing test's error, and whether it comes from this branch (git diff origin/{base}), a skip the suite should declare, or the stack itself.
-Done when every suite passed, failed when one failed (say which and why).'''
+In pony-core, once the tests pass, run the regression-tests skill (derby:regression-tests) too, on the changes under test.
+TEST-{n}.md sections, after the TLDR: Tests added, How to run, Results, and Regression (the skill's results) in pony-core.
+Done when the tests (and the regression run) pass, failed when one shows a bug.'''
 
 [[agent]]
 id = "push"
-name = "Commit and push"
+name = "Push"
 command = "/derby:push {task}"
 model = "sonnet"
 effort = "high"
 trigger = "manual"
 writes = "PUSH.md"
-commit = true
-push = true
-open_pr = true
 ignore_rules = true
 next = ["impl", "discuss"]
 instructions = '''
@@ -151,23 +126,29 @@ PUSH.md is the commit message and the PR, so no TLDR or ELI5 in it:
 - a short body: what changed and why, from the newest PLAN's Goal and the What changed of the IMPLEMENT and DISCUSS files, ending with "Closes #{issue}" ("Part of" for a sister task; no issue references for a LOCAL task);
 - "## Choices", when the newest PLAN lists Options: for each choice, the option taken, the ones set aside in a few words, and why;
 - "## Flow": the flow before and after as two mermaid flowcharts (GitHub renders mermaid, not archify), from the newest PLAN's flow diagrams, updated with what was built. About 10 nodes each; mark what changed in the node text, e.g. "(new)" or "(changed)", with no colors, fills, classDef or style lines (unreadable in GitHub's themes). Leave it out when there is no flow to show (docs, config, a one-line fix).
-Derby then commits with PUSH.md's title line and body, pushes, and opens or updates the draft PR; Copilot reviews it.'''
+Once PUSH.md is written: commit all the changes with its title line and body as the message (git add -A, then git commit), push the branch (git push --force-with-lease -u origin <branch>), then open a draft pull request against {base} with the same title and body (gh pr create --draft --base {base}), or update the title and body of the one this branch already has (gh pr edit). Copilot reviews it next.'''
 
 [[agent]]
 id = "copilot"
 name = "Copilot"
-command = ""
-model = "opus"
-effort = "xhigh"
 trigger = "after:push"
 writes = "COPILOT-{n}.md"
 builtin = true
 next = ["discuss", "impl"]
 on_fail = ["impl", "discuss"]
+
+[[agent]]
+id = "explain"
+name = "Explain"
+command = "/derby:explain {task} -- {guidance}"
+model = "opus"
+effort = "xhigh"
+trigger = "after:push"
+writes = "EXPLAIN-{n}.md"
+next = ["discuss", "impl"]
+on_fail = ["explain"]
 instructions = '''
-Explain the changes of PR #{pr} to someone who has not read the code. Read TASK.md and the newest PLAN-n.md in the run directory, then the diff: git diff origin/{base}...HEAD.
-Write {file} in markdown, without front matter:
-- ## TL;DR: the idea behind the change (what was wrong, how it is fixed), as you would tell a colleague.
-- ## How it works: each change in the order the reader needs it, what it does and why, with the files it touches; an everyday analogy for what is hard to picture.
-- a diagram of the flow before and after, when the change alters a flow.
-Write only {file}: never change the code, commit or push.'''
+Write EXPLAIN-{n}.md as the best possible explanation of this whole change, in every repository when the task has sister tasks (their run directories and worktrees are in the Derby step block): both super clear and intuitive, and still short and readable.
+Read TASK.md and the newest PLAN, then each repository's diff: git diff origin/{base}...HEAD (in a sister task's worktree, its own base).
+After the TLDR, go through the main changes of each repository, so the reader understands exactly what was added, removed and modified, and why. Use ELI5 where something is hard to picture, and archify diagrams where they help.
+Write only EXPLAIN-{n}.md: never change the code, commit or push.'''

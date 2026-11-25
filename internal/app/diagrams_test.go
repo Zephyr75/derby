@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"derby/internal/settings"
 	"derby/internal/store"
@@ -82,18 +83,15 @@ func TestSisterOffersFromAllowedAgents(t *testing.T) {
 	}
 }
 
-// An agent can ask the user in a form (the step waits for them), then derby
-// commits with its artifact's title and body and pushes, in that order; a
-// push that fails stops there and Next step offers to run it again.
-func TestFormThenCommitAndPush(t *testing.T) {
-	a, repo := newTestApp(t)
-	origin := filepath.Join(filepath.Dir(repo), "origin.git")
-	run(t, filepath.Dir(repo), "git", "init", "-q", "--bare", origin)
-	ags := append(a.settings.Agents(), settings.Agent{ID: "form", Name: "Form", Command: "/derby:form {task}", Trigger: "manual", Writes: "FORM.md", Commit: true, Push: true})
+// An agent can ask the user in a form (the step waits for them) and commit
+// the work itself: derby records the commit as the step's.
+func TestFormThenCommit(t *testing.T) {
+	a, _ := newTestApp(t)
+	ags := append(a.settings.Agents(), settings.Agent{ID: "form", Name: "Form", Command: "/derby:form {task}", Trigger: "manual", Writes: "FORM.md"})
 	if err := a.SaveAgents(ags); err != nil {
 		t.Fatal(err)
 	}
-	tv, _ := a.CreateTask("core", "", "ask then push", "", false, nil)
+	tv, _ := a.CreateTask("core", "", "ask then commit", "", false, nil)
 	os.WriteFile(filepath.Join(tv.Worktree, "change.txt"), []byte("x\n"), 0o644)
 	sv, err := a.StartStep(tv.ID, "form", "", 0)
 	if err != nil {
@@ -103,28 +101,62 @@ func TestFormThenCommitAndPush(t *testing.T) {
 	sess, _ := a.run.Get(sv.ID)
 	sess.Write([]byte("feat\r"))
 	waitFor(t, "done", func() bool { return stepState(a, sv.ID) == store.Done })
-	waitFor(t, "push failed", func() bool { v, _ := a.GetTask(tv.ID); return v.Steps[0].GitError != "" })
-	v, _ := a.GetTask(tv.ID)
-	if !strings.Contains(v.Steps[0].GitError, "could not push") || v.Next.Options[0].Label != "Form" {
-		t.Fatalf("no origin: %q %+v", v.Steps[0].GitError, v.Next)
+	waitFor(t, "commit recorded", func() bool { s, _ := a.db.Step(sv.ID); return s.SHA != "" })
+	s, _ := a.db.Step(sv.ID)
+	if msg := run(t, tv.Worktree, "git", "log", "-1", "--format=%B"); msg != "feat(x): the title #1" || run(t, tv.Worktree, "git", "rev-parse", "--short", "HEAD") != s.SHA {
+		t.Fatalf("commit %q, step sha %q", msg, s.SHA)
 	}
-	if msg := run(t, tv.Worktree, "git", "log", "-1", "--format=%B"); msg != "feat(x): the title #1\n\nThe body." {
-		t.Fatalf("commit message %q", msg)
-	}
+}
 
-	run(t, tv.Worktree, "git", "remote", "add", "origin", origin)
-	sv2, _ := a.StartStep(tv.ID, "form", "", 0)
-	waitFor(t, "form open", func() bool { return stepState(a, sv2.ID) == store.Idle })
-	sess, _ = a.run.Get(sv2.ID)
-	sess.Write([]byte("feat\r"))
-	waitFor(t, "pushed", func() bool {
-		v, _ := a.GetTask(tv.ID)
-		return len(v.Steps) == 2 && v.Steps[1].State == store.Done && v.Steps[1].Completed && !v.Steps[1].Busy
-	})
-	if v, _ := a.GetTask(tv.ID); v.Steps[1].GitError != "" {
-		t.Fatal(v.Steps[1].GitError)
+// fakeGH stands in for gh: the branch has PR #7, titled and described.
+func fakeGH(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "gh")
+	script := `#!/bin/sh
+case "$*" in
+  "pr list"*) printf '%s\n' '[{"number":7,"url":"https://github.com/o/pony-core/pull/7","state":"OPEN"}]' ;;
+  *title,body*) printf '%s\n' '{"title":"feat(x): the title","body":"Because it was slow.\n\n## Flow\nmore"}' ;;
+  *) exit 1 ;;
+esac
+`
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	if got := run(t, origin, "git", "log", "-1", "--format=%s", v.Branch); got != "feat(x): the title #1" {
-		t.Fatalf("origin has %q", got)
+	return path
+}
+
+// The Push agent opens the PR itself: after it succeeds derby finds the PR of
+// the branch, Copilot's step starts with the PR's title and description in
+// COPILOT-n.md, and Explain starts by itself too.
+func TestAfterPushFindsThePR(t *testing.T) {
+	a, _ := newTestApp(t)
+	a.gh.Bin = fakeGH(t)
+	tv, _ := a.CreateTask("core", "", "push it", "", false, nil)
+	id := store.StepID(tv.ID, "push-1")
+	_ = a.db.SaveStep(store.Step{ID: id, TaskID: tv.ID, Key: "push-1", Agent: "push", N: 1, Seq: 1, State: store.Done, StartedAt: time.Now()})
+	a.complete(id)
+	waitFor(t, "copilot started", func() bool { _, err := a.db.Step(store.StepID(tv.ID, "copilot-1")); return err == nil })
+	waitFor(t, "explain started", func() bool { _, err := a.db.Step(store.StepID(tv.ID, "explain-1")); return err == nil })
+	task, _ := a.db.Task(tv.ID)
+	if task.PRNumber != 7 || task.PRState != "open" || !strings.HasSuffix(task.PRURL, "/pull/7") {
+		t.Fatalf("task PR: %+v", task)
+	}
+	waitFor(t, "PR description", func() bool {
+		b, _ := os.ReadFile(filepath.Join(tv.RunDir, "COPILOT-1.md"))
+		return string(b) == "# feat(x): the title\n\nBecause it was slow.\n\n## Flow\nmore\n"
+	})
+}
+
+// Without a pull request there is nothing for Copilot to review.
+func TestAfterPushWithoutPR(t *testing.T) {
+	a, _ := newTestApp(t)
+	a.gh.Bin = "false"
+	tv, _ := a.CreateTask("core", "", "no pr", "", false, nil)
+	id := store.StepID(tv.ID, "push-1")
+	_ = a.db.SaveStep(store.Step{ID: id, TaskID: tv.ID, Key: "push-1", Agent: "push", N: 1, Seq: 1, State: store.Done, StartedAt: time.Now()})
+	a.complete(id)
+	waitFor(t, "explain started", func() bool { _, err := a.db.Step(store.StepID(tv.ID, "explain-1")); return err == nil })
+	if _, err := a.db.Step(store.StepID(tv.ID, "copilot-1")); err == nil {
+		t.Fatal("Copilot started without a PR")
 	}
 }

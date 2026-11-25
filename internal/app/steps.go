@@ -15,7 +15,6 @@ import (
 
 	"derby/internal/artifacts"
 	"derby/internal/github"
-	"derby/internal/gitops"
 	"derby/internal/hooks"
 	"derby/internal/runner"
 	"derby/internal/settings"
@@ -372,9 +371,6 @@ func (a *App) newStep(taskID, agentID, guidance string, n int, state string) (la
 		return launch{}, fmt.Errorf("%s is run by derby: it starts by itself after the agent it follows", ag.Name)
 	}
 	p := a.projectOf(t)
-	if !ag.For(t.Project) {
-		return launch{}, fmt.Errorf("%s is not offered in %s (Settings > Agents)", ag.Name, p.Name)
-	}
 	if _, err := os.Stat(worktreePath(p, t)); err != nil {
 		return launch{}, fmt.Errorf("worktree missing: %s", worktreePath(p, t))
 	}
@@ -653,8 +649,7 @@ func (a *App) MarkDone(stepID string) error {
 }
 
 // SkipStep ends a step at once as succeeded (ok) or failed, whatever its
-// agent did: its session ends, derby skips its git actions, and the task goes
-// on from that verdict (automatic next steps, or the Next step options).
+// agent did: its session ends, and the task goes on from that verdict (automatic next steps, or the Next step options).
 func (a *App) SkipStep(stepID string, ok bool) error {
 	if _, busy := a.busy.Load(stepID); busy {
 		return errors.New("Derby is still finishing this step")
@@ -678,7 +673,7 @@ func (a *App) SkipStep(stepID string, ok bool) error {
 		return *s != before
 	})
 	if changed {
-		a.completeWith(s.ID, false)
+		a.complete(s.ID)
 		a.emitTask(s.TaskID)
 	}
 	return nil
@@ -795,10 +790,7 @@ func (a *App) setPaused(stepID string, on bool) {
 // with a success: commit, push, start the automatic agents. A failed step
 // leaves the worktree as it is, and its actions still run if the user gets it
 // to succeed in the same conversation.
-func (a *App) complete(stepID string) { a.completeWith(stepID, true) }
-
-// completeWith is complete, with or without the agent's git actions.
-func (a *App) completeWith(stepID string, git bool) {
+func (a *App) complete(stepID string) {
 	if s, err := a.db.Step(stepID); err == nil && s.State == store.Done {
 		a.recordComments(s) // succeeded or not
 	}
@@ -816,16 +808,15 @@ func (a *App) completeWith(stepID string, git bool) {
 	go func() {
 		defer a.emitTask(s.TaskID)
 		defer a.busy.Delete(s.ID)
-		a.afterDone(s, git)
+		a.afterDone(s)
 	}()
 }
 
-func (a *App) afterDone(s store.Step, git bool) {
+func (a *App) afterDone(s store.Step) {
 	t, err := a.db.Task(s.TaskID)
 	if err != nil {
 		return
 	}
-	ag := agentFor(a.settings.Agents(), s.Agent)
 	sess, _ := a.run.Get(s.ID)
 	say := func(line string) {
 		if sess != nil {
@@ -836,22 +827,21 @@ func (a *App) afterDone(s store.Step, git bool) {
 	if !s.Succeeded() {
 		return
 	}
-	if ag.Commit && git {
-		a.emitTask(t.ID)
-		err := a.gitActions(t, s, ag, say)
-		_ = a.db.Set(gitErrKey(s.ID), errText(err))
-		a.emitTask(t.ID)
-		if err != nil {
-			a.toast(err.Error(), "", true)
-			return // what follows needs these actions (Copilot needs the PR)
-		}
+	// Agents commit, push and open the PR themselves: derby only notices.
+	a.recordCommit(t, s)
+	if t = a.findPR(t); t.PRNumber > 0 {
+		go a.pollPRs()
 	}
 
 	for _, next := range a.settings.Agents() {
-		if next.AfterAgent() != s.Agent || !next.For(t.Project) {
+		if next.AfterAgent() != s.Agent {
 			continue
 		}
 		if next.Builtin {
+			if t.PRNumber == 0 {
+				say("no pull request yet: Copilot has nothing to review")
+				continue
+			}
 			a.runCopilot(t.ID, say)
 			continue
 		}
@@ -863,82 +853,40 @@ func (a *App) afterDone(s store.Step, git bool) {
 	}
 }
 
-func gitErrKey(stepID string) string { return "giterr:" + stepID }
-
-func errText(err error) string {
-	if err == nil {
-		return ""
+// recordCommit keeps the commit a step made as its SHA (shown in the step's
+// tooltip, and what later steps' {sha} is): the newest commit of the branch
+// made since the step started.
+func (a *App) recordCommit(t store.Task, s store.Step) {
+	cs := a.branchCommits(t)
+	if len(cs) == 0 {
+		return
 	}
-	return err.Error()
+	steps, _ := a.db.Steps(t.ID)
+	last := cs[len(cs)-1]
+	// Commit times have seconds only: one an earlier step recorded is not this step's.
+	if last.At.Before(s.StartedAt.Truncate(time.Second)) || madeBy(steps, last.SHA) {
+		return
+	}
+	a.updateStep(s.ID, func(x *store.Step) bool { x.SHA = last.SHA; return true })
 }
 
-// gitActions runs the agent's git actions in order, stopping at the first
-// that fails: commit (the artifact's title line and body are the message),
-// push the branch, open or update the draft PR (the same title and body).
-func (a *App) gitActions(t store.Task, s store.Step, ag settings.Agent, say func(string)) error {
-	p := a.projectOf(t)
-	wt := worktreePath(p, t)
-	g := gitops.Git{Log: say}
-	title, body := "", ""
-	art, _ := a.artifactFor(s)
-	if art.Exists {
-		title, body = splitTitle(art.Body)
+// findPR gives a task without a pull request the one its branch has, opened
+// by an agent: asked of GitHub after each step.
+func (a *App) findPR(t store.Task) store.Task {
+	if t.PRNumber > 0 || t.Archived || t.WorktreeRemoved {
+		return t
 	}
-	msg := fmt.Sprintf("[%s] %s", t.Slug, strings.ToLower(strings.ReplaceAll(ag.DisplayName(s.N), " ", "-")))
-	if title != "" {
-		msg = strings.TrimSpace(title + "\n\n" + strings.TrimSpace(body))
+	n, url, state, err := a.gh.PRForBranch(a.ctx, a.projectOf(t).Repo, branchName(t))
+	if err != nil || n == 0 {
+		return t
 	}
-	// A rerun folds the new changes into the step's own commit while it is
-	// still the unpushed tip, so the step keeps one diff per cycle.
-	amend := s.SHA != "" && a.git.CanAmend(a.ctx, wt, s.SHA)
-	var sha string
-	var err error
-	if amend {
-		sha, err = g.AmendAll(a.ctx, wt)
-	} else {
-		sha, err = g.CommitAll(a.ctx, wt, msg)
-	}
-	switch {
-	case err != nil:
-		say("commit failed: " + err.Error())
-		return fmt.Errorf("Derby could not commit: %w", err)
-	case sha == "":
-		say("nothing new to commit")
-	default:
-		a.updateStep(s.ID, func(x *store.Step) bool { x.SHA = sha; return true })
-		say(fmt.Sprintf("committed %s %q", sha, strings.SplitN(msg, "\n", 2)[0]))
-	}
+	_ = a.updateTask(t.ID, func(t *store.Task) error {
+		t.PRNumber, t.PRURL, t.PRState = n, url, state
+		return nil
+	})
 	a.emitTask(t.ID)
-	if !ag.Push {
-		return nil
-	}
-	if err := g.Push(a.ctx, wt, branchName(t)); err != nil {
-		say("push failed: " + err.Error())
-		return fmt.Errorf("Derby could not push: %w", err)
-	}
-	say("pushed " + branchName(t))
-	if !ag.OpenPR {
-		return nil
-	}
-	if title == "" {
-		title = t.Title
-	}
-	n, url, err := github.GH{Log: say}.CreatePR(a.ctx, wt, p.Repo, p.BaseBranch, branchName(t), title, body)
-	if err != nil {
-		say("gh pr create failed: " + err.Error())
-		return fmt.Errorf("Derby could not open the PR: %w", err)
-	}
-	if t.PRNumber == n {
-		say(fmt.Sprintf("updated PR #%d %s", n, url))
-	} else {
-		say(fmt.Sprintf("opened PR #%d %s", n, url))
-		_ = a.updateTask(t.ID, func(t *store.Task) error {
-			t.PRNumber, t.PRURL, t.PRState = n, url, "open"
-			return nil
-		})
-	}
-	go a.pollPRs()
-	return nil
+	t.PRNumber, t.PRURL, t.PRState = n, url, state
+	return t
 }
 
 // runCopilot starts the Copilot step: it asks Copilot to review the task's
@@ -960,8 +908,8 @@ func (a *App) runCopilot(taskID string, say func(string)) {
 }
 
 // copilotAgent is the built-in step derby runs itself: it waits for Copilot's
-// review and the CI checks (FEEDBACK-<n>.md), while Claude explains the
-// PR's changes in COPILOT-<n>.md (see explain.go).
+// review and the CI checks (FEEDBACK-<n>.md) and keeps the PR's title and
+// description in COPILOT-<n>.md (see copilotfiles.go).
 const copilotAgent = settings.CopilotID
 
 // skipped is the Verdict of a Copilot step derby stopped waiting on.
@@ -1032,7 +980,7 @@ func (a *App) startCopilotStep(taskID string) {
 			a.explaining.Add(1)
 			go func() {
 				defer a.explaining.Done()
-				a.explainChanges(t, s)
+				a.writePRDescription(t, s)
 			}()
 		}
 	}

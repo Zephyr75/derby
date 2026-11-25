@@ -231,39 +231,42 @@ func (g GH) CanAccess(ctx context.Context, repo string) bool {
 	return err == nil
 }
 
-var prNum = regexp.MustCompile(`/pull/(\d+)`)
-
-// CreatePR opens a draft pull request and returns its number and URL.
-// It stays a draft until MarkReady: repo bots then leave it alone.
-func (g GH) CreatePR(ctx context.Context, worktree, repo, base, head, title, body string) (int, string, error) {
-	out, err := g.runIn(ctx, worktree, body+"\n", "pr", "create", "--draft", "--repo", repo, "--base", base, "--head", head, "--title", title, "--body-file", "-")
+// PRForBranch is the pull request of a branch (its newest), as an agent
+// opened it: number 0 when the branch has none.
+func (g GH) PRForBranch(ctx context.Context, repo, branch string) (n int, url, state string, err error) {
+	out, err := g.run(ctx, "", "pr", "list", "--repo", repo, "--head", branch, "--state", "all", "--limit", "1", "--json", "number,url,state")
 	if err != nil {
-		// The branch has a PR already: it gets the new title and body.
-		if v, e2 := g.run(ctx, worktree, "pr", "view", head, "--repo", repo, "--json", "number,url"); e2 == nil {
-			var pr struct {
-				Number int
-				URL    string
-			}
-			if json.Unmarshal([]byte(v), &pr) == nil && pr.Number > 0 {
-				_, err := g.runIn(ctx, worktree, body+"\n", "pr", "edit", strconv.Itoa(pr.Number), "--repo", repo, "--title", title, "--body-file", "-")
-				return pr.Number, pr.URL, err
-			}
-		}
-		return 0, "", err
+		return 0, "", "", err
 	}
-	url := strings.TrimSpace(out[strings.LastIndex(out, "\n")+1:])
-	m := prNum.FindStringSubmatch(url)
-	if m == nil {
-		return 0, url, fmt.Errorf("could not read the PR number from %q", url)
+	var prs []struct {
+		Number int
+		URL    string
+		State  string
 	}
-	n, _ := strconv.Atoi(m[1])
-	return n, url, nil
+	if err := json.Unmarshal([]byte(out), &prs); err != nil || len(prs) == 0 {
+		return 0, "", "", err
+	}
+	return prs[0].Number, prs[0].URL, strings.ToLower(prs[0].State), nil
+}
+
+// PRDoc is a pull request's title and description.
+func (g GH) PRDoc(ctx context.Context, repo string, n int) (title, body string, err error) {
+	out, err := g.run(ctx, "", "pr", "view", strconv.Itoa(n), "--repo", repo, "--json", "title,body")
+	if err != nil {
+		return "", "", err
+	}
+	var v struct{ Title, Body string }
+	if err := json.Unmarshal([]byte(out), &v); err != nil {
+		return "", "", err
+	}
+	return v.Title, v.Body, nil
 }
 
 // PR is what derby polls of an open pull request.
 type PR struct {
 	State  string    // open, merged or closed
 	At     time.Time // when it was merged or closed
+	Merge  string    // the commit that merged it, once merged
 	Labels []string
 	Draft  bool
 	// Conflicting: it cannot merge into its base; GitHub then runs no
@@ -273,17 +276,18 @@ type PR struct {
 
 // PRState returns a PR's state, labels and draft flag.
 func (g GH) PRState(ctx context.Context, repo string, n int) (PR, error) {
-	out, err := g.run(ctx, "", "pr", "view", strconv.Itoa(n), "--repo", repo, "--json", "state,mergedAt,closedAt,labels,isDraft,mergeable")
+	out, err := g.run(ctx, "", "pr", "view", strconv.Itoa(n), "--repo", repo, "--json", "state,mergedAt,closedAt,labels,isDraft,mergeable,mergeCommit")
 	if err != nil {
 		return PR{}, err
 	}
 	var v struct {
-		State     string
-		MergedAt  *time.Time
-		ClosedAt  *time.Time
-		Labels    []struct{ Name string }
-		IsDraft   bool
-		Mergeable string
+		State       string
+		MergedAt    *time.Time
+		ClosedAt    *time.Time
+		Labels      []struct{ Name string }
+		IsDraft     bool
+		Mergeable   string
+		MergeCommit *struct{ Oid string }
 	}
 	if err := json.Unmarshal([]byte(out), &v); err != nil {
 		return PR{}, err
@@ -291,6 +295,9 @@ func (g GH) PRState(ctx context.Context, repo string, n int) (PR, error) {
 	pr := PR{State: strings.ToLower(v.State), At: time.Now(), Labels: []string{}, Draft: v.IsDraft, Conflicting: v.Mergeable == "CONFLICTING"}
 	for _, l := range v.Labels {
 		pr.Labels = append(pr.Labels, l.Name)
+	}
+	if v.MergeCommit != nil {
+		pr.Merge = v.MergeCommit.Oid
 	}
 	if v.MergedAt != nil {
 		pr.At = *v.MergedAt

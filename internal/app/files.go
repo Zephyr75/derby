@@ -121,7 +121,8 @@ func commandName(command string) string {
 }
 
 // writePlugin rebuilds the derby Claude Code plugin in ~/.derby/plugin: its
-// manifest and one command per agent, built from the agent's instructions.
+// manifest, one command per agent, built from the agent's instructions, and
+// the internal skills (prompts with a skill name, Settings > Context).
 func (a *App) writePlugin() error {
 	dir := a.pluginDir()
 	if err := os.RemoveAll(dir); err != nil {
@@ -143,6 +144,18 @@ func (a *App) writePlugin() error {
 			continue
 		}
 		if err := os.WriteFile(filepath.Join(dir, "commands", name+".md"), []byte(a.CommandText(ag)), 0o644); err != nil {
+			return err
+		}
+	}
+	for _, p := range a.settings.Snapshot().Prompts {
+		if p.Skill == "" {
+			continue
+		}
+		if err := os.MkdirAll(filepath.Join(dir, "skills", p.Skill), 0o755); err != nil {
+			return err
+		}
+		text := fmt.Sprintf("---\nname: %s\ndescription: %q\n---\n\n%s\n", p.Skill, p.Where, strings.TrimSpace(p.Text))
+		if err := os.WriteFile(filepath.Join(dir, "skills", p.Skill, "SKILL.md"), []byte(text), 0o644); err != nil {
 			return err
 		}
 	}

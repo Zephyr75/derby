@@ -82,7 +82,7 @@ type App struct {
 	// emitMu: tasks are read and sent one at a time, so the last view sent
 	// is never older than one sent before it (e.g. a step still busy).
 	copilotMu   sync.Mutex     // FEEDBACK-n.md is written by the review and the CI checks
-	explaining  sync.WaitGroup // background Claude runs: explanations (see explainChanges), sister part lines (see summarised)
+	explaining  sync.WaitGroup // background runs: task names, sister part lines (see summarised), PR descriptions
 	summarising sync.Map       // sister groups whose overview lines are being written
 	emitMu      sync.Mutex
 
@@ -94,6 +94,7 @@ type App struct {
 	conflict map[string]bool              // whether each open PR conflicts with its base, by task id
 	feedback map[string][]github.Feedback // review threads (resolved ones too) and reviews of each open PR, by task id
 	behind   map[string]int               // commits of origin/<base> each task's branch lacks, by task id
+	stages   map[string][]string          // the branches a merged PR travels through after its base, by project id (see pollReleases)
 
 	busy sync.Map // ids of the steps whose post-success actions (git, automatic next steps) are running
 
@@ -107,7 +108,7 @@ type App struct {
 
 // New creates the service; call Start before use.
 func New(home string) *App {
-	return &App{Home: home, checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}, status: map[string]SessionStatus{}}
+	return &App{Home: home, checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}, stages: map[string][]string{}, status: map[string]SessionStatus{}}
 }
 
 // DefaultHome returns ~/.derby, or $DERBY_HOME when set.
@@ -175,7 +176,6 @@ func Start(a *App, ctx context.Context, plat Platform) error {
 		for _, t := range ts {
 			renameArtifacts(a.runDir(a.projectOf(t), t))
 			migrateCopilotFiles(a.runDir(a.projectOf(t), t))
-			abandonedExplanations(a.runDir(a.projectOf(t), t))
 		}
 	}
 	a.reconcile()
@@ -337,6 +337,7 @@ func (a *App) loop() {
 	defer drift.Stop()
 	go a.pollPRs()
 	go a.pollDrift()
+	go a.pollReleases()
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -348,6 +349,7 @@ func (a *App) loop() {
 			go a.pollPRs()
 		case <-drift.C:
 			go a.pollDrift()
+			go a.pollReleases()
 		}
 	}
 }
@@ -524,6 +526,23 @@ func (a *App) SetNotifications(on bool) error {
 	return a.updateConfig(func(c *settings.Config) { c.Notifications = on })
 }
 
+// SetUseDefaults chooses whether agents, prompts and skills are the
+// repository's defaults/ (to work on derby itself) or the files in ~/.derby.
+func (a *App) SetUseDefaults(on bool) error {
+	if err := a.updateConfig(func(c *settings.Config) { c.UseDefaults = on }); err != nil {
+		return err
+	}
+	if err := a.settings.Reload(); err != nil {
+		return err
+	}
+	if err := a.writePlugin(); err != nil {
+		return err
+	}
+	a.emit(EvSettings, a.settings.Snapshot())
+	a.emitAllTasks()
+	return nil
+}
+
 // SetMaxTabs sets how many terminal tabs stay open.
 func (a *App) SetMaxTabs(n int) error {
 	if n < 1 {
@@ -598,23 +617,12 @@ func (a *App) AgentContext(ag settings.Agent, projectID string) []ContextPart {
 	}
 	t := store.Task{ID: p.ID + ":1234", Project: p.ID, Slug: "1234", Title: "Example task", Issue: "1234"}
 	var out []ContextPart
-	if ag.Builtin {
-		out = append(out, ContextPart{"System prompt", "Appended to Claude Code's own system prompt", a.explainSystemPrompt(t, p)})
-	} else {
-		l := launch{task: t, proj: p, agent: ag, step: store.Step{Agent: ag.ID, N: 1}}
-		out = append(out, ContextPart{"System prompt", "Appended to Claude Code's own system prompt: it stays for the whole conversation", a.stepBlock(l, a.runDir(p, t), worktreePath(p, t))})
-	}
+	l := launch{task: t, proj: p, agent: ag, step: store.Step{Agent: ag.ID, N: 1}}
+	out = append(out, ContextPart{"System prompt", "Appended to Claude Code's own system prompt: it stays for the whole conversation", a.stepBlock(l, a.runDir(p, t), worktreePath(p, t))})
 	// Your own ~/.claude/CLAUDE.md is left out (derby's settings exclude it);
 	// the repository's is not.
 	if b, err := os.ReadFile(filepath.Join(p.Path, "CLAUDE.md")); err == nil && strings.TrimSpace(string(b)) != "" {
 		out = append(out, ContextPart{"CLAUDE.md of " + p.Name, "Claude Code loads the repository's CLAUDE.md in every session", string(b)})
-	}
-	if ag.Builtin {
-		stem := strings.TrimSuffix(ag.ArtifactName(1), ".md")
-		file := filepath.Join(a.runDir(p, t), ag.ArtifactName(1))
-		prompt := settings.Fill(ag.Instructions, map[string]string{"pr": "42", "base": p.BaseBranch, "file": file}) +
-			"\n\n" + settings.Fill(a.settings.Prompt(settings.PromptDiagrams), map[string]string{"stem": stem, "artifact": filepath.Base(file)})
-		return append(out, ContextPart{"Prompt", "The prompt of the run (claude -p), for an example PR #42", prompt})
 	}
 	return append(out, ContextPart{"Command /derby:" + ag.ID, "The step's first message: " + strings.TrimSpace(ag.Command), a.CommandText(ag)})
 }

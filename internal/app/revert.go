@@ -1,8 +1,9 @@
 package app
 
 // Revert: the latest step of an agent that can be reverted (Implement,
-// Discuss), while nothing committed after it, can be undone. derby keeps a snapshot of the worktree as each step starts; Revert
-// puts the worktree back to Implement's and removes it and every later step.
+// Discuss), while nothing committed after it, can be undone. derby keeps a
+// snapshot of the worktree as each step starts; Revert puts the worktree back
+// to Implement's and removes it and every later step.
 
 import (
 	"errors"
@@ -29,9 +30,9 @@ func (a *App) snapshot(t store.Task, stepID string) {
 }
 
 // revertable reports whether step i can be reverted: its agent can be
-// (Settings > Agents), no step of such an agent or of one that commits ran
-// after it, it and every step after it finished, nothing was committed since
-// it started, and derby has a snapshot of its start.
+// (Settings > Agents), no step of such an agent ran after it, it and every
+// step after it finished, nothing was committed since it started, and derby
+// has a snapshot of its start.
 func (a *App) revertable(t store.Task, steps []StepView, i int, commits []commit) bool {
 	s := steps[i]
 	agents := a.settings.Agents()
@@ -39,7 +40,7 @@ func (a *App) revertable(t store.Task, steps []StepView, i int, commits []commit
 		return false
 	}
 	for _, x := range steps[i+1:] {
-		if ag := agentFor(agents, x.Agent); ag.Revert || ag.Commit {
+		if agentFor(agents, x.Agent).Revert {
 			return false
 		}
 	}

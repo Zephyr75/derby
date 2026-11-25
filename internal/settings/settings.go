@@ -60,6 +60,7 @@ type Config struct {
 	ClaudeCommand   string                 `toml:"claude_command" json:"claudeCommand"`
 	MaxLiveSessions int                    `toml:"max_live_sessions" json:"maxLiveSessions"`
 	Notifications   bool                   `toml:"notifications" json:"notifications"`      // desktop notifications while derby is in the background
+	UseDefaults     bool                   `toml:"use_defaults" json:"useDefaults"`         // agents, prompts and skills are the repository's defaults/, not ~/.derby's (to work on derby itself)
 	MaxTabs         int                    `toml:"max_tabs" json:"maxTabs"`                 // open terminal tabs; the oldest closes first
 	Rules           string                 `toml:"rules" json:"rules"`                      // always followed by every agent
 	BranchPrefix    string                 `toml:"branch_prefix" json:"branchPrefix"`       // every new task's branch starts with it
@@ -84,14 +85,11 @@ func (c Config) IssuesOf(p Project) string {
 type Agent struct {
 	ID           string   `toml:"id" json:"id"`
 	Name         string   `toml:"name" json:"name"`
-	Command      string   `toml:"command" json:"command"`
-	Model        string   `toml:"model" json:"model"`
+	Command      string   `toml:"command,omitempty" json:"command"`
+	Model        string   `toml:"model,omitempty" json:"model"`
 	Effort       string   `toml:"effort,omitempty" json:"effort"` // low | medium | high | xhigh | max (default xhigh)
 	Trigger      string   `toml:"trigger" json:"trigger"`         // manual | after:<agent id> (when that step succeeds)
 	Writes       string   `toml:"writes" json:"writes"`
-	Commit       bool     `toml:"commit,omitempty" json:"commit"`            // derby commits when it succeeds: its artifact's title line and body are the message
-	Push         bool     `toml:"push,omitempty" json:"push"`                // then pushes the branch (needs Commit)
-	OpenPR       bool     `toml:"open_pr,omitempty" json:"openPR"`           // then opens (or updates) the draft PR from its artifact (needs Push)
 	Revert       bool     `toml:"revert,omitempty" json:"revert"`            // its latest step can be reverted while nothing is committed after it
 	Rerun        bool     `toml:"rerun,omitempty" json:"rerun"`              // its step can be run again on the current worktree while it is the latest
 	Choose       bool     `toml:"choose,omitempty" json:"choose"`            // when its artifact lists Options, Next step asks which one to take
@@ -102,8 +100,13 @@ type Agent struct {
 	Allow        []string `toml:"allow,omitempty" json:"allow"`              // tool rules it runs without asking, e.g. Bash(make test-path:*)
 	Next         []string `toml:"next,omitempty" json:"next"`                // agents Next step offers after it succeeds, first one highlighted (default: the next manual agent)
 	OnFail       []string `toml:"on_fail,omitempty" json:"onFail"`           // agents Next step offers after it fails (default: itself again)
-	Projects     []string `toml:"projects,omitempty" json:"projects"`        // ids of the projects that offer it; empty: every project
-	Instructions string   `toml:"instructions" json:"instructions"`
+	Instructions string   `toml:"instructions,omitempty" json:"instructions"`
+
+	// The former git boxes, read from an older agents.toml and turned into
+	// instructions by normalize.
+	Commit bool `toml:"commit,omitempty" json:"-"`
+	Push   bool `toml:"push,omitempty" json:"-"`
+	OpenPR bool `toml:"open_pr,omitempty" json:"-"`
 }
 
 type agentsFile struct {
@@ -181,17 +184,22 @@ func (s *Store) Reload() error {
 	fillConfig(&cfg)
 
 	var af agentsFile
-	if b, err := os.ReadFile(s.path("agents.toml")); err == nil {
-		if _, err := toml.Decode(string(b), &af); err != nil {
-			return fmt.Errorf("agents.toml: %w", err)
-		}
-	} else if errors.Is(err, os.ErrNotExist) {
+	switch {
+	case cfg.UseDefaults:
 		af.Agent = DefaultAgents()
-		if err := writeTables(s.path("agents.toml"), af); err != nil {
+	default:
+		if b, err := os.ReadFile(s.path("agents.toml")); err == nil {
+			if _, err := toml.Decode(string(b), &af); err != nil {
+				return fmt.Errorf("agents.toml: %w", err)
+			}
+		} else if errors.Is(err, os.ErrNotExist) {
+			af.Agent = DefaultAgents()
+			if err := writeTables(s.path("agents.toml"), af); err != nil {
+				return err
+			}
+		} else {
 			return err
 		}
-	} else {
-		return err
 	}
 	if len(af.Agent) == 0 {
 		af.Agent = DefaultAgents()
@@ -384,6 +392,12 @@ func (s *Store) prompts() []Prompt {
 // defaults since are appended to it, so the file always lists every prompt.
 func (s *Store) loadPrompts(cfg *Config) (map[string]string, error) {
 	pr := map[string]string{}
+	if cfg.UseDefaults {
+		for _, p := range DefaultPrompts() {
+			pr[p.ID] = p.Default
+		}
+		return pr, nil
+	}
 	path := s.path("prompts.toml")
 	b, err := os.ReadFile(path)
 	switch {
@@ -439,6 +453,9 @@ func (s *Store) SetPrompt(id, text string) error {
 	if def == "" {
 		return fmt.Errorf("no prompt %q", id)
 	}
+	if s.usingDefaults() {
+		return errUseDefaults
+	}
 	if strings.TrimSpace(text) == "" {
 		text = def
 	}
@@ -458,6 +475,14 @@ func (s *Store) SetPrompt(id, text string) error {
 	s.pr = pr
 	s.mu.Unlock()
 	return nil
+}
+
+var errUseDefaults = errors.New("Derby's default agents and prompts are in use (Settings > General): turn that off to edit them")
+
+func (s *Store) usingDefaults() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cfg.UseDefaults
 }
 
 // Config returns a copy of config.toml.
@@ -502,6 +527,9 @@ func (s *Store) Context(id string) (Context, bool) {
 
 // SaveAgents replaces agents.toml.
 func (s *Store) SaveAgents(agents []Agent) error {
+	if s.usingDefaults() {
+		return errUseDefaults
+	}
 	s.io.Lock()
 	defer s.io.Unlock()
 	seen := map[string]bool{}
@@ -544,20 +572,27 @@ func (s *Store) SaveAgents(agents []Agent) error {
 // review of the PR, then waits for the review and the CI checks.
 const CopilotID = "copilot"
 
-// Copilot is the built-in agent with its fixed parts (from
-// defaults/agents.toml); the user sets its trigger and its next steps.
+// Copilot is the built-in agent with its fixed parts; the user sets its
+// trigger and its next steps.
 func Copilot() Agent {
-	for _, a := range DefaultAgents() {
-		if a.ID == CopilotID {
-			a.Trigger, a.Next, a.OnFail = "manual", nil, nil
-			return a
-		}
-	}
 	return Agent{ID: CopilotID, Name: "Copilot", Trigger: "manual", Writes: "COPILOT-{n}.md", Builtin: true}
 }
 
+// gitSteps is what an agent with the former git boxes told Derby to do after
+// it, now said in its instructions.
+func gitSteps(a Agent) string {
+	s := "Once the artifact is written, commit all the changes with its title line and body as the message"
+	if a.Push || a.OpenPR {
+		s += ", push the branch"
+	}
+	if a.OpenPR {
+		s += " and open a draft pull request with them (when there is none yet)"
+	}
+	return s + "."
+}
+
 // normalize makes agents consistent: lists are never nil (the UI always
-// gets lists), Push needs Commit and Open the PR needs Push, and Copilot is
+// gets lists), the former git boxes are now instructions, and Copilot is
 // there once with its fixed parts, never first.
 func normalize(agents []Agent) []Agent {
 	out := []Agent{}
@@ -566,34 +601,18 @@ func normalize(agents []Agent) []Agent {
 		if a.ID == CopilotID {
 			c := Copilot()
 			c.Trigger, c.Next, c.OnFail = a.Trigger, a.Next, a.OnFail
-			if a.Model != "" {
-				c.Model = a.Model
-			}
-			if a.Effort != "" {
-				c.Effort = a.Effort
-			}
-			if strings.TrimSpace(a.Instructions) != "" {
-				c.Instructions = a.Instructions
-			}
 			cop = &c
 			continue
 		}
-		if a.Push && !a.Commit { // the former "Commit, push and open the PR" box
-			a.OpenPR = true
+		if a.Commit || a.Push || a.OpenPR {
+			a.Instructions = strings.TrimSpace(a.Instructions) + "\n" + gitSteps(a)
+			a.Commit, a.Push, a.OpenPR = false, false, false
 		}
-		a.Push = a.Push || a.OpenPR
-		a.Commit = a.Commit || a.Push
 		a.Builtin = false
 		out = append(out, a)
 	}
-	if cop == nil { // an agents.toml from before Copilot was listed: it follows the PR agent, offering what that one did
+	if cop == nil { // an agents.toml from before Copilot was listed
 		c := Copilot()
-		for _, a := range out {
-			if a.OpenPR {
-				c.Trigger, c.Next, c.OnFail = "after:"+a.ID, a.Next, a.OnFail
-				break
-			}
-		}
 		cop = &c
 	}
 	i := len(out)
@@ -614,9 +633,6 @@ func normalize(agents []Agent) []Agent {
 		}
 		if out[i].Effort == "" {
 			out[i].Effort = DefaultEffort
-		}
-		if out[i].Projects == nil {
-			out[i].Projects = []string{}
 		}
 		allow := []string{}
 		for _, r := range out[i].Allow {
@@ -807,11 +823,6 @@ const DefaultEffort = "xhigh"
 
 // Efforts are Claude Code's effort levels (--effort).
 var Efforts = []string{"low", "medium", "high", "xhigh", "max"}
-
-// For reports whether the tasks of a project offer the agent.
-func (a Agent) For(project string) bool {
-	return len(a.Projects) == 0 || slices.Contains(a.Projects, project)
-}
 
 // AfterAgent returns the agent id this one starts after, or "": it starts
 // by itself when a step of that agent succeeds.

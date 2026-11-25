@@ -10,7 +10,7 @@ text = '''
   3. TASK.md: the task itself (title, issue or description, attachments).
   4. The artifacts your instructions name.
 - Every file is in the run directory ($DERBY_RUN_DIR). The Derby step block lists the steps so far, oldest first, with their outcome and files. Of each kind your instructions name, read the newest (older tasks have PLAN.md). Feedback (REVIEW, TEST, FEEDBACK…) written before the newest IMPLEMENT or DISCUSS was handled by that step: its artifact says how, so do not handle it again.
-- Files Derby writes there: TASK.md; ISSUE.md (the GitHub issue, comments included); attachments/ (files the user attached); FEEDBACK-n.md (after Commit and push: Copilot's review comments on the PR and its failing CI checks, to act on); COPILOT-n.md (an explanation of the PR for people, not feedback).
+- Files Derby writes there: TASK.md; ISSUE.md (the GitHub issue, comments included); attachments/ (files the user attached); FEEDBACK-n.md (after Push: Copilot's review comments on the PR and its failing CI checks, to act on); COPILOT-n.md (the PR's title and description, not feedback).
 - {n}, {base}, {sha} and {issue} in your instructions are the values in the Derby step block.
 - Work in the current directory, the task's own git worktree. Never commit or push: Derby does it.
 - Write your artifact in the run directory. It starts with YAML front matter; once the step is truly finished, add status: done (it succeeded) or status: failed (it did not: say why) to it. The next automatic step only starts after a success.
@@ -20,7 +20,7 @@ text = '''
 [[prompt]]
 id = "writing"
 name = "Writing"
-where = "Every agent's system prompt, Copilot's too: for the artifact and every reply"
+where = "Every agent's system prompt: for the artifact and every reply"
 text = '''
 # Writing
 - Write for someone new to this code: short, plain words, intuitive. Prefer a table or a list to a long paragraph. Explain trade-offs in the artifact, not in code comments.
@@ -49,7 +49,7 @@ text = '''
 [[prompt]]
 id = "diagrams"
 name = "Diagrams"
-where = "Every agent's system prompt, and Copilot's prompt"
+where = "Every agent's system prompt"
 vars = "{stem}: the artifact's name without .md, e.g. PLAN-1"
 text = '''
 # Diagrams
@@ -122,6 +122,24 @@ Do this todo of the task:
 {todo}'''
 
 [[prompt]]
+id = "regressionTests"
+name = "regression-tests"
+where = "Run pony-core's regression tests (lib/regtests_v2) on the local stack, an offline copy of QA in Docker, and report each suite's result. Use it to check a pony-core change; never against QA or prod."
+skill = "regression-tests"
+text = '''
+# Regression tests
+Run pony-core's regression tests (lib/regtests_v2) on the local stack: an offline copy of QA in Docker, with no internet access. Never against QA.
+Only for pony-core: in any other repository, say so and stop.
+First read the README.md of the local_stack checkout next to pony-core (or $LOCAL_STACK_DIR): it explains the stack and its reports.
+Use only these commands, from the task's worktree: make regtest-local (optionally SUITES="<scenario ids from lib/regtests_v2/runner/reg_test_registry.py>", TEST_FILTER=<substring>, JOBS=<n>), make local-stack-status, make local-stack-logs SERVICE=<service>, make local-stack-down. Never make regtest, a suite directly (python -m lib.regtests_v2…), make local-stack-export-seed (it reads QA), or anything with ENV=qa or ENV=prod.
+If the worktree's Makefile has no regtest-local target (the branch predates the local stack) or Docker is not running, say so and stop: the regression run is then unavailable, not passed.
+Run every suite with make regtest-local (about 2 minutes once the images are built; the first run builds them), then read the run's report: summary.md, each failing suite's log in logs/, and the containers' logs in stack/.
+Change no code and no tests.
+Report to the step that called you, for its artifact:
+1. Results: a table, one row per suite: passed, failed or skipped (with the reason the suite gives).
+2. Failures, when there are any: each failing test's error, and whether it comes from this branch (git diff origin/<base>), a skip the suite should declare, or the stack itself.'''
+
+[[prompt]]
 id = "stepBlock"
 name = "Derby step block"
 where = "The start of every agent's system prompt: the facts of its step. A Go template (text/template)"
@@ -187,7 +205,7 @@ text = '''
 [[prompt]]
 id = "rules"
 name = "Rules"
-where = "The end of every agent's system prompt (unless it ignores the rules) and of Copilot's explanation run, when there are rules: Settings > Context. A Go template"
+where = "The end of every agent's system prompt (unless it ignores the rules), when there are rules: Settings > Context. A Go template"
 vars = "{{.Rules}}: the rules"
 text = '''
 # Rules
@@ -250,15 +268,6 @@ Files the user attached to the task: read each one (images too) before planning.
 {{range .Attachments}}- {{.}}
 {{end}}
 {{- end}}'''
-
-[[prompt]]
-id = "explain"
-name = "Copilot explanation"
-where = "The system prompt of the Claude run that explains a PR in the Copilot step, before the Writing prompt and the rules; its first message is Copilot's instructions (Settings > Agents) and the Diagrams prompt. A Go template"
-vars = "{{.Task}} {{.Project}} {{.Worktree}} {{.RunDir}}"
-text = '''
-# Derby
-You explain the changes of the task {{.Task}} (project {{.Project}}) in its worktree {{.Worktree}}. The run directory {{.RunDir}} holds TASK.md and every artifact.'''
 
 [[prompt]]
 id = "partsSummary"

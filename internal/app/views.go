@@ -26,15 +26,13 @@ type StepView struct {
 	Live     bool   `json:"live"`
 	Auto     bool   `json:"auto"`
 	Artifact string `json:"artifact"`
-	Commits  bool   `json:"commits"`
 	Diff     bool   `json:"diff"`     // Diff has something to open: its segment's commit, or the uncommitted work
 	Revert   bool   `json:"revert"`   // after the latest commit: Revert puts the worktree back to its start and removes it and later steps
 	Paused   bool   `json:"paused"`   // stopped by the user until Resume
 	Rerun    bool   `json:"rerun"`    // Rerun applies (see markRerun)
 	Skip     bool   `json:"skip"`     // the check and cross buttons apply: the latest step, or one not finished
 	External bool   `json:"external"` // run by derby, not Claude: the Copilot review step
-	GitError string `json:"gitError"` // why derby's commit, push or PR after it failed
-	Busy     bool   `json:"-"`        // derby is running what follows its success: git actions, the automatic next step
+	Busy     bool   `json:"-"`        // derby is running what follows its success: the automatic next step
 }
 
 // Option is one next-step button.
@@ -58,8 +56,8 @@ type Next struct {
 	Approval string   `json:"approval"` // step id waiting for permission
 	MarkDone string   `json:"markDone"` // step id that can be marked done
 	Warning  string   `json:"warning"`  // e.g. the plan lists options: pick one in the guidance
-	// Elsewhere: before a step that commits, the repositories outside the
-	// worktree where agents left uncommitted edits (only the worktree is committed).
+	// Elsewhere: the repositories outside the worktree where agents left
+	// uncommitted edits (only the worktree's branch is pushed).
 	Elsewhere []string `json:"elsewhere"`
 	// Sisters: repositories the plan also needs, with no sister task yet.
 	Sisters []SisterOffer `json:"sisters"`
@@ -92,6 +90,7 @@ type TaskView struct {
 	Behind      int                  `json:"behind"`      // commits of origin/<base> the branch lacks
 	Notes       []Note               `json:"notes"`       // the user's comments on the diff, until sent to a step
 	Todos       []Todo               `json:"todos"`       // the user's todo list for the task
+	Stages      []string             `json:"stages"`      // the branches a merged PR travels through after its base (see stagesOf)
 }
 
 func (a *App) runDir(p settings.Project, t store.Task) string {
@@ -165,11 +164,10 @@ func (a *App) view(t store.Task) (TaskView, error) {
 		_, live := a.run.Get(s.ID)
 		v.Steps = append(v.Steps, StepView{
 			Step: s, Name: ag.DisplayName(s.N), Live: live, Auto: ag.AfterAgent() != "",
-			Artifact: ag.ArtifactName(s.N), Commits: ag.Commit, Paused: a.paused(s.ID),
+			Artifact: ag.ArtifactName(s.N), Paused: a.paused(s.ID),
 			External: s.Agent == copilotAgent,
 		})
 		sv := &v.Steps[len(v.Steps)-1]
-		sv.GitError, _ = a.db.Get(gitErrKey(s.ID))
 		_, sv.Busy = a.busy.Load(s.ID)
 	}
 	for i := range v.Steps {
@@ -215,6 +213,10 @@ func (a *App) view(t store.Task) (TaskView, error) {
 	v.Behind = a.behindOf(t.ID)
 	v.Notes = a.notesOf(t.ID)
 	v.Todos = a.todosOf(t.ID)
+	v.Stages = []string{}
+	if t.PRState == "merged" {
+		v.Stages = append(v.Stages, a.stagesOf(p)...)
+	}
 	v.Checks = a.checksOf(t.ID)
 	if v.Checks == nil {
 		v.Checks = []github.Check{}
@@ -251,11 +253,8 @@ func (a *App) view(t store.Task) (TaskView, error) {
 		}
 	}
 	v.Next.Elsewhere = []string{}
-	for _, o := range v.Next.Options {
-		if agentFor(agents, o.Agent).Commit {
-			v.Next.Elsewhere = a.outsideRepos(t)
-			break
-		}
+	if len(v.Next.Options) > 0 {
+		v.Next.Elsewhere = a.outsideRepos(t)
 	}
 	return v, nil
 }
@@ -454,7 +453,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 	// succeeds (or still may: it has not finished).
 	var autoNext *settings.Agent
 	for i := range agents {
-		if agents[i].AfterAgent() == last.Agent && agents[i].For(t.Project) && !last.Unsuccessful() {
+		if agents[i].AfterAgent() == last.Agent && !last.Unsuccessful() {
 			autoNext = &agents[i]
 			break
 		}
@@ -476,7 +475,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 		var out []Option
 		for _, id := range ids {
 			for _, x := range agents {
-				if x.ID == id && x.For(t.Project) {
+				if x.ID == id {
 					out = append(out, option(x, countAgent(steps, x.ID)+1, ""))
 				}
 			}
@@ -534,24 +533,11 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 		return nx
 	}
 	if last.Busy {
-		if ag.Commit {
-			nx.Text = "Derby is " + gitWords(ag) + "."
-		} else if autoNext != nil {
+		if autoNext != nil {
 			nx.Text = autoNext.DisplayName(countAgent(steps, autoNext.ID)+1) + " is starting."
 		}
 		if autoNext != nil {
 			nx.Ghost = &Ghost{Name: autoNext.DisplayName(countAgent(steps, autoNext.ID) + 1), After: last.Name}
-		}
-		return nx
-	}
-	if last.GitError != "" {
-		nx.Text = last.GitError + ". The " + last.Name + " terminal says more; run it again once it is fixed."
-		retry := option(ag, countAgent(steps, ag.ID)+1, "")
-		nx.Options = append(nx.Options, retry)
-		for _, o := range offer(failureIDs(ag)) {
-			if o != retry {
-				nx.Options = append(nx.Options, o)
-			}
 		}
 		return nx
 	}
@@ -577,16 +563,4 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 		nx.Text = "The pipeline is finished for this task."
 	}
 	return nx
-}
-
-// gitWords says what derby does after an agent's step: "committing",
-// "committing and pushing" or "committing, pushing and opening the PR".
-func gitWords(ag settings.Agent) string {
-	switch {
-	case ag.OpenPR:
-		return "committing, pushing and opening the PR"
-	case ag.Push:
-		return "committing and pushing"
-	}
-	return "committing"
 }

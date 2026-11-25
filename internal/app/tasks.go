@@ -657,7 +657,7 @@ func (a *App) feedbackOf(taskID string) []github.Feedback {
 	return []github.Feedback{}
 }
 
-var driftMu sync.Mutex
+var driftMu, releaseMu sync.Mutex
 
 // pollDrift counts, for each active task, the commits of origin/<base> its
 // branch lacks: derby fetches each project's base branch first.
@@ -698,6 +698,92 @@ func (a *App) pollDrift() {
 		if !had || old != n {
 			a.emitTask(t.ID)
 		}
+	}
+}
+
+// stagesOf are the branches a merged PR travels through after its base on the
+// way to production, in order: qa, then master or main, whichever the
+// repository has on origin (the base itself excluded). pollReleases keeps
+// them for the views.
+func (a *App) stagesOf(p settings.Project) []string {
+	a.checksMu.Lock()
+	defer a.checksMu.Unlock()
+	return a.stages[p.ID]
+}
+
+func (a *App) findStages(p settings.Project) []string {
+	var out []string
+	for _, b := range []string{"qa", "master", "main"} {
+		if b == p.BaseBranch {
+			continue
+		}
+		if _, err := a.git.Run(a.ctx, p.Path, "rev-parse", "--verify", "-q", "origin/"+b); err == nil {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// pollReleases follows merged PRs: it records the furthest of the project's
+// stages (see stagesOf) whose branch has the PR's merge commit, until the
+// last one has it.
+func (a *App) pollReleases() {
+	if !releaseMu.TryLock() {
+		return
+	}
+	defer releaseMu.Unlock()
+	tasks, err := a.db.Tasks()
+	if err != nil {
+		return
+	}
+	fetched := map[string]bool{}
+	for _, t := range tasks {
+		if t.PRState != "merged" || t.PRNumber == 0 {
+			continue
+		}
+		p := a.projectOf(t)
+		if p.Path == "" {
+			continue
+		}
+		stages := a.findStages(p)
+		a.checksMu.Lock()
+		a.stages[p.ID] = stages
+		a.checksMu.Unlock()
+		if len(stages) == 0 || t.Release == stages[len(stages)-1] {
+			continue
+		}
+		stored := t.MergeSHA
+		if t.MergeSHA == "" { // merged before derby kept it
+			pr, err := a.gh.PRState(a.ctx, p.Repo, t.PRNumber)
+			if err != nil || pr.Merge == "" {
+				continue
+			}
+			t.MergeSHA = pr.Merge
+		}
+		if _, ok := fetched[p.ID]; !ok {
+			_, err := a.git.Run(a.ctx, p.Path, append([]string{"fetch", "--quiet", "origin", p.BaseBranch}, stages...)...)
+			fetched[p.ID] = err == nil
+		}
+		if !fetched[p.ID] {
+			continue
+		}
+		release := ""
+		for _, st := range stages {
+			if _, err := a.git.Run(a.ctx, p.Path, "merge-base", "--is-ancestor", t.MergeSHA, "origin/"+st); err == nil {
+				release = st
+			}
+		}
+		if release == t.Release && t.MergeSHA == stored {
+			continue
+		}
+		_ = a.updateTask(t.ID, func(x *store.Task) error {
+			x.MergeSHA, x.Release = t.MergeSHA, release
+			return nil
+		})
+		if release != "" && release != t.Release {
+			a.toast(refOf(t)+" reached "+release, fmt.Sprintf("PR #%d is in %s", t.PRNumber, release), false)
+		}
+		a.emitTask(t.ID)
 	}
 }
 
@@ -863,7 +949,7 @@ func (a *App) pollPR(t store.Task) {
 	}
 	a.stopTaskSessions(t.ID)
 	_ = a.updateTask(t.ID, func(t *store.Task) error {
-		t.PRState, t.Archived, t.ArchivedAt = pr.State, true, pr.At
+		t.PRState, t.Archived, t.ArchivedAt, t.MergeSHA = pr.State, true, pr.At, pr.Merge
 		return nil
 	})
 	a.toast("Archived "+refOf(t), fmt.Sprintf("PR #%d was %s", t.PRNumber, pr.State), false)

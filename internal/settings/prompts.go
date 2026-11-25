@@ -16,8 +16,9 @@ import (
 type Prompt struct {
 	ID      string `toml:"id" json:"id"`
 	Name    string `toml:"name" json:"name"`
-	Where   string `toml:"where" json:"where"`         // where Derby uses it
-	Vars    string `toml:"vars,omitempty" json:"vars"` // what Derby replaces in it
+	Where   string `toml:"where" json:"where"`           // where Derby uses it
+	Vars    string `toml:"vars,omitempty" json:"vars"`   // what Derby replaces in it
+	Skill   string `toml:"skill,omitempty" json:"skill"` // set: an internal skill, /derby:<Skill> in every session; Where is its description
 	Default string `toml:"-" json:"default"`
 	Text    string `toml:"text" json:"text"` // the text in use: the user's, else Default
 }
@@ -39,13 +40,14 @@ const (
 	PromptFeedback  = "fixFeedback"
 	PromptNotes     = "diffNotes"
 	PromptTodo      = "todo"
+	// Internal skills: Claude Code skills Derby ships in its plugin.
+	PromptRegression = "regressionTests"
 	// Derby's own texts around the agents' prompts.
 	PromptBlock    = "stepBlock"
 	PromptContext  = "context"
 	PromptRules    = "rules"
 	PromptCommand  = "command"
 	PromptTaskFile = "taskFile"
-	PromptExplain  = "explain"
 	PromptParts    = "partsSummary"
 	PromptName     = "taskName"
 	PromptClaudeMd = "claudeMd"

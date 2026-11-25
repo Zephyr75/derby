@@ -46,31 +46,28 @@ func TestAgentListsAreNeverNull(t *testing.T) {
 	}
 }
 
-// An agents.toml from before the three git boxes and the listed Copilot: the
-// former push box meant commit, push and open the PR, and Copilot followed
-// that agent offering what it did.
+// An agents.toml from before the git boxes became instructions: the former
+// push box meant commit, push and open the PR, and an agents.toml from before
+// Copilot was listed gets it, last.
 func TestNormalizeOlderAgents(t *testing.T) {
 	old := []Agent{
 		{ID: "plan", Name: "Plan", Trigger: "manual"},
-		{ID: "push", Name: "Push", Trigger: "manual", Push: true, Next: []string{"plan"}},
-		{ID: "test", Name: "Test", Trigger: "manual", OpenPR: true},
+		{ID: "push", Name: "Push", Trigger: "manual", Push: true, Instructions: "Write PUSH.md."},
+		{ID: "test", Name: "Test", Trigger: "manual", Commit: true},
 	}
 	got := normalize(old)
 	var ids []string
 	for _, a := range got {
 		ids = append(ids, a.ID)
 	}
-	if strings.Join(ids, " ") != "plan push copilot test" {
+	if strings.Join(ids, " ") != "plan push test copilot" {
 		t.Fatalf("order %v", ids)
 	}
-	if p := got[1]; !p.Commit || !p.Push || !p.OpenPR {
+	if p := got[1]; p.Push || p.Commit || p.OpenPR || !strings.HasPrefix(p.Instructions, "Write PUSH.md.\n") || !strings.Contains(p.Instructions, "commit all the changes") || !strings.Contains(p.Instructions, "push the branch") || strings.Contains(p.Instructions, "pull request") {
 		t.Fatalf("former push box: %+v", p)
 	}
-	if c := got[2]; !c.Builtin || c.Trigger != "after:push" || strings.Join(c.Next, ",") != "plan" || c.Name != "Copilot" {
-		t.Fatalf("copilot: %+v", c)
-	}
-	if x := got[3]; !x.Commit || !x.Push { // Open the PR needs Push, which needs Commit
-		t.Fatalf("dependencies: %+v", x)
+	if x := got[2]; x.Commit || strings.Contains(x.Instructions, "push the branch") || !strings.Contains(x.Instructions, "commit") {
+		t.Fatalf("former commit box: %+v", x)
 	}
 	if f, _ := First(got); f.ID != "plan" {
 		t.Fatalf("first %s", f.ID)
@@ -167,15 +164,67 @@ func TestPromptOverride(t *testing.T) {
 	}
 }
 
-// Copilot keeps its model and instructions (the explanation's), with defaults.
-func TestCopilotModelAndInstructions(t *testing.T) {
-	got := normalize([]Agent{{ID: CopilotID, Model: "sonnet", Instructions: "Explain #{pr}"}})
-	if c := got[len(got)-1]; c.Model != "sonnet" || c.Instructions != "Explain #{pr}" || !c.Builtin {
+// Copilot is the one built-in agent: whatever agents.toml says of it, only its
+// trigger and next steps are kept, and it follows the agent it triggers after.
+func TestCopilotIsBuiltin(t *testing.T) {
+	got := normalize([]Agent{
+		{ID: "push", Name: "Push"},
+		{ID: CopilotID, Name: "Other", Model: "sonnet", Instructions: "Explain", Trigger: "after:push", Next: []string{"impl"}},
+		{ID: "impl", Name: "Implement"},
+	})
+	c := got[1]
+	if c.ID != CopilotID || c.Name != "Copilot" || !c.Builtin || c.Model != "" || c.Instructions != "" || c.Trigger != "after:push" || strings.Join(c.Next, ",") != "impl" {
 		t.Fatalf("%+v", c)
 	}
-	got = normalize([]Agent{{ID: CopilotID}})
-	if c := got[len(got)-1]; c.Model != "opus" || c.Instructions != Copilot().Instructions || !strings.Contains(c.Instructions, "Explain the changes of PR #{pr}") {
-		t.Fatalf("defaults: %+v", c)
+}
+
+// With use_defaults on, agents and prompts are the repository's, whatever the
+// files say, and they cannot be edited.
+func TestUseDefaults(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "config.toml"), []byte("use_defaults = true\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "agents.toml"), []byte("[[agent]]\nid = \"mine\"\nname = \"Mine\"\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "prompts.toml"), []byte("[[prompt]]\nid = \"todo\"\nname = \"Todo\"\nwhere = \"x\"\ntext = \"mine\"\n"), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f, _ := First(s.Agents()); f.ID != DefaultAgents()[0].ID {
+		t.Fatalf("first agent %q", f.ID)
+	}
+	if s.Prompt(PromptTodo) == "mine" || s.Prompt(PromptTodo) != defaultPrompt(PromptTodo) {
+		t.Fatalf("todo = %q", s.Prompt(PromptTodo))
+	}
+	if s.SaveAgents(DefaultAgents()) == nil || s.SetPrompt(PromptTodo, "x") == nil {
+		t.Fatal("edited while the defaults are in use")
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "prompts.toml")); !strings.Contains(string(b), "mine") {
+		t.Fatal("prompts.toml was rewritten")
+	}
+	// Off again: the files rule.
+	os.WriteFile(filepath.Join(dir, "config.toml"), []byte("use_defaults = false\n"), 0o644)
+	if err := s.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if s.Prompt(PromptTodo) != "mine" {
+		t.Fatalf("todo = %q", s.Prompt(PromptTodo))
+	}
+}
+
+// Internal skills are prompts with a skill name and a description.
+func TestInternalSkills(t *testing.T) {
+	var found bool
+	for _, p := range DefaultPrompts() {
+		if p.Skill == "" {
+			continue
+		}
+		found = found || p.Skill == "regression-tests"
+		if strings.TrimSpace(p.Where) == "" || strings.Contains(p.Where, "\n") {
+			t.Errorf("skill %s needs a one-line description (where)", p.Skill)
+		}
+	}
+	if !found {
+		t.Fatal("no regression-tests skill")
 	}
 }
 
@@ -211,7 +260,7 @@ func TestDefaultPrompts(t *testing.T) {
 			}
 		}
 	}
-	for _, id := range []string{PromptStep, PromptBlock, PromptContext, PromptRules, PromptCommand, PromptTaskFile, PromptExplain, PromptParts, PromptName} {
+	for _, id := range []string{PromptStep, PromptBlock, PromptContext, PromptRules, PromptCommand, PromptTaskFile, PromptRegression, PromptParts, PromptName} {
 		if !seen[id] {
 			t.Errorf("no default prompt %q", id)
 		}

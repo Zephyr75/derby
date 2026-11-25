@@ -93,6 +93,7 @@ func newTestApp(t *testing.T) (*App, string) {
 	if err := a.SaveProject(settings.Project{ID: "core", Name: "pony-core", Path: repo, BaseBranch: "main"}); err != nil {
 		t.Fatal(err)
 	}
+	a.gh.Bin = "false" // no GitHub unless a test fakes it
 	return a, repo
 }
 
@@ -210,9 +211,9 @@ func TestPlanImplementReview(t *testing.T) {
 	}
 	waitFor(t, "test done", func() bool { return stepState(a, store.StepID(tv.ID, "test-1")) == store.Done })
 	if n := run(t, wt, "git", "rev-list", "--count", "main..HEAD"); n != "0" {
-		t.Fatalf("committed before Commit and push: %s commits", n)
+		t.Fatalf("committed before Push: %s commits", n)
 	}
-	next("Commit and push, Implement 2, Discuss 1")
+	next("Push, Implement 2, Discuss 1")
 	// Nothing is committed yet: every step shares the uncommitted work.
 	for _, id := range []string{plan, impl, rev, store.StepID(tv.ID, "test-1")} {
 		if ch, _ := a.StepChanges(id); ch.Source != "worktree" || len(ch.Files) == 0 || ch.Files[0].Path != "file-1.txt" {
@@ -426,7 +427,7 @@ func TestSessionSurvivesRestart(t *testing.T) {
 
 func TestStepChanges(t *testing.T) {
 	a, repo := newTestApp(t)
-	reviewCommits(t, a)
+	reviewCommits(t)
 	tv, _ := a.CreateTask("core", "", "change some files", "", true, nil)
 	waitFor(t, "plan", func() bool { return stepState(a, store.StepID(tv.ID, "plan-1")) == store.Done })
 	impl := store.StepID(tv.ID, "impl-1")
@@ -525,7 +526,7 @@ func TestNotifications(t *testing.T) {
 
 func TestEachReviewCommitsItsOwnDiff(t *testing.T) {
 	a, repo := newTestApp(t)
-	reviewCommits(t, a)
+	reviewCommits(t)
 	a.settings.UpdateConfig(func(c *settings.Config) { c.ZedCommand = "true" })
 	tv, _ := a.CreateTask("core", "", "two review rounds", "", true, nil)
 	waitFor(t, "plan", func() bool { return stepState(a, store.StepID(tv.ID, "plan-1")) == store.Done })
@@ -576,7 +577,7 @@ func TestEachReviewCommitsItsOwnDiff(t *testing.T) {
 
 func TestOpenInZedPassesFolderThenCommit(t *testing.T) {
 	a, repo := newTestApp(t)
-	reviewCommits(t, a)
+	reviewCommits(t)
 	a.settings.UpdateConfig(func(c *settings.Config) { c.ZedCommand = "true" })
 	tv, _ := a.CreateTask("core", "", "zed folder and commit", "", true, nil)
 	waitFor(t, "plan", func() bool { return stepState(a, store.StepID(tv.ID, "plan-1")) == store.Done })
@@ -663,40 +664,6 @@ func TestRulesAndKnowledge(t *testing.T) {
 	}
 	if block := a.stepBlock(launch{task: task, proj: p, agent: allowed, step: store.Step{N: 1}}, "/run", "/wt"); !strings.Contains(block, "# Context\n") || !strings.Contains(block, kb) {
 		t.Fatalf("no knowledge base in the context: %s", block)
-	}
-}
-
-func TestRerunAmendsTheReviewCommit(t *testing.T) {
-	a, repo := newTestApp(t)
-	reviewCommits(t, a)
-	tv, _ := a.CreateTask("core", "", "rerun the review", "", true, nil)
-	waitFor(t, "plan", func() bool { return stepState(a, store.StepID(tv.ID, "plan-1")) == store.Done })
-	if _, err := a.StartStep(tv.ID, "impl", "", 0); err != nil {
-		t.Fatal(err)
-	}
-	rev := store.StepID(tv.ID, "review-1")
-	waitFor(t, "review commit", func() bool { s, _ := a.db.Step(rev); return s.SHA != "" })
-	waitFor(t, "review done", func() bool { return stepState(a, rev) == store.Done })
-	first, _ := a.db.Step(rev)
-	proj := filepath.Join(os.Getenv("CLAUDE_CONFIG_DIR"), "projects", "-tmp-x")
-	os.MkdirAll(proj, 0o755)
-	os.WriteFile(filepath.Join(proj, first.SessionID+".jsonl"), []byte("{}\n"), 0o644)
-	wt := filepath.Join(repo, ".worktrees", tv.Slug)
-	os.WriteFile(filepath.Join(wt, "edited-by-hand.txt"), []byte("x\n"), 0o644)
-
-	if err := a.RerunStep(rev); err != nil {
-		t.Fatal(err)
-	}
-	waitFor(t, "rerun amended", func() bool { s, _ := a.db.Step(rev); return s.State == store.Done && s.SHA != first.SHA })
-	s, _ := a.db.Step(rev)
-	if n := run(t, wt, "git", "rev-list", "--count", "main..HEAD"); n != "1" {
-		t.Fatalf("want the review commit amended, got %s commits", n)
-	}
-	if files := run(t, wt, "git", "show", "--format=", "--name-only", s.SHA); files != "edited-by-hand.txt\nfile-1.txt" {
-		t.Fatalf("amended commit has %q", files)
-	}
-	if err := a.RerunStep(store.StepID(tv.ID, "impl-1")); err == nil {
-		t.Fatal("rerun of a step that is not the latest")
 	}
 }
 
@@ -962,11 +929,10 @@ func TestNextAfterOutcome(t *testing.T) {
 		"review passed":    {base, store.Task{}, "Test 1, Implement 2, Discuss 1"},
 		"review failed":    {[]StepView{step("plan", 1, ""), step("impl", 1, ""), step("review", 1, store.Failure)}, store.Task{}, "Implement 2, Discuss 1"},
 		"test failed":      {append(base, step("test", 1, store.Failure)), store.Task{}, "Implement 2, Discuss 1"},
-		"test passed":      {append(base, step("test", 1, "")), store.Task{}, "Commit and push, Implement 2, Discuss 1"},
+		"test passed":      {append(base, step("test", 1, "")), store.Task{}, "Push, Implement 2, Discuss 1"},
 		"implement failed": {[]StepView{step("plan", 1, ""), step("impl", 1, store.Failure)}, store.Task{}, "Implement 2, Discuss 1, Plan 2"},
-		"git failed":       {append(base, step("test", 1, ""), StepView{Step: store.Step{Agent: "push", N: 1, State: store.Done, Completed: true}, Name: "Commit and push", GitError: "derby could not push: rejected"}), store.Task{PRNumber: 7}, "Commit and push"},
-		"copilot not run":  {append(base, step("test", 1, ""), StepView{Step: store.Step{Agent: "push", N: 1, State: store.Done, Completed: true}, Name: "Commit and push"}), store.Task{PRNumber: 7}, "Commit and push, Implement 2, Discuss 1"},
-		"pushing":          {append(base, step("test", 1, ""), StepView{Step: store.Step{Agent: "push", N: 1, State: store.Done}, Name: "Commit and push", Busy: true}), store.Task{PRNumber: 7}, ""},
+		"copilot not run":  {append(base, step("test", 1, ""), StepView{Step: store.Step{Agent: "push", N: 1, State: store.Done, Completed: true}, Name: "Push"}), store.Task{PRNumber: 7}, "Push, Implement 2, Discuss 1"},
+		"pushing":          {append(base, step("test", 1, ""), StepView{Step: store.Step{Agent: "push", N: 1, State: store.Done}, Name: "Push", Busy: true}), store.Task{PRNumber: 7}, ""},
 		"copilot comments": {append(base, step("push", 1, ""), copilotStep(1, store.Done, store.Failure)), store.Task{PRNumber: 7}, "Implement 2, Discuss 1"},
 		"copilot waiting":  {append(base, step("push", 1, ""), copilotStep(1, store.Running, "")), store.Task{PRNumber: 7}, "Implement 2, Discuss 1"},
 		"discuss done":     {[]StepView{step("plan", 1, ""), step("discuss", 1, "")}, store.Task{}, "Review 1, Implement 1"},
@@ -978,20 +944,9 @@ func TestNextAfterOutcome(t *testing.T) {
 	}
 }
 
-// reviewCommits makes Review commit, as derby's commit mechanics (one diff
-// per cycle, amend on rerun) work for any committing agent.
-func reviewCommits(t *testing.T, a *App) {
-	t.Helper()
-	ags := a.settings.Agents()
-	for i := range ags {
-		if ags[i].ID == "review" {
-			ags[i].Commit = true
-		}
-	}
-	if err := a.SaveAgents(ags); err != nil {
-		t.Fatal(err)
-	}
-}
+// reviewCommits makes the fake Review commit, as a committing agent does:
+// derby then sees each cycle's commit.
+func reviewCommits(t *testing.T) { t.Setenv("FAKE_COMMIT", "1") }
 
 func withoutAgent(t *testing.T, a *App, id string) {
 	t.Helper()
@@ -1063,6 +1018,7 @@ func TestPlanOptionsWarning(t *testing.T) {
 
 func TestCopilotStep(t *testing.T) {
 	a, _ := newTestApp(t)
+	a.gh.Bin = fakeGH(t)
 	tv, _ := a.CreateTask("core", "", "wait for copilot", "", false, nil)
 	_ = a.updateTask(tv.ID, func(t *store.Task) error { t.PRNumber, t.PRState = 7, "open"; return nil })
 	a.startCopilotStep(tv.ID)
@@ -1080,10 +1036,10 @@ func TestCopilotStep(t *testing.T) {
 	if !s.Unsuccessful() {
 		t.Fatalf("a review with comments should fail the step: %+v", s)
 	}
-	// Claude explains the changes in COPILOT-1.md (the fake writes "# Goal").
-	waitFor(t, "the explanation", func() bool {
+	// COPILOT-1.md holds the PR's title and description.
+	waitFor(t, "the description", func() bool {
 		b, _ := os.ReadFile(filepath.Join(tv.RunDir, "COPILOT-1.md"))
-		return strings.Contains(string(b), "# Goal")
+		return strings.HasPrefix(string(b), "# feat(x): the title\n\nBecause it was slow.")
 	})
 	b, _ := os.ReadFile(filepath.Join(tv.RunDir, "FEEDBACK-1.md"))
 	for _, want := range []string{"status: failed", "comments: 1", "#### 1. Check the error · Medium", "`a.go:3`", "```diff\n@@ -1,2 +1,3 @@\n x := f()\n+y := x.v\n```", "nil check", "> **ant** replied: on it"} {
@@ -1205,7 +1161,7 @@ func TestMigrateCopilotFiles(t *testing.T) {
 }
 
 // Settings shows each agent's full context: the system prompt (the shared
-// prompts and the Rules included), then the command; Copilot's run its own.
+// prompts and the Rules included), then the command.
 func TestAgentContext(t *testing.T) {
 	a, _ := newTestApp(t)
 	var titles []string
@@ -1222,10 +1178,6 @@ func TestAgentContext(t *testing.T) {
 		if !strings.Contains(all, want) {
 			t.Errorf("no %q in the context", want)
 		}
-	}
-	cop := a.AgentContext(agentFor(a.settings.Agents(), copilotAgent), "")
-	if !strings.Contains(cop[0].Text, "You explain the changes") || !strings.Contains(cop[len(cop)-1].Text, "PR #42") {
-		t.Fatalf("Copilot's context: %+v", cop)
 	}
 }
 
@@ -1524,7 +1476,7 @@ func TestRevertStep(t *testing.T) {
 
 func TestNoRevertOnceCommitted(t *testing.T) {
 	a, _ := newTestApp(t)
-	reviewCommits(t, a)
+	reviewCommits(t)
 	tv, _ := a.CreateTask("core", "", "committed work", "", true, nil)
 	waitFor(t, "plan", func() bool { return stepState(a, store.StepID(tv.ID, "plan-1")) == store.Done })
 	a.StartStep(tv.ID, "impl", "", 0)
@@ -1546,7 +1498,7 @@ func TestNoRevertOnceCommitted(t *testing.T) {
 }
 
 // A step that failed, then succeeds in the same conversation, still gets its
-// commit, push and automatic next steps.
+// automatic next steps.
 func TestCompleteAfterAFailure(t *testing.T) {
 	a, _ := newTestApp(t)
 	tv, _ := a.CreateTask("core", "", "retry in the conversation", "", false, nil)
@@ -1671,12 +1623,12 @@ func TestCommonIssuesRepo(t *testing.T) {
 		t.Fatalf("task = %+v", task)
 	}
 	p, _ := a.settings.Project("core")
-	block := a.stepBlock(launch{task: task, proj: p, agent: settings.Agent{ID: "push", Name: "Commit and push", Writes: "PUSH.md"}, step: store.Step{N: 1}}, "/run", "/wt")
+	block := a.stepBlock(launch{task: task, proj: p, agent: settings.Agent{ID: "push", Name: "Push", Writes: "PUSH.md"}, step: store.Step{N: 1}}, "/run", "/wt")
 	if !strings.Contains(block, "refer to it as org/issues#42") || strings.Contains(block, "sister task") || !strings.Contains(block, "in every reply") {
 		t.Fatalf("step block:\n%s", block)
 	}
 	task.Sister = true
-	if block := a.stepBlock(launch{task: task, proj: p, agent: settings.Agent{ID: "push", Name: "Commit and push", Writes: "PUSH.md"}, step: store.Step{N: 1}}, "/run", "/wt"); !strings.Contains(block, "only Part of org/issues#42") {
+	if block := a.stepBlock(launch{task: task, proj: p, agent: settings.Agent{ID: "push", Name: "Push", Writes: "PUSH.md"}, step: store.Step{N: 1}}, "/run", "/wt"); !strings.Contains(block, "only Part of org/issues#42") {
 		t.Fatalf("sister step block:\n%s", block)
 	}
 	if a.SetIssuesRepo("not-a-repo") == nil {
@@ -1860,42 +1812,6 @@ func TestCopilotStepShowsWholeBranch(t *testing.T) {
 	}
 }
 
-// An agent set to some projects is offered only in their tasks: Next step
-// leaves it out elsewhere, and it cannot be started there.
-func TestAgentProjects(t *testing.T) {
-	a, _ := newTestApp(t)
-	tv, _ := a.CreateTask("core", "", "only some projects", "", false, nil)
-	os.MkdirAll(tv.RunDir, 0o755)
-	os.WriteFile(filepath.Join(tv.RunDir, "PLAN-1.md"), []byte("---\nstatus: done\n---\n# Plan\n"), 0o644)
-	_ = a.db.SaveStep(store.Step{ID: store.StepID(tv.ID, "plan-1"), TaskID: tv.ID, Key: "plan-1", Agent: "plan", N: 1, Seq: 1, State: store.Done, Completed: true})
-	labels := func() string {
-		v, _ := a.GetTask(tv.ID)
-		var ls []string
-		for _, o := range v.Next.Options {
-			ls = append(ls, o.Label)
-		}
-		return strings.Join(ls, ", ")
-	}
-	if got := labels(); got != "Implement 1, Discuss 1" {
-		t.Fatalf("every project: %s", got)
-	}
-	ags := a.settings.Agents()
-	for i := range ags {
-		if ags[i].ID == "discuss" {
-			ags[i].Projects = []string{"elsewhere"}
-		}
-	}
-	if err := a.SaveAgents(ags); err != nil {
-		t.Fatal(err)
-	}
-	if got := labels(); got != "Implement 1" {
-		t.Fatalf("discuss set to another project: %s", got)
-	}
-	if _, err := a.StartStep(tv.ID, "discuss", "", 0); err == nil || !strings.Contains(err.Error(), "not offered") {
-		t.Fatalf("discuss started in core: %v", err)
-	}
-}
-
 func TestRerunCheckStaysRunning(t *testing.T) {
 	failed := github.Check{Workflow: "Regtests", Name: "Regtests 1/4", Bucket: "fail", Link: "old"}
 	passed := github.Check{Workflow: "CI", Name: "pytest", Bucket: "pass"}
@@ -1940,5 +1856,46 @@ func TestPreviewImages(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in:\n%s", want, out)
 		}
+	}
+}
+
+// A merged PR is followed through the project's stages: qa, then master (the
+// base, main here, is excluded), as the branches get its merge commit.
+func TestPollReleases(t *testing.T) {
+	a, repo := newTestApp(t)
+	origin := filepath.Join(filepath.Dir(repo), "origin.git")
+	run(t, filepath.Dir(repo), "git", "init", "-q", "--bare", origin)
+	run(t, repo, "git", "remote", "add", "origin", origin)
+	run(t, repo, "git", "push", "-q", "origin", "main")
+	run(t, repo, "git", "branch", "qa")
+	run(t, repo, "git", "push", "-q", "origin", "qa")
+	os.WriteFile(filepath.Join(repo, "merged.txt"), []byte("x\n"), 0o644)
+	run(t, repo, "git", "add", ".")
+	run(t, repo, "git", "commit", "-q", "-m", "the merged PR")
+	run(t, repo, "git", "push", "-q", "origin", "main")
+	merge := run(t, repo, "git", "rev-parse", "HEAD")
+
+	tv, _ := a.CreateTask("core", "", "released", "", false, nil)
+	_ = a.updateTask(tv.ID, func(x *store.Task) error {
+		x.PRNumber, x.PRState, x.MergeSHA, x.Archived = 7, "merged", merge, true
+		return nil
+	})
+	release := func(want string) {
+		t.Helper()
+		a.pollReleases()
+		if v, _ := a.GetTask(tv.ID); v.Release != want {
+			t.Fatalf("release %q, want %q (stages %v)", v.Release, want, v.Stages)
+		}
+	}
+	release("") // origin/qa lacks the merge commit
+	if v, _ := a.GetTask(tv.ID); strings.Join(v.Stages, ",") != "qa" {
+		t.Fatalf("stages %v", v.Stages)
+	}
+	run(t, repo, "git", "push", "-q", "origin", "main:qa")
+	release("qa")
+	run(t, repo, "git", "push", "-q", "origin", "main:master")
+	release("master")
+	if v, _ := a.GetTask(tv.ID); strings.Join(v.Stages, ",") != "qa,master" {
+		t.Fatalf("stages %v", v.Stages)
 	}
 }
