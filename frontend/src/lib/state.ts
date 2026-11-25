@@ -734,12 +734,6 @@ class Derby {
     return { kind: b.size ? 'done' : 'idle', label: b.size ? 'Passed' : 'No CI', ready }
   }
 
-  /** copilotClean: the latest step is a Copilot review that found nothing. */
-  copilotClean(t: Task): boolean {
-    const last = t.steps[t.steps.length - 1]
-    return !!last?.external && last.state === 'done' && !unsuccessful(last) && last.verdict !== 'skipped'
-  }
-
   /** fixers: the agents Copilot offers when there is something to fix (Implement, Discuss by default); the first does the fixes. */
   fixers(_t: Task): Agent[] {
     const ags = this.settings?.agents ?? []

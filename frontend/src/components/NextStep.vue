@@ -6,14 +6,13 @@ import Icon from './ui/Icon.vue'
 
 const t = computed(() => derby.selTask)
 const nx = computed(() => t.value?.next)
-const markReady = computed(() => !!t.value && derby.prReady(t.value) === 'draft' && derby.copilotClean(t.value))
 const runnable = computed(() => !!t.value && !t.value.archived && !!nx.value?.options.length)
 // Nothing to act on, e.g. while an agent runs: the box hides.
 const show = computed(() => {
   const task = t.value
   const n = nx.value
   if (!task || !n) return false
-  return task.archived || task.projectGone || runnable.value || markReady.value || !!n.sisters.length || !!n.approval || !!n.markDone
+  return task.archived || task.projectGone || runnable.value || !!n.sisters.length || !!n.approval || !!n.markDone
 })
 
 async function restore() {
@@ -104,7 +103,6 @@ onUpdated(fit)
       <template v-if="runnable">
         <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" :title="o.label" @click="derby.run(o)"><Icon name="play" :size="13" /><span>{{ o.label }}</span></button>
       </template>
-      <button v-if="markReady" class="btn" title="Mark ready for review" @click="derby.markReady(t)"><Icon name="check" :size="13" /><span>Mark PR ready for review</span></button>
       <button v-if="nx.approval" class="btn allow" @click="allow(nx.approval)"><span>Allow once</span></button>
       <button v-if="nx.markDone" class="btn" @click="markDone(nx.markDone)"><span>Mark done</span></button>
       <template v-if="t.archived">

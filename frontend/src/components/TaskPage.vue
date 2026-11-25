@@ -100,8 +100,6 @@ const meta = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
 }
 .heading {
   font-size: var(--fs-14);

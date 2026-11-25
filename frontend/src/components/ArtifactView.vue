@@ -65,8 +65,6 @@ watch(
   .md :deep(h3),
   .md :deep(h4) {
     margin: 14px 0 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
     font-size: var(--fs-15);
     font-weight: 600;
   }

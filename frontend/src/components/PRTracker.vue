@@ -38,10 +38,8 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
 <template>
   <div :class="['prv', { page: step }]">
     <div class="inner">
-      <section v-if="text[1]" class="desc">
+      <section v-if="text[1]">
         <h2 class="ptitle">{{ text[1] }}</h2>
-        <ArtifactView v-if="text[2]" :art="{ ...doc!, body: text[2] }" :task="task.id" />
-        <p v-else class="empty">No description.</p>
       </section>
 
       <section v-if="task.feedback.length || pr.live">
@@ -111,6 +109,11 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
           </div>
         </template>
       </section>
+
+      <section v-if="text[1]" class="about">
+        <ArtifactView v-if="text[2]" :art="{ ...doc!, body: text[2] }" :task="task.id" />
+        <p v-else class="empty">No description.</p>
+      </section>
     </div>
   </div>
 </template>
@@ -163,12 +166,10 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
     font-size: var(--fs-14);
     font-weight: 600;
   }
-  .desc {
-    gap: 8px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
+  .about {
+    padding-top: 6px;
   }
-  .desc :deep(.md > :last-child) {
+  .about :deep(.md > :last-child) {
     margin-bottom: 0;
   }
 
