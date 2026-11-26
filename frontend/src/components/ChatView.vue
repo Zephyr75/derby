@@ -8,7 +8,7 @@ import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { api, errorText } from '../lib/api'
 import { jockey, resumeCommand } from '../lib/state'
 import { render, renderInline } from '../lib/markdown'
-import { entries, toolView, diffStat, questions, todos, response, rawInput, commands, terminalCommand, commandLabel, commandResult, type ToolCall } from '../lib/chat'
+import { entries, toolView, diffStat, questions, todos, response, rawInput, commands, terminalCommand, commandFailure, commandLabel, type ToolCall } from '../lib/chat'
 import type { ChatItem, SessionStatus, Skill, Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
 import Diff from './Diff.vue'
@@ -435,12 +435,11 @@ async function checkAgain() {
           <template v-for="e in list" :key="e.id">
             <!-- a command: a quiet line, what it does and under it how it went; the command and its output unfold -->
             <div v-if="e.kind === 'tool' && view(e.tool).body === 'command'" class="tool cmd">
-              <button class="lrow two" :aria-expanded="isOpen(e.id) || confirming(e.tool)" @click="toggle(e.id)">
+              <button class="lrow" :aria-expanded="isOpen(e.id) || confirming(e.tool)" @click="toggle(e.id)">
                 <Icon name="run" :size="14" class="ico" />
-                <span class="stack">
-                  <span class="ttl" :title="String(e.tool.call.input?.command ?? '')">{{ commandLabel(e.tool.call.input) }}</span>
-                  <span class="res" :class="{ bad: e.tool.result?.isError }">{{ confirming(e.tool) ? 'Waiting for your approval' : e.tool.result ? commandResult(e.tool.result.text, e.tool.result.isError) : busy(e.tool) ? 'Running…' : 'No result' }}</span>
-                </span>
+                <span class="ttl" :title="String(e.tool.call.input?.command ?? '')">{{ commandLabel(e.tool.call.input) }}</span>
+                <span v-if="confirming(e.tool)" class="ctag wait">waiting</span>
+                <span v-else-if="e.tool.result?.isError" class="ctag bad">{{ commandFailure(e.tool.result.text) }}</span>
                 <Icon v-if="busy(e.tool) && !confirming(e.tool)" name="spinner" :size="13" class="spin" />
                 <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
               </button>
@@ -849,9 +848,6 @@ button:hover > .disc,
 .tool {
   margin: 5px 20px;
 }
-.tool.cmd {
-  margin: 8px 20px;
-}
 .lrow {
   position: relative;
   display: flex;
@@ -994,35 +990,18 @@ button:hover > .disc,
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* a command: a quiet two-line row (what it does, how it went); unfolded, the
-   command and its output in a box */
-.lrow.two {
-  height: auto;
-  align-items: flex-start;
-  padding: 1px 0;
-}
-.lrow.two > .ico {
-  margin-top: 3px;
-}
-.stack {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.stack .ttl {
+/* a command: a quiet line, a short tag at its right when it failed; unfolded,
+   the command and its output in a box */
+.ctag {
   flex: none;
-  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--fs-11-5);
 }
-.res {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs-12);
-  color: var(--faint);
-}
-.res.bad {
+.ctag.bad {
   color: var(--del);
+}
+.ctag.wait {
+  color: var(--waiting);
 }
 .cbox {
   margin: 6px 0 2px 20px;

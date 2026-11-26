@@ -149,6 +149,7 @@ next = ["explain", "discuss", "impl"]
 on_fail = ["explain"]
 instructions = '''
 Write EXPLAIN-{n}.md as the best possible explanation of this whole change, in every repository when the task has sister tasks (their run directories and worktrees are in the Jockey step block): clear and intuitive, and thorough enough that the reader never needs to open the diff. Do not be brief.
+The report always describes the whole task as it stands now: every change of the branch against {base}, from scratch. Never compare it with an earlier EXPLAIN, say what changed since one, or build on one (do not read them), and ignore which steps ran before this one or why it runs: the result is the same whatever came earlier.
 Read TASK.md and the newest PLAN of each task, then each repository's diff in full: git diff origin/{base}...HEAD (in a sister task's worktree, its own base), and open the changed files when the diff lacks context.
 Structure, in this order:
 1. The TLDR, then the problem and the approach in plain words (ELI5 where something is hard to picture).

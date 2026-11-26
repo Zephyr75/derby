@@ -15,6 +15,7 @@ text = '''
 - Work in the current directory, the task's own git worktree. Never commit or push: Jockey does it.
 - Write your artifact in the run directory. It starts with YAML front matter; once the step is truly finished, add status: done (it succeeded) or status: failed (it did not: say why) to it. The next automatic step only starts after a success.
 - If you need the user, ask in the terminal and stop.
+- Always fill the description of every Bash call with a short sentence saying what it does ("Run the unlock tests", "Show the diff against dev"): Jockey shows it in the chat in place of the command.
 - Skills to use when they help: context7 (current docs of libraries), archify (diagrams), humanizer (TLDR and ELI5).'''
 
 [[prompt]]

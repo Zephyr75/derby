@@ -209,35 +209,51 @@ export function terminalCommand(text: string): boolean {
   return !!m && builtins.some((b) => b.terminal && b.name === m[1])
 }
 
+const base = (p: string) => p.replace(/^['"]|['"]$/g, '').split('/').filter(Boolean).pop() ?? p
+
+// What a command without a description of its own is called: a sentence by
+// program (and its first subcommand), else "Run <program> <subcommand>".
+const sentences: Record<string, string | Record<string, string>> = {
+  git: { status: 'Check the git status', diff: 'Show the diff', log: 'Read the git log', show: 'Show a commit', add: 'Stage the changes', commit: 'Commit the changes', push: 'Push the branch', pull: 'Pull from origin', fetch: 'Fetch from origin', checkout: 'Switch branch', switch: 'Switch branch', rebase: 'Rebase the branch', stash: 'Stash the changes', branch: 'List the branches', worktree: 'Manage worktrees', merge: 'Merge a branch', reset: 'Reset the branch', 'rev-parse': 'Look up a commit' },
+  go: { test: 'Run the Go tests', build: 'Build the Go code', vet: 'Vet the Go code', run: 'Run the Go program', mod: 'Update the Go modules' },
+  gh: { pr: 'Look at the pull request', issue: 'Look at the issue', api: 'Call the GitHub API', run: 'Look at the CI run', repo: 'Look at the repository' },
+  npm: { test: 'Run the tests', ci: 'Install the dependencies', install: 'Install the dependencies', run: 'Run an npm script' },
+  make: 'Run make',
+  pytest: 'Run the Python tests',
+  python: 'Run a Python script', python3: 'Run a Python script',
+  node: 'Run a Node script',
+  ls: 'List files', tree: 'List files', find: 'Find files', fd: 'Find files',
+  grep: 'Search the code', rg: 'Search the code',
+  mkdir: 'Create a folder', rm: 'Delete files', mv: 'Move files', cp: 'Copy files', chmod: 'Change permissions',
+  curl: 'Call a URL', open: 'Open a file', kill: 'Stop a process', pkill: 'Stop a process', ps: 'List processes', wc: 'Count lines', diff: 'Compare files', echo: 'Print text', sleep: 'Wait',
+  docker: 'Run docker', kubectl: 'Run kubectl', gcloud: 'Run gcloud',
+}
+const reads = new Set(['cat', 'head', 'tail', 'sed', 'awk', 'less', 'bat'])
+
 /** commandLabel: what a command line says it does: the agent's own
- *  description, else the command without its "cd dir &&" and VAR=value
- *  prefixes, cut at its first pipe or redirection. */
+ *  description, else a sentence made from the command (the "cd dir &&" and
+ *  VAR=value prefixes dropped, only its first pipeline stage looked at). */
 export function commandLabel(input: Record<string, unknown> | null): string {
   const description = str(input?.description).trim()
   if (description) return description
   let cmd = str(input?.command).trim().split('\n')[0]
-  cmd = cmd.replace(/^cd\s+\S+\s*&&\s*/, '').replace(/^(?:[A-Z_][A-Z0-9_]*=\S*\s+)+/, '')
-  const heredoc = /^(cat|tee)\b.*?(>>?\s*\S+)/.exec(cmd)
-  if (heredoc && cmd.includes('<<')) return `${heredoc[1]} ${heredoc[2]}`
-  return cmd.split(/\s+[|>]|\s+&&\s+|;/)[0].trim() || 'Run Command'
+  cmd = cmd.replace(/^cd\s+\S+\s*&&\s*/, '').replace(/^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s*[;&]*\s*)+/, '')
+  const stage = cmd.split(/\s*(?:\||&&|;|2>&1)\s*/)[0].trim()
+  const words = stage.split(/\s+/).filter(Boolean)
+  const prog = base(words[0] ?? '')
+  if (!prog) return 'Run a command'
+  const args = words.slice(1).filter((w) => !w.startsWith('-'))
+  if (/^(cat|tee)$/.test(prog) && />>?\s*\S+/.test(cmd) && cmd.includes('<<')) return 'Write ' + base(/>>?\s*(\S+)/.exec(cmd)![1])
+  if (reads.has(prog) && args.length) return 'Read ' + base(args[args.length - 1])
+  const known = sentences[prog]
+  if (typeof known === 'string') return known + (prog === 'make' && args[0] ? ' ' + args[0] : '')
+  if (known && args[0] && known[args[0]]) return known[args[0]]
+  return ['Run', prog, args[0]].filter(Boolean).join(' ')
 }
 
-const clip = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
-
-/** commandResult: the one line shown under a command: the outcome of a test
- *  run, a diff's size, the first error line of a failure, else the output's
- *  first line. */
-export function commandResult(text: string, isError: boolean): string {
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
-  if (!lines.length) return isError ? 'Failed with no output' : 'Done, no output'
-  const find = (re: RegExp) => [...lines].reverse().find((l) => re.test(l))
-  const err = lines.find((l) => /\b(error|fail(ed|ure)?|fatal|panic|denied|not found|no such)\b/i.test(l)) ?? lines[0]
-  const pytest = find(/^=+ .*\b(passed|failed|error)/)
-  if (pytest) return clip(pytest.replace(/^=+\s*|\s*=+$/g, '') + (isError && err !== pytest ? ' · ' + err : ''))
-  const goOk = lines.filter((l) => l.startsWith('ok '))
-  if (goOk.length && !lines.some((l) => l.startsWith('FAIL'))) return `${goOk.length} ${goOk.length === 1 ? 'package' : 'packages'} ok`
-  const diffStat = find(/\d+ files? changed/)
-  if (diffStat) return diffStat.replace(/^\s*/, '')
-  if (isError) return clip(err)
-  return clip(lines[0]) + (lines.length > 1 ? ` · ${lines.length} lines` : '')
+/** commandFailure: the short tag of a failed command: "2 failed" when its
+ *  output counts failures (tests), else "failed". */
+export function commandFailure(text: string): string {
+  const n = /(\d+)\s+(?:failed|failures?|errors?)\b/i.exec(text)?.[1] ?? String(text.split('\n').filter((l) => /^--- FAIL/.test(l)).length || '')
+  return n ? `${n} failed` : 'failed'
 }
