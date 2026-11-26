@@ -12,7 +12,7 @@ const show = computed(() => {
   const task = t.value
   const n = nx.value
   if (!task || !n) return false
-  return task.archived || task.projectGone || runnable.value || !!n.sisters.length || !!n.approval || !!n.markDone
+  return task.archived || task.projectGone || runnable.value || !!n.sisters.length || !!n.markDone
 })
 
 async function restore() {
@@ -32,7 +32,6 @@ async function deleteTask() {
   const lines = await derby.attempt('Could not delete the task', () => api.DeleteTask(task.id))
   if (lines) derby.toast('Deleted ' + (task.issue ? '#' + task.issue : taskName(task)), lines.join('\n'))
 }
-const allow = (id: string) => derby.attempt('Allow once failed', () => api.AllowOnce(id))
 const markDone = (id: string) => derby.attempt('Mark done failed', () => api.MarkDone(id))
 // One click per repository the plan also needs: its sister task, or first its project.
 async function createSister(repo: string) {
@@ -103,7 +102,6 @@ onUpdated(fit)
       <template v-if="runnable">
         <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" :title="o.label" @click="derby.run(o)"><Icon name="play" :size="13" /><span>{{ o.label }}</span></button>
       </template>
-      <button v-if="nx.approval" class="btn allow" @click="allow(nx.approval)"><span>Allow once</span></button>
       <button v-if="nx.markDone" class="btn" @click="markDone(nx.markDone)"><span>Mark done</span></button>
       <template v-if="t.archived">
         <button v-if="!t.worktreeRemoved && !t.projectGone" class="btn" @click="restore"><span>Restore to Tasks</span></button>
@@ -181,7 +179,7 @@ textarea:focus {
   min-width: 0;
   justify-content: center;
 }
-.opts .btn:not(.primary):not(.danger):not(.allow) {
+.opts .btn:not(.primary):not(.danger) {
   border-color: var(--border);
 }
 .opts .btn span {
@@ -194,11 +192,6 @@ p {
   font-size: var(--fs-12-5);
   line-height: 1.5;
   color: var(--muted);
-}
-.allow {
-  border-color: var(--approval-dot);
-  background: var(--approval-bg);
-  color: var(--approval);
 }
 .sister {
   display: flex;

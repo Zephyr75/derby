@@ -239,7 +239,6 @@ export interface SisterOffer {
 export interface Next {
   options: Option[]
   text: string
-  approval: string
   markDone: string
   warning: string // e.g. the plan lists options: name one in the guidance
   elsewhere: string[] // repositories outside the worktree with uncommitted agent edits

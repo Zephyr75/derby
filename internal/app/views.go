@@ -53,7 +53,6 @@ type Ghost struct {
 type Next struct {
 	Options  []Option `json:"options"`
 	Text     string   `json:"text"`
-	Approval string   `json:"approval"` // step id waiting for permission
 	MarkDone string   `json:"markDone"` // step id that can be marked done
 	Warning  string   `json:"warning"`  // e.g. the plan lists options: pick one in the guidance
 	// Elsewhere: the repositories outside the worktree where agents left
@@ -464,8 +463,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 
 	for _, s := range steps {
 		if s.State == store.Approval {
-			nx.Approval = s.ID
-			nx.Text = "Claude Code wants to run a command. Answer in the terminal, or allow it once here."
+			nx.Text = "Claude Code wants to run a command. Answer in the terminal."
 			return nx
 		}
 	}

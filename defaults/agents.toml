@@ -156,4 +156,5 @@ Structure:
 - per repository, every changed file (git diff --stat) under its own heading or bullet: what it does in the codebase, then each change in it, function by function, with the reason; for tests, what each one proves;
 - edge cases, error handling, migrations or config the change touches, and what to check when reviewing.
 Add archify diagrams where a picture is clearer than words (flows, sequences, data shapes).
-Write only EXPLAIN-{n}.md: never change the code, commit or push.'''
+Also write EXPLAIN-{n}.files next to it, in the same folder: the changed files, one path per line (relative to their repository's root), in the order the report goes through them, so Derby's changed files view follows the explanation.
+Write only EXPLAIN-{n}.md and EXPLAIN-{n}.files: never change the code, commit or push.'''

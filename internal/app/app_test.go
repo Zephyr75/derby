@@ -249,7 +249,7 @@ func TestApprovalAndAllowOnce(t *testing.T) {
 	id := store.StepID(tv.ID, "ask-1")
 	waitFor(t, "approval", func() bool { return stepState(a, id) == store.Approval })
 	v, _ := a.GetTask(tv.ID)
-	if v.Status.Kind != "approval" || v.Next.Approval != id {
+	if v.Status.Kind != "approval" {
 		t.Fatalf("%+v %+v", v.Status, v.Next)
 	}
 	if err := a.AllowOnce(id); err != nil {

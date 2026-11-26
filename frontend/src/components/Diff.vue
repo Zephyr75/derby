@@ -298,9 +298,9 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
             </td>
             <td class="code" :colspan="split ? 5 : 1">{{ rows[u.left].text }}</td>
           </tr>
-          <!-- unified: the line number (the old one of a removed line), then the line -->
+          <!-- unified: the line number (none for a removed line), then the line -->
           <tr v-else-if="!split" :class="[rows[u.left].kind, marks(u.left)]" @mouseenter="over(u.left)">
-            <td class="ln">{{ rows[u.left].new ?? rows[u.left].old ?? '' }}</td>
+            <td class="ln">{{ rows[u.left].new ?? '' }}</td>
             <td class="gut">
               <button v-if="commentable && lineRow(rows[u.left])" class="add-note" aria-label="Comment on this line" title="Comment (drag for several lines)" @mousedown="press(u.left, $event)">+</button>
             </td>
@@ -310,7 +310,7 @@ const span = (n: Note) => (n.from === n.to ? `line ${n.to}` : `lines ${n.from}â€
           <tr v-else class="srow">
             <template v-for="c in sides(u)" :key="c.side">
               <template v-if="c.i >= 0">
-                <td class="ln" :class="[c.side, rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)">{{ (c.side === 'l' ? rows[c.i].old : rows[c.i].new) ?? '' }}</td>
+                <td class="ln" :class="[c.side, rows[c.i].kind, marks(c.i)]" @mouseenter="enter(c.i)">{{ (c.side === 'l' ? (rows[c.i].kind === 'del' ? null : rows[c.i].old) : rows[c.i].new) ?? '' }}</td>
                 <td class="gut" :class="[rows[c.i].kind, marks(c.i), { hov: hov === c.i }]" @mouseenter="enter(c.i)">
                   <button v-if="commentable" class="add-note" aria-label="Comment on this line" title="Comment (drag for several lines)" @mousedown="press(c.i, $event)">+</button>
                 </td>

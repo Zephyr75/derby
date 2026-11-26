@@ -241,7 +241,7 @@ function derive(t: MockTask): Task {
     else if (last.state === 'failed' || unsuccessful(last)) status = of('failed', 'Failure', last)
     else status = last.external ? of('done', 'Success', last) : of('waiting', 'Waiting for next step', last)
   }
-  const next: Next = { options: [], text: '', approval: '', markDone: '', warning: '', elsewhere: [], sisters: t.archived ? [] : t.offers ?? [], ghost: null as Next['ghost'] }
+  const next: Next = { options: [], text: '', markDone: '', warning: '', elsewhere: [], sisters: t.archived ? [] : t.offers ?? [], ghost: null as Next['ghost'] }
   const count = (id: string) => Math.max(0, ...steps.filter((s) => s.agent === id).map((s) => s.n))
   const opt = (a: Agent, n: number, prefix = '') => ({ agent: a.id, n, label: prefix + displayName(a, n) })
   if (t.archived) {
@@ -258,7 +258,7 @@ function derive(t: MockTask): Task {
     const fix = fixA ? opt(fixA, count(fixA.id) + 1) : undefined
     const pushFixA = [...agents].reverse().find((a) => !afterOf(a.trigger) && a.id !== 'push')
     const pushFix = pushFixA ? opt(pushFixA, count(pushFixA.id) + 1) : undefined
-    if (appr) { next.approval = appr.id; next.text = 'Claude Code wants to run a command. Answer in the terminal, or allow it once here.' }
+    if (appr) next.text = 'Claude Code wants to run a command. Answer in the terminal.'
     else if (run?.external) { next.text = `Waiting for Copilot's review and the CI checks of PR #${t.pr} (checked every minute). Start a fix any time, or Mark done to stop waiting.`; next.markDone = run.id; if (pushFix) next.options.push(pushFix) }
     else if (last.external) {
       next.text = unsuccessful(last) ? `PR #${t.pr} needs fixes: ${last.artifact} lists Copilot's comments and the failing CI checks.` : `Copilot found nothing to fix and CI passed on PR #${t.pr}. The task moves to Archive when the PR is merged or closed.`

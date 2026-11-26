@@ -41,8 +41,58 @@ type Changes struct {
 	Files  []FileChange `json:"files"`
 }
 
-// StepChanges lists the files a step changed, with line counts.
+// StepChanges lists the files a step changed, with line counts, in the order
+// the newest Explain report goes through them when there is one.
 func (a *App) StepChanges(stepID string) (Changes, error) {
+	out, err := a.stepChanges(stepID)
+	if s, serr := a.db.Step(stepID); serr == nil {
+		if t, terr := a.db.Task(s.TaskID); terr == nil {
+			sortByExplain(out.Files, a.runDir(a.projectOf(t), t))
+		}
+	}
+	return out, err
+}
+
+// sortByExplain orders each repository's files as the newest EXPLAIN-n.files
+// in the run dir lists them (one path per line), the unlisted ones after, in
+// their own order. With no such file the order is left as it is.
+func sortByExplain(files []FileChange, runDir string) {
+	lists, _ := filepath.Glob(filepath.Join(runDir, "EXPLAIN-*.files"))
+	var newest string
+	var when time.Time
+	for _, l := range lists {
+		if fi, err := os.Stat(l); err == nil && !fi.ModTime().Before(when) {
+			newest, when = l, fi.ModTime()
+		}
+	}
+	b, err := os.ReadFile(newest)
+	if newest == "" || err != nil {
+		return
+	}
+	rank := map[string]int{}
+	for _, line := range strings.Split(string(b), "\n") {
+		if p := strings.TrimSpace(line); p != "" {
+			if _, ok := rank[p]; !ok {
+				rank[p] = len(rank)
+			}
+		}
+	}
+	at := func(f FileChange) int {
+		if r, ok := rank[f.Path]; ok {
+			return r
+		}
+		return len(rank)
+	}
+	slices.SortStableFunc(files, func(x, y FileChange) int {
+		if c := strings.Compare(strings.ToLower(x.Repo), strings.ToLower(y.Repo)); c != 0 {
+			return c
+		}
+		return at(x) - at(y)
+	})
+}
+
+// stepChanges lists the files a step changed, with line counts.
+func (a *App) stepChanges(stepID string) (Changes, error) {
 	s, err := a.db.Step(stepID)
 	if err != nil {
 		return Changes{}, err
