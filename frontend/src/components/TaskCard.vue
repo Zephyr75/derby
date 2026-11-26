@@ -37,7 +37,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
     <span class="row">
       <StatusBadge :kind="task.status.kind" :label="task.status.label" />
       <span v-if="jockey.prBadge(task)" :class="['badge', 'pr', `s-${jockey.prBadge(task)!.kind}`]" :title="prTitle(task)">
-        <Icon :name="prIcon(task)" :size="12" />#{{ task.pr }} · {{ jockey.prBadge(task)!.label }}
+        <Icon :name="prIcon(task)" :size="12" />{{ jockey.prBadge(task)!.label }}
       </span>
     </span>
   </button>

@@ -148,13 +148,14 @@ writes = "EXPLAIN-{n}.md"
 next = ["explain", "discuss", "impl"]
 on_fail = ["explain"]
 instructions = '''
-Write EXPLAIN-{n}.md as the best possible explanation of this whole change, in every repository when the task has sister tasks (their run directories and worktrees are in the Jockey step block): clear and intuitive, and thorough enough that the reader never needs to open the diff. Do not be brief: a reviewer should come away knowing exactly what the code now does and why.
+Write EXPLAIN-{n}.md as the best possible explanation of this whole change, in every repository when the task has sister tasks (their run directories and worktrees are in the Jockey step block): clear and intuitive, and thorough enough that the reader never needs to open the diff. Do not be brief.
 Read TASK.md and the newest PLAN, then each repository's diff in full: git diff origin/{base}...HEAD (in a sister task's worktree, its own base), and open the changed files when the diff lacks context.
-Structure:
-- the TLDR, then the problem and the approach in plain words (ELI5 where something is hard to picture);
-- per repository, how it works now: the flow of the new behaviour step by step, naming the real functions, types, endpoints, fields and settings involved; what was added, removed and modified, and why each choice was made over the alternatives;
-- per repository, every changed file (git diff --stat) under its own heading or bullet: what it does in the codebase, then each change in it, function by function, with the reason; for tests, what each one proves;
-- edge cases, error handling, migrations or config the change touches, and what to check when reviewing.
-Add archify diagrams where a picture is clearer than words (flows, sequences, data shapes).
-Also write EXPLAIN-{n}.files next to it, in the same folder: the changed files, one path per line (relative to their repository's root), in the order the report goes through them, so Jockey's changed files view follows the explanation.
+The report has two parts.
+1. The overview: the TLDR, then the problem and the approach in plain words (ELI5 where something is hard to picture), and how the new behaviour works step by step, naming the real functions, types, endpoints and settings involved. Add archify diagrams where a picture is clearer than words.
+2. "## Changed files", the core of the report: an entry for EVERY file of git diff --name-status, none skipped, none merged into a group, however small (a lockfile or a rename gets one line). Per repository, in the order that makes the change easiest to follow (the entry points and the main logic first, then what supports them, tests and config last). Each entry is:
+   - the path, the status (added, modified, deleted, renamed) and the lines added and removed;
+   - what the file is for in the codebase, in one sentence;
+   - the main code changes in it: each function, type, block or setting added, removed or modified, what it did before and does now, and why. For a test, what each new or changed case proves.
+Finish with the edge cases, error handling, migrations or config the change touches, and what to check when reviewing.
+Also write EXPLAIN-{n}.files next to it, in the same folder: every path of the "Changed files" section, one per line (relative to the repository's root), in the same order, so Jockey's changed files view follows the explanation. Check that the list and the section both hold every file of git diff --name-status.
 Write only EXPLAIN-{n}.md and EXPLAIN-{n}.files: never change the code, commit or push.'''
