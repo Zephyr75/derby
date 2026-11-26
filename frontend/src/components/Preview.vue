@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { api } from '../lib/api'
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import PaneHead from './ui/PaneHead.vue'
 import ChangesView from './Changes.vue'
@@ -13,12 +13,12 @@ import { useCompact } from '../lib/compact'
 import { prSummary, summary } from '../lib/markdown'
 import type { Artifact, Changes } from '../lib/types'
 
-const step = computed(() => derby.selStep)
+const step = computed(() => jockey.selStep)
 const art = ref<Artifact | null>(null)
 
 let seq = 0
 watch(
-  () => [step.value?.id, step.value?.state, derby.artifactRev] as const,
+  () => [step.value?.id, step.value?.state, jockey.artifactRev] as const,
   ([id]) => {
     const mine = ++seq
     if (!id) {
@@ -65,7 +65,7 @@ watch(
   { immediate: true },
 )
 watch(
-  () => [derby.selTask, step.value?.sha, step.value?.state] as const,
+  () => [jockey.selTask, step.value?.sha, step.value?.state] as const,
   () => loadChanges(step.value?.id, 800),
 )
 
@@ -76,11 +76,11 @@ const file = computed(() => art.value?.file || step.value?.artifact || '')
 const parts = computed(() => (art.value?.exists ? (step.value?.external ? prSummary : summary)(art.value.body).map((p) => ({ ...p, art: { ...art.value!, body: p.md } })) : []))
 // The four tabs always show, in equal parts; Changes is off while the step
 // changed no files, PR while the task has none, and Report stands in for them.
-const task = computed(() => derby.selTask)
+const task = computed(() => jockey.selTask)
 const openTodos = computed(() => task.value?.todos.filter((x) => !x.done).length ?? 0)
 const hasChanges = computed(() => !!(step.value && changes.value?.files.length))
 const tab = computed(() =>
-  derby.rightTab === 'todos' && task.value ? 'todos' : derby.rightTab === 'pr' && task.value?.pr ? 'pr' : hasChanges.value && derby.rightTab === 'changes' ? 'changes' : 'preview',
+  jockey.rightTab === 'todos' && task.value ? 'todos' : jockey.rightTab === 'pr' && task.value?.pr ? 'pr' : hasChanges.value && jockey.rightTab === 'changes' ? 'changes' : 'preview',
 )
 const diffTitle = computed(() => {
   if (!step.value) return 'No step open'
@@ -97,36 +97,36 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
 <template>
   <div class="wrap">
     <div ref="bar" class="bar" :class="{ compact }" role="tablist">
-      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file || 'Report'" aria-label="Report" @click="derby.rightTab = 'preview'">
+      <button class="tab" role="tab" :aria-selected="tab === 'preview'" :class="{ on: tab === 'preview' }" :title="file || 'Report'" aria-label="Report" @click="jockey.rightTab = 'preview'">
         <span class="in"><Icon name="file" /><span class="label">Report</span></span>
       </button>
-      <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="Changes" @click="hasChanges && (derby.rightTab = 'changes')">
+      <button class="tab" role="tab" :aria-selected="tab === 'changes'" :aria-disabled="!hasChanges" :class="{ on: tab === 'changes', off: !hasChanges }" :title="diffTitle" aria-label="Changes" @click="hasChanges && (jockey.rightTab = 'changes')">
         <span class="in"><Icon name="diff" /><span class="label">Changes</span><span v-if="hasChanges" class="count">{{ changes!.files.length }}</span></span>
       </button>
-      <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}` : 'No PR yet'" aria-label="PR" @click="task?.pr && (derby.rightTab = 'pr')">
+      <button class="tab" role="tab" :aria-selected="tab === 'pr'" :aria-disabled="!task?.pr" :class="{ on: tab === 'pr', off: !task?.pr }" :title="task?.pr ? `PR #${task.pr}` : 'No PR yet'" aria-label="PR" @click="task?.pr && (jockey.rightTab = 'pr')">
         <span class="in"><Icon name="pr" /><span class="label">PR<span v-if="task?.pr" class="count">#{{ task.pr }}</span></span></span>
       </button>
-      <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="openTodos ? `${openTodos} open` : 'Todos'" aria-label="TODOs" @click="task && (derby.rightTab = 'todos')">
+      <button class="tab" role="tab" :aria-selected="tab === 'todos'" :aria-disabled="!task" :class="{ on: tab === 'todos', off: !task }" :title="openTodos ? `${openTodos} open` : 'Todos'" aria-label="TODOs" @click="task && (jockey.rightTab = 'todos')">
         <span class="in"><Icon name="todo" /><span class="label">TODOs</span><span v-if="openTodos" class="count">{{ openTodos }}</span></span>
       </button>
     </div>
     <div class="content">
       <template v-if="tab === 'todos' && task">
         <PaneHead :title="`${openTodos} open`" :meta="`${task.todos.length - openTodos} done`" tip="The task's todos">
-          <button v-if="task.todos.length > openTodos" :title="derby.hideDone ? 'Show done' : 'Hide done'" @click="derby.hideDone = !derby.hideDone">{{ derby.hideDone ? 'Show done' : 'Hide done' }}</button>
+          <button v-if="task.todos.length > openTodos" :title="jockey.hideDone ? 'Show done' : 'Hide done'" @click="jockey.hideDone = !jockey.hideDone">{{ jockey.hideDone ? 'Show done' : 'Hide done' }}</button>
         </PaneHead>
-        <TodoList :todos="task.todos" :hide-done="derby.hideDone" @change="derby.setTodos(task, $event)" :run="derby.todoAgent(task)?.name ?? 'Implement'" :blocked="derby.todoBlocked(task)" @run="derby.runTodo(task, $event)" />
+        <TodoList :todos="task.todos" :hide-done="jockey.hideDone" @change="jockey.setTodos(task, $event)" :run="jockey.todoAgent(task)?.name ?? 'Implement'" :blocked="jockey.todoBlocked(task)" @run="jockey.runTodo(task, $event)" />
       </template>
       <PRSummary v-else-if="tab === 'pr' && task" :task="task" />
       <ChangesView v-else-if="tab === 'changes'" :changes="changes" />
-      <template v-else-if="derby.onTaskStep && task">
+      <template v-else-if="jockey.onTaskStep && task">
         <PaneHead title="Task" :tip="task.source" />
         <TaskPage compact />
       </template>
       <p v-else-if="!step" class="empty">Open a step to preview the artifact it wrote.</p>
       <template v-else>
         <PaneHead :title="file || 'Report'" :tip="art?.path">
-          <button v-if="art?.exists" title="Expand" aria-label="Open the whole report" @click="derby.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
+          <button v-if="art?.exists" title="Expand" aria-label="Open the whole report" @click="jockey.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
         </PaneHead>
         <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "the PR's title and description are in" : 'Claude writes it' }}.</p>
         <p v-else-if="!parts.length" class="empty">The report is empty.</p>

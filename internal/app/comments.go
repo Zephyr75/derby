@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"regexp"
 
-	"derby/internal/github"
-	"derby/internal/store"
+	"jockey/internal/github"
+	"jockey/internal/store"
 )
 
 // Review comments a step studied: its artifact's front matter lists them by
-// GitHub comment id (fixed: 4513677327, rejected: 4523856444). derby keeps
+// GitHub comment id (fixed: 4513677327, rejected: 4523856444). jockey keeps
 // each rejection with the comment, for the PR tab: the user resolves those
 // threads, or sends them again.
 

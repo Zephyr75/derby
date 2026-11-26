@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"derby/internal/artifacts"
-	"derby/internal/store"
+	"jockey/internal/artifacts"
+	"jockey/internal/store"
 )
 
 // A Copilot step's files, in the run directory:
@@ -78,7 +78,7 @@ func (a *App) writePRDescription(t store.Task, s store.Step) {
 
 // renameArtifacts gives a run directory's artifacts their current names:
 // PR.md became PUSH.md, and PR-REVIEW-n.md FEEDBACK-n.md. (A FEEDBACK.md,
-// without a number, is from much older derby: nothing reads it.)
+// without a number, is from much older jockey: nothing reads it.)
 func renameArtifacts(runDir string) {
 	rename := func(from, to string) {
 		if _, err := os.Stat(filepath.Join(runDir, to)); err != nil {
@@ -95,7 +95,7 @@ func renameArtifacts(runDir string) {
 }
 
 // migrateCopilotFiles moves a run directory's Copilot files to their
-// current names. Older derby wrote COPILOT-n.md (state, explanation and a
+// current names. Older jockey wrote COPILOT-n.md (state, explanation and a
 // footer), COPILOT-n-review.md (the review) and .COPILOT-n-explain.md (the
 // explanation as Claude wrote it); before that, COPILOT-n.md held the state
 // and the review.

@@ -6,7 +6,7 @@
 // terminal.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { api, errorText } from '../lib/api'
-import { derby, resumeCommand } from '../lib/state'
+import { jockey, resumeCommand } from '../lib/state'
 import { render, renderInline } from '../lib/markdown'
 import { entries, toolView, diffStat, questions, todos, response, rawInput, commands, terminalCommand, type ToolCall } from '../lib/chat'
 import type { ChatItem, SessionStatus, Skill, Step } from '../lib/types'
@@ -16,7 +16,7 @@ import Working from './ui/Working.vue'
 import MessagePicker, { type Mark } from './MessagePicker.vue'
 
 const props = defineProps<{ step: Step }>()
-const task = computed(() => derby.task(props.step.taskId))
+const task = computed(() => jockey.task(props.step.taskId))
 
 // ---- the conversation, followed while the session runs ----
 const items = ref<ChatItem[]>([])
@@ -42,7 +42,7 @@ async function load(id: string, mine: number) {
     offset = c.offset
     found.value = c.found
     trust.value = c.trust || ''
-    if (c.title) derby.chatTitles[id] = c.title
+    if (c.title) jockey.chatTitles[id] = c.title
     if (c.skills?.length) skills.value = c.skills
     // The statusline's report wins; from the transcript, keep what was read before.
     const st = c.status
@@ -88,7 +88,7 @@ const marks = computed<Mark[]>(() =>
       : [],
   ),
 )
-const html = (text: string) => render(text, { task: props.step.taskId, dark: derby.dark })
+const html = (text: string) => render(text, { task: props.step.taskId, dark: jockey.dark })
 const view = (t: ToolCall) => toolView(t.call, task.value?.worktree ?? '', task.value?.runDir ?? '')
 
 // Everything starts folded, to read the answers at a glance; a click unfolds.
@@ -102,7 +102,7 @@ function fold(id: string, text: string) {
 }
 
 // ---- the session's state ----
-// An Esc in Claude's terminal sends no hook (Derby learns of it a minute
+// An Esc in Claude's terminal sends no hook (Jockey learns of it a minute
 // later): its transcript ends on the interruption.
 const interrupted = computed(() => {
   const last = items.value[items.value.length - 1]
@@ -122,7 +122,7 @@ const pending = computed(() => {
 const busy = (t: ToolCall) => !t.result && props.step.live && (running.value || approval.value)
 // Claude's question form waits for the user too (the step is idle, not approval).
 const asking = computed(() => props.step.live && !running.value && pending.value?.call.tool === 'AskUserQuestion')
-const others = computed(() => (props.step.live ? undefined : derby.elsewhere[props.step.id]))
+const others = computed(() => (props.step.live ? undefined : jockey.elsewhere[props.step.id]))
 const paused = computed(() => props.step.paused && !props.step.live)
 const canRestore = computed(() => !!task.value && !task.value.worktreeRemoved && !task.value.projectGone)
 const blocked = computed(() => !!others.value || paused.value || (!!task.value?.archived && !canRestore.value))
@@ -185,23 +185,23 @@ async function send() {
   const text = expand(draft.value).trim()
   if (!text || sending.value || blocked.value) return
   // Typed into the trust dialog, it would answer it (Enter on "No" exits).
-  if (trust.value) return derby.toast('Trust the folder first', 'Claude Code starts once the folder is trusted; then send your message.')
+  if (trust.value) return jockey.toast('Trust the folder first', 'Claude Code starts once the folder is trusted; then send your message.')
   sending.value = true
   try {
-    if (!(await derby.restoreFor(props.step))) return
+    if (!(await jockey.restoreFor(props.step))) return
     await api.SendToStep(props.step.id, text)
     // Commands like /context or /usage show in a panel of Claude Code's own: there.
     if (terminalCommand(text)) {
-      derby.toast(text.split(/\s/)[0] + ' opens in the terminal', 'Switch back with the chat button in the toolbar')
-      void derby.setSessionView('terminal')
+      jockey.toast(text.split(/\s/)[0] + ' opens in the terminal', 'Switch back with the chat button in the toolbar')
+      void jockey.setSessionView('terminal')
     }
     draft.value = ''
     pastes.value = {}
     scrollDown()
   } catch (e) {
     const procs = await api.SessionElsewhere(props.step.id).catch(() => [])
-    if (procs.length) derby.elsewhere[props.step.id] = procs
-    else derby.toast('Could not send', errorText(e), true)
+    if (procs.length) jockey.elsewhere[props.step.id] = procs
+    else jockey.toast('Could not send', errorText(e), true)
   } finally {
     sending.value = false
   }
@@ -289,21 +289,21 @@ function accept(s: Sug | undefined) {
   })
 }
 const bash = computed(() => draft.value.startsWith('!'))
-const interrupt = () => derby.attempt('Could not interrupt Claude', () => api.InterruptStep(props.step.id))
-const allow = () => derby.attempt('Could not allow it', () => api.AllowOnce(props.step.id))
+const interrupt = () => jockey.attempt('Could not interrupt Claude', () => api.InterruptStep(props.step.id))
+const allow = () => jockey.attempt('Could not allow it', () => api.AllowOnce(props.step.id))
 const trusting = ref(false)
 async function trustFolder() {
   trusting.value = true
-  if (await derby.attempt('Could not trust the folder', () => api.TrustFolder(props.step.id).then(() => true))) trust.value = ''
+  if (await jockey.attempt('Could not trust the folder', () => api.TrustFolder(props.step.id).then(() => true))) trust.value = ''
   trusting.value = false
 }
 const placeholder = computed(() =>
   props.step.live ? (running.value ? 'Queue a message for Claude…' : 'Message Claude… / for commands, @ for files, ! for bash (Enter to send, Shift+Enter for a new line)') : task.value?.archived ? 'Send to restore the task and resume this session…' : 'Send a message to resume this session…',
 )
-const agentName = computed(() => derby.settings?.agents.find((a) => a.id === props.step.agent)?.name ?? props.step.agent)
+const agentName = computed(() => jockey.settings?.agents.find((a) => a.id === props.step.agent)?.name ?? props.step.agent)
 const model = computed(() => (props.step.model ? props.step.model[0].toUpperCase() + props.step.model.slice(1) : ''))
 // ---- each turn's controls, as Zed's: copy its answer, back to its message, to the top ----
-const copyTurn = (turn: number) => derby.copy(response(items.value, turn), 'the agent response')
+const copyTurn = (turn: number) => jockey.copy(response(items.value, turn), 'the agent response')
 const toUser = (turn: number) => thread.value?.querySelector<HTMLElement>(`[data-turn="${turn}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
 const toTop = () => thread.value?.scrollTo({ top: 0, behavior: 'smooth' })
 const title = (t: ToolCall) => renderInline(view(t).title)
@@ -342,15 +342,15 @@ const answered = (t: ToolCall) => questions(t.call).every((q, i) => (picks.value
 async function submitAnswers(t: ToolCall) {
   const answers = questions(t.call).map((q, i) => ({ multi: q.multi, count: q.options.length, picks: typed.value[i]?.trim() ? [] : picks.value[i] ?? [], other: q.multi ? '' : typed.value[i] ?? '' }))
   answering.value = true
-  await derby.attempt('Could not answer', () => api.AnswerQuestions(props.step.id, answers))
+  await jockey.attempt('Could not answer', () => api.AnswerQuestions(props.step.id, answers))
   answering.value = false
 }
 
 // ---- the editor's toolbar: attach files, context, plan usage, model, effort ----
 async function attach() {
-  const files = await derby.attempt('Could not open the file picker', () => api.ChooseFiles('Attach files to your message'))
+  const files = await jockey.attempt('Could not open the file picker', () => api.ChooseFiles('Attach files to your message'))
   if (!files?.length) return
-  const paths = await derby.attempt('Could not attach the files', () => api.AttachToStep(props.step.id, files))
+  const paths = await jockey.attempt('Could not attach the files', () => api.AttachToStep(props.step.id, files))
   if (!paths?.length) return
   const refs = paths.map((p) => (/\s/.test(p) ? `@"${p}"` : '@' + p)).join(' ')
   draft.value = (draft.value.trimEnd() ? draft.value.trimEnd() + ' ' : '') + refs + ' '
@@ -383,7 +383,7 @@ const rings = computed(() => {
 })
 const models: [string, string][] = [['fable', 'Fable'], ['opus', 'Opus'], ['sonnet', 'Sonnet'], ['haiku', 'Haiku']]
 const efforts = ['low', 'medium', 'high', 'xhigh', 'max']
-const agentOf = computed(() => derby.settings?.agents.find((a) => a.id === props.step.agent))
+const agentOf = computed(() => jockey.settings?.agents.find((a) => a.id === props.step.agent))
 const modelId = computed(() => props.step.modelSet || models.find(([id]) => status.value?.model.includes(id))?.[0] || props.step.model)
 const modelText = computed(() => (props.step.modelSet ? models.find(([id]) => id === props.step.modelSet)?.[1] : '') || status.value?.modelName || model.value)
 const effort = computed(() => props.step.effortSet || status.value?.effort || agentOf.value?.effort || 'xhigh')
@@ -392,18 +392,18 @@ const working = computed(() => running.value || approval.value)
 const pickTip = computed(() => (working.value ? 'locked while Claude works' : props.step.live ? 'restarts Claude, keeps the chat' : 'used on resume'))
 async function pick(model: string, eff: string) {
   menu.value = ''
-  await derby.attempt('Could not change the model', () => api.SetStepModel(props.step.id, model, eff))
+  await jockey.attempt('Could not change the model', () => api.SetStepModel(props.step.id, model, eff))
 }
 
 async function checkAgain() {
   const procs = await api.SessionElsewhere(props.step.id).catch(() => [])
-  if (procs.length) derby.elsewhere[props.step.id] = procs
-  else delete derby.elsewhere[props.step.id]
+  if (procs.length) jockey.elsewhere[props.step.id] = procs
+  else delete jockey.elsewhere[props.step.id]
 }
 </script>
 
 <template>
-  <div class="chat" :style="{ '--code-blue': derby.dark ? '#b1b9f9' : '#5769f7', '--bash': derby.dark ? '#fd5db1' : '#ff0087' }">
+  <div class="chat" :style="{ '--code-blue': jockey.dark ? '#b1b9f9' : '#5769f7', '--bash': jockey.dark ? '#fd5db1' : '#ff0087' }">
     <div class="pane">
       <div ref="thread" class="thread">
         <div class="inner">
@@ -420,13 +420,13 @@ async function checkAgain() {
                   <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
                 </button>
                 <pre class="command">{{ e.tool.call.input?.command }}</pre>
-                <button class="copyc" title="Copy Command" aria-label="Copy Command" @click="derby.copy(String(e.tool.call.input?.command ?? ''), 'the command')"><Icon name="copy" :size="12" /></button>
+                <button class="copyc" title="Copy Command" aria-label="Copy Command" @click="jockey.copy(String(e.tool.call.input?.command ?? ''), 'the command')"><Icon name="copy" :size="12" /></button>
               </div>
               <pre v-if="isOpen(e.id) && e.tool.result" class="output">{{ e.tool.result.text || 'No output.' }}</pre>
               <div v-if="confirming(e.tool)" class="perm">
                 <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
                 <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
-                <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+                <button class="pb" @click="jockey.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
               </div>
             </div>
 
@@ -442,7 +442,7 @@ async function checkAgain() {
               </button>
               <template v-if="isOpen(e.id) || confirming(e.tool)">
                 <div v-if="e.tool.result?.diff" class="diffw"><Diff :diff="e.tool.result.diff" :path="String(e.tool.call.input?.file_path ?? '')" /></div>
-                <!-- Claude's question form, answered here: Derby types the answers into Claude Code's form -->
+                <!-- Claude's question form, answered here: Jockey types the answers into Claude Code's form -->
                 <div v-else-if="view(e.tool).body === 'question' && confirming(e.tool)" class="qs form">
                   <div v-for="(q, i) in questions(e.tool.call)" :key="i" class="qblock">
                     <div class="qq"><span v-if="q.header" class="qh">{{ q.header }}</span>{{ q.question }}<span v-if="q.multi" class="muted"> (pick any)</span></div>
@@ -465,7 +465,7 @@ async function checkAgain() {
                 <template v-if="e.tool.call.tool !== 'AskUserQuestion'">
                   <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
                   <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
-                  <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+                  <button class="pb" @click="jockey.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
                 </template>
                 <template v-else>
                   <button class="pb" :disabled="!answered(e.tool) || answering" @click="submitAnswers(e.tool)"><Icon name="check" :size="13" class="ok" />{{ answering ? 'Sending…' : 'Submit answers' }}</button>
@@ -497,7 +497,7 @@ async function checkAgain() {
               </div>
             </div>
 
-            <!-- the user's message, or the /command Derby ran -->
+            <!-- the user's message, or the /command Jockey ran -->
             <div v-else-if="e.kind === 'item' && e.item.kind === 'bash'" class="umsg" :data-turn="e.turn">
               <div class="ubox bashbox"><span class="bang">!</span> <code>{{ e.item.text }}</code></div>
             </div>
@@ -531,7 +531,7 @@ async function checkAgain() {
             <div class="chead static"><Icon name="approval" :size="14" class="ico" /><span class="ttl">Claude waits for your answer</span></div>
             <div class="perm">
               <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
-              <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+              <button class="pb" @click="jockey.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
             </div>
           </div>
           <!-- Claude Code's folder trust dialog, shown before the session starts -->
@@ -543,7 +543,7 @@ async function checkAgain() {
             </div>
             <div class="perm">
               <button class="pb" :disabled="trusting" @click="trustFolder"><Icon name="check" :size="13" class="ok" />Trust folder</button>
-              <button class="pb" @click="derby.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
+              <button class="pb" @click="jockey.setSessionView('terminal')"><Icon name="terminal" :size="13" class="ico" />Answer in the terminal</button>
             </div>
           </div>
           <div v-else-if="approval" class="generating"><span class="sand"></span><span class="lbl">Awaiting Confirmation</span></div>
@@ -560,18 +560,18 @@ async function checkAgain() {
           <Icon name="warn" :size="14" />
           <span class="grow">Claude is still running this session elsewhere (pid {{ others[0].pid }}). Exit it there first, so only one Claude writes the conversation.</span>
           <button class="btn" @click="checkAgain">Check again</button>
-          <button class="btn danger" @click="derby.resumeAnyway(step)">Resume anyway</button>
+          <button class="btn danger" @click="jockey.resumeAnyway(step)">Resume anyway</button>
         </div>
         <div v-else-if="paused" class="banner">
           <Icon name="stop" :size="14" />
-          <span class="grow">Claude is stopped in Derby: continue elsewhere with the resume command, or resume here.</span>
-          <button class="btn" @click="derby.copyResume(step)"><Icon name="copy" :size="13" />Copy claude --resume</button>
-          <button class="btn primary" @click="derby.resumeStep(step)"><Icon name="play" :size="13" />Resume here</button>
+          <span class="grow">Claude is stopped in Jockey: continue elsewhere with the resume command, or resume here.</span>
+          <button class="btn" @click="jockey.copyResume(step)"><Icon name="copy" :size="13" />Copy claude --resume</button>
+          <button class="btn primary" @click="jockey.resumeStep(step)"><Icon name="play" :size="13" />Resume here</button>
         </div>
         <div v-else-if="task?.archived && !canRestore" class="banner">
           <Icon name="archive" :size="14" />
           <span class="grow">This task is archived and can no longer run{{ task.worktreeRemoved ? ': its worktree was removed' : '' }}.</span>
-          <button class="btn" @click="derby.copyResume(step)"><Icon name="copy" :size="13" />Copy {{ resumeCommand(step).split(' ').slice(0, 2).join(' ') }}</button>
+          <button class="btn" @click="jockey.copyResume(step)"><Icon name="copy" :size="13" />Copy {{ resumeCommand(step).split(' ').slice(0, 2).join(' ') }}</button>
         </div>
         <div v-if="sugs.length" class="sugs" role="listbox">
           <button v-for="(s, i) in sugs" :key="s.label" role="option" :aria-selected="i === sugIx" :class="{ on: i === sugIx }" @mousedown.prevent="accept(s)" @mouseenter="sugIx = i">
@@ -694,7 +694,7 @@ button:hover > .disc,
 .umsg {
   padding: 8px 20px 12px; /* as wide as the answers */
 }
-/* the one place Derby leaves Zed: user messages stand out, tinted with the accent */
+/* the one place Jockey leaves Zed: user messages stand out, tinted with the accent */
 .ubox {
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));

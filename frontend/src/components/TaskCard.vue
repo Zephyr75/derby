@@ -3,7 +3,7 @@
 // In a sister family it also names its project, says what its part of the
 // work does on hover, and the big sister (the task that started the others)
 // has a flag. The Archive of every project names each task's project too.
-import { derby, taskName } from '../lib/state'
+import { jockey, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 import StatusBadge from './ui/StatusBadge.vue'
@@ -19,7 +19,7 @@ const mergedTitle = (t: Task) => {
 }
 const prTitle = (t: Task) => {
   if (t.prState === 'merged') return mergedTitle(t)
-  const b = derby.prBadge(t)!
+  const b = jockey.prBadge(t)!
   const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'No CI yet', Conflict: 'Conflicts' }[b.label] ?? b.label
   return `PR #${t.pr} · ${what}` + (b.ready === 'draft' ? ' · Draft' : b.ready === 'ready' ? ' · Ready' : '')
 }
@@ -29,7 +29,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
 </script>
 
 <template>
-  <button class="card" :class="{ on: task.id === derby.sel }" :title="family ? task.part : undefined" @click="derby.pickTask(task.id)">
+  <button class="card" :class="{ on: task.id === jockey.sel }" :title="family ? task.part : undefined" @click="jockey.pickTask(task.id)">
     <span class="row">
       <span v-if="big" class="big" title="Started the sister tasks"><Icon name="flag" :size="11" /></span>
       <TaskRef :issue="task.issue" :task="task.id" />
@@ -38,8 +38,8 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
     </span>
     <span class="row">
       <StatusBadge :kind="task.status.kind" :label="task.status.label" />
-      <span v-if="derby.prBadge(task)" :class="['badge', 'pr', `s-${derby.prBadge(task)!.kind}`]" :title="prTitle(task)">
-        <Icon :name="prIcon(task)" :size="12" />#{{ task.pr }} · {{ derby.prBadge(task)!.label }}
+      <span v-if="jockey.prBadge(task)" :class="['badge', 'pr', `s-${jockey.prBadge(task)!.kind}`]" :title="prTitle(task)">
+        <Icon :name="prIcon(task)" :size="12" />#{{ task.pr }} · {{ jockey.prBadge(task)!.label }}
       </span>
     </span>
   </button>

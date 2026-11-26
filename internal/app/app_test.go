@@ -15,14 +15,14 @@ import (
 	"testing"
 	"time"
 
-	"derby/internal/github"
-	"derby/internal/holder"
-	"derby/internal/hooks"
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/github"
+	"jockey/internal/holder"
+	"jockey/internal/hooks"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
-// The test binary doubles as the session holder, like derby itself.
+// The test binary doubles as the session holder, like jockey itself.
 func TestMain(m *testing.M) {
 	if len(os.Args) > 1 && os.Args[1] == "hold" {
 		os.Exit(holder.Main(os.Args[2:]))
@@ -74,11 +74,11 @@ func newTestApp(t *testing.T) (*App, string) {
 	run(t, repo, "git", "add", ".")
 	run(t, repo, "git", "commit", "-q", "-m", "init")
 
-	home := filepath.Join(root, "derby")
+	home := filepath.Join(root, "jockey")
 	// Claude Code's transcripts, for the resume checks.
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(root, "claude"))
 	os.MkdirAll(filepath.Join(root, "claude", "projects"), 0o755)
-	// derby started from inside a Claude Code session must not pass that on.
+	// jockey started from inside a Claude Code session must not pass that on.
 	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
 	fake, _ := filepath.Abs("testdata/fake-claude.sh")
 	a := startApp(t, home)
@@ -98,8 +98,8 @@ func newTestApp(t *testing.T) (*App, string) {
 }
 
 // killHolders ends the holders still listening in home/sessions, e.g. a
-// step an automatic trigger started while the test stopped derby. Stop keeps
-// running steps alive on purpose, for the next derby.
+// step an automatic trigger started while the test stopped jockey. Stop keeps
+// running steps alive on purpose, for the next jockey.
 func killHolders(t *testing.T, home string) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -225,11 +225,11 @@ func TestPlanImplementReview(t *testing.T) {
 		t.Fatal("review session not live")
 	}
 	_, back := sess.Attach()
-	if !strings.Contains(string(back), "/derby:review --local") {
+	if !strings.Contains(string(back), "/jockey:review --local") {
 		t.Fatalf("review prompt: %q", back)
 	}
 
-	// Killing derby mid-step: a fresh start marks dead live steps failed.
+	// Killing jockey mid-step: a fresh start marks dead live steps failed.
 	if _, err := a.StartStep(tv.ID, "impl", "", 0); err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestPlanImplementReview(t *testing.T) {
 func TestApprovalAndAllowOnce(t *testing.T) {
 	a, _ := newTestApp(t)
 	ags := a.settings.Agents()
-	ags = append([]settings.Agent{{ID: "ask", Name: "Ask", Command: "/derby:ask {task}", Writes: "ASK.md"}}, ags...)
+	ags = append([]settings.Agent{{ID: "ask", Name: "Ask", Command: "/jockey:ask {task}", Writes: "ASK.md"}}, ags...)
 	if err := a.SaveAgents(ags); err != nil {
 		t.Fatal(err)
 	}
@@ -309,14 +309,14 @@ func TestExitWithoutArtifactFails(t *testing.T) {
 }
 
 func TestWorktreesOutsideRepo(t *testing.T) {
-	in := settings.Project{Path: "/code/derby", WorktreesDir: ".worktrees"}
-	out := settings.Project{Path: "/code/derby", WorktreesDir: "../derby.worktrees"}
-	abs := settings.Project{Path: "/code/derby", WorktreesDir: "/tmp/wt"}
+	in := settings.Project{Path: "/code/jockey", WorktreesDir: ".worktrees"}
+	out := settings.Project{Path: "/code/jockey", WorktreesDir: "../jockey.worktrees"}
+	abs := settings.Project{Path: "/code/jockey", WorktreesDir: "/tmp/wt"}
 	task := store.Task{Slug: "local-x"}
-	if excludePattern(in) != ".worktrees/" || worktreePath(in, task) != "/code/derby/.worktrees/local-x" {
+	if excludePattern(in) != ".worktrees/" || worktreePath(in, task) != "/code/jockey/.worktrees/local-x" {
 		t.Fatal(excludePattern(in), worktreePath(in, task))
 	}
-	if excludePattern(out) != "" || worktreePath(out, task) != "/code/derby.worktrees/local-x" {
+	if excludePattern(out) != "" || worktreePath(out, task) != "/code/jockey.worktrees/local-x" {
 		t.Fatal(excludePattern(out), worktreePath(out, task))
 	}
 	if excludePattern(abs) != "" || worktreePath(abs, task) != "/tmp/wt/local-x" {
@@ -390,7 +390,7 @@ func TestBashOnResume(t *testing.T) {
 
 func addAskAgent(t *testing.T, a *App) {
 	t.Helper()
-	ags := append([]settings.Agent{{ID: "ask", Name: "Ask", Command: "/derby:ask {task}", Writes: "ASK.md"}}, a.settings.Agents()...)
+	ags := append([]settings.Agent{{ID: "ask", Name: "Ask", Command: "/jockey:ask {task}", Writes: "ASK.md"}}, a.settings.Agents()...)
 	if err := a.SaveAgents(ags); err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +403,7 @@ func TestSessionSurvivesRestart(t *testing.T) {
 	id := store.StepID(tv.ID, "ask-1")
 	waitFor(t, "approval", func() bool { return stepState(a, id) == store.Approval })
 
-	// Quit derby: the step keeps running in its holder.
+	// Quit jockey: the step keeps running in its holder.
 	Stop(a)
 	b := startApp(t, a.Home)
 	t.Cleanup(func() { b.run.StopAll(); Stop(b); killHolders(t, b.Home) })
@@ -412,13 +412,13 @@ func TestSessionSurvivesRestart(t *testing.T) {
 		t.Fatal("not reattached after restart")
 	}
 	_, scroll := sess.Attach()
-	if !strings.Contains(string(scroll), "fake claude: /derby:ask") {
+	if !strings.Contains(string(scroll), "fake claude: /jockey:ask") {
 		t.Fatalf("scrollback not replayed: %q", scroll)
 	}
 	if stepState(b, id) != store.Approval {
 		t.Fatalf("state %s", stepState(b, id))
 	}
-	// Its hooks reach the new derby: answering finishes the step.
+	// Its hooks reach the new jockey: answering finishes the step.
 	if err := b.AllowOnce(id); err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +507,7 @@ func TestNotifications(t *testing.T) {
 		}
 		return false
 	})
-	// Not while derby has focus.
+	// Not while jockey has focus.
 	a.SetFocused(true)
 	f.mu.Lock()
 	f.events = nil
@@ -559,7 +559,7 @@ func TestEachReviewCommitsItsOwnDiff(t *testing.T) {
 	if shas[store.StepID(tv.ID, "review-1")] == shas[store.StepID(tv.ID, "review-2")] {
 		t.Fatal("both reviews point at the same commit")
 	}
-	// The diff derby shows for a file is the commit's.
+	// The diff jockey shows for a file is the commit's.
 	d, err := a.FileDiff(store.StepID(tv.ID, "review-1"), "file-1.txt")
 	if err != nil || !strings.Contains(d.Diff, "+change 1") || strings.Contains(d.Diff, "file-2") {
 		t.Fatalf("diff %+v %v", d, err)
@@ -945,7 +945,7 @@ func TestNextAfterOutcome(t *testing.T) {
 }
 
 // reviewCommits makes the fake Review commit, as a committing agent does:
-// derby then sees each cycle's commit.
+// jockey then sees each cycle's commit.
 func reviewCommits(t *testing.T) { t.Setenv("FAKE_COMMIT", "1") }
 
 func withoutAgent(t *testing.T, a *App, id string) {
@@ -1115,7 +1115,7 @@ func TestLateCopilotReview(t *testing.T) {
 	}
 }
 
-// Copilot files from older derby move to COPILOT-n.md (the explanation) and
+// Copilot files from older jockey move to COPILOT-n.md (the explanation) and
 // FEEDBACK-n.md (the state and the review).
 func TestMigrateCopilotFiles(t *testing.T) {
 	dir := t.TempDir()
@@ -1127,7 +1127,7 @@ func TestMigrateCopilotFiles(t *testing.T) {
 	write(".COPILOT-2-explain.md", "# TL;DR\nIt queues.\n")
 	// The first layout: state and review in COPILOT-n.md.
 	write("COPILOT-1.md", "---\nstatus: done\ncomments: 0\n---\n\n## Copilot review\n")
-	// A step derby stopped waiting on: the explanation, no review.
+	// A step jockey stopped waiting on: the explanation, no review.
 	write("COPILOT-3.md", "---\n---\n\n_Claude is writing…_\n\n---\n\nCopilot's review and the CI checks are in the PR tab.\n")
 	write(".COPILOT-3-explain.md", "# Three\n")
 	// A step a revert removed, its COPILOT-n.md with it.
@@ -1171,10 +1171,10 @@ func TestAgentContext(t *testing.T) {
 		titles = append(titles, p.Title)
 		all += p.Text
 	}
-	if titles[0] != "System prompt" || titles[len(titles)-1] != "Command /derby:impl" {
+	if titles[0] != "System prompt" || titles[len(titles)-1] != "Command /jockey:impl" {
 		t.Fatalf("parts: %v", titles)
 	}
-	for _, want := range []string{"# Derby step", "# How a step works", "# Writing", "# Code changes", "# Diagrams", "IMPLEMENT-1.html", "# Sister tasks", "You are the Derby **Implement** agent"} {
+	for _, want := range []string{"# Jockey step", "# How a step works", "# Writing", "# Code changes", "# Diagrams", "IMPLEMENT-1.html", "# Sister tasks", "You are the Jockey **Implement** agent"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("no %q in the context", want)
 		}
@@ -1216,7 +1216,7 @@ func TestRecheckCopilot(t *testing.T) {
 	}
 }
 
-// PR.md and PR-REVIEW-n.md, from older derby, get their current names.
+// PR.md and PR-REVIEW-n.md, from older jockey, get their current names.
 func TestRenameArtifacts(t *testing.T) {
 	dir := t.TempDir()
 	for _, f := range []string{"PR.md", "PR-REVIEW-3.md", "FEEDBACK.md"} {
@@ -1230,7 +1230,7 @@ func TestRenameArtifacts(t *testing.T) {
 	}
 }
 
-// A step lists the review comments it handled in its front matter; derby
+// A step lists the review comments it handled in its front matter; jockey
 // shows the rejected ones in the PR tab until a later step fixes them.
 func TestRejectedComments(t *testing.T) {
 	a, _ := newTestApp(t)

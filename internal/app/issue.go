@@ -1,6 +1,6 @@
 package app
 
-// ISSUE.md: derby copies the task's GitHub issue, comments included, to the
+// ISSUE.md: jockey copies the task's GitHub issue, comments included, to the
 // run directory, so every agent reads the same text without calling GitHub.
 // It is copied when the task is created and before each run of the first agent.
 
@@ -15,10 +15,10 @@ import (
 	"regexp"
 	"strings"
 
-	"derby/internal/artifacts"
-	"derby/internal/github"
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/artifacts"
+	"jockey/internal/github"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
 const issueFile = "ISSUE.md"
@@ -63,7 +63,7 @@ func (a *App) writeIssueFile(p settings.Project, t store.Task) error {
 }
 
 // IssuePreview is an issue as New task shows it before there is a task:
-// ISSUE.md's text, with its images loading through derby (see previewImages).
+// ISSUE.md's text, with its images loading through jockey (see previewImages).
 func (a *App) IssuePreview(projectID, issue string) (artifacts.Artifact, error) {
 	p, ok := a.settings.Project(projectID)
 	if !ok {
@@ -107,7 +107,7 @@ type IssueComment struct {
 }
 
 // GetTaskIssue returns a task's issue with its comments; images load
-// through derby (see previewImages).
+// through jockey (see previewImages).
 func (a *App) GetTaskIssue(taskID string) (TaskIssue, error) {
 	t, err := a.db.Task(taskID)
 	if err != nil {
@@ -145,9 +145,9 @@ var (
 	attachment = regexp.MustCompile(`(!\[[^\]]*\]\()(https://github\.com/user-attachments/[^)\s]+)\)`)
 )
 
-// previewImages makes an issue's images show in derby: GitHub writes them as
-// <img> tags, which derby's markdown leaves out, and a private repository's
-// attachments only load signed in, so derby fetches them (ghFilePath). Other
+// previewImages makes an issue's images show in jockey: GitHub writes them as
+// <img> tags, which jockey's markdown leaves out, and a private repository's
+// attachments only load signed in, so jockey fetches them (ghFilePath). Other
 // attachments stay links, opened in the browser where the user is signed in.
 func previewImages(md string) string {
 	md = imgTag.ReplaceAllStringFunc(md, func(tag string) string {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { api } from '../lib/api'
-import { derby, taskName } from '../lib/state'
+import { jockey, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskRef from './ui/TaskRef.vue'
 import { sisterTitle } from '../lib/sisters'
@@ -10,17 +10,17 @@ import Splitter from './ui/Splitter.vue'
 import { useCompact } from '../lib/compact'
 import { unsuccessful, type Step } from '../lib/types'
 
-const t = computed(() => derby.selTask)
+const t = computed(() => jockey.selTask)
 // The buttons are shortcuts to the task's own steps, so there is no need to
 // open GitHub: Issue (or Task) to the Task step, PR to the latest Copilot step,
 // which describes the PR and links to it. A PR without a Copilot step opens on GitHub.
-const openTask = () => t.value && derby.openTask(t.value.id)
+const openTask = () => t.value && jockey.openTask(t.value.id)
 const openPR = () => {
   const task = t.value
   if (!task) return
-  const cop = derby.latestPR(task)
-  if (cop) derby.openStep(task.id, cop.id)
-  else derby.attempt('Could not open the PR', () => api.OpenURL(task.prUrl || `https://github.com/${task.repo}/pull/${task.pr}`))
+  const cop = jockey.latestPR(task)
+  if (cop) jockey.openStep(task.id, cop.id)
+  else jockey.attempt('Could not open the PR', () => api.OpenURL(task.prUrl || `https://github.com/${task.repo}/pull/${task.pr}`))
 }
 // GitHub's PR icons, as in the left panel: merged, closed, draft, open.
 const prIcon = computed(() => (t.value?.prState === 'merged' ? 'rebase' : t.value?.prState && t.value.prState !== 'open' ? 'pr-closed' : t.value?.draft ? 'pr-draft' : 'pr'))
@@ -35,7 +35,7 @@ const titleTip = computed(() => {
 })
 // Rebase always shows, before Archive; it's off unless the branch is behind
 // and a step can rebase it now.
-const canRebase = computed(() => !!t.value?.behind && !t.value.archived && derby.canFix(t.value))
+const canRebase = computed(() => !!t.value?.behind && !t.value.archived && jockey.canFix(t.value))
 const rebaseTitle = computed(() => {
   const task = t.value
   if (!task || task.archived) return 'Archived'
@@ -59,9 +59,9 @@ function meta(s: Step): { text: string; cls: string } {
 }
 const dotCls = (s: Step) => (unsuccessful(s) ? 'd-failed' : s.state === 'done' ? 'd-done' : s.paused ? 'd-paused' : s.state === 'running' ? 'd-running' : s.state === 'failed' ? 'd-failed' : 'd-waiting')
 // What used to sit under the step's name, now on hover.
-const stepInfo = (s: Step) => (s.external ? 'Run by Derby · PR #' + t.value?.pr : s.sha ? 'Commit ' + s.sha : 'Session ' + s.session.slice(0, 8)) + (s.auto ? ' · auto' : '')
+const stepInfo = (s: Step) => (s.external ? 'Run by Jockey · PR #' + t.value?.pr : s.sha ? 'Commit ' + s.sha : 'Session ' + s.session.slice(0, 8)) + (s.auto ? ' · auto' : '')
 
-// Rerun (set by derby): the latest step when it commits, and the cycle's
+// Rerun (set by jockey): the latest step when it commits, and the cycle's
 // Review once you changed the worktree by hand (Zed opens it).
 
 // Drag the line above the preview to give it more or less room.
@@ -78,7 +78,7 @@ function dragSplit(e: PointerEvent) {
   } catch {
     /* synthetic event */
   }
-  const move = (m: PointerEvent) => derby.setTimelineHeight(Math.min(max, Math.max(36, startH + m.clientY - startY)))
+  const move = (m: PointerEvent) => jockey.setTimelineHeight(Math.min(max, Math.max(36, startH + m.clientY - startY)))
   const up = () => {
     handle.removeEventListener('pointermove', move)
     handle.removeEventListener('pointerup', up)
@@ -89,19 +89,19 @@ function dragSplit(e: PointerEvent) {
 
 async function openRunDir() {
   const task = t.value
-  if (task) await derby.attempt('Could not open the run folder', () => api.OpenRunDir(task.id))
+  if (task) await jockey.attempt('Could not open the run folder', () => api.OpenRunDir(task.id))
 }
 
-const rebase = () => t.value && derby.fixWith(t.value, derby.prompt('rebase', { pr: String(t.value.pr), base: t.value.baseBranch, behind: String(t.value.behind) }))
+const rebase = () => t.value && jockey.fixWith(t.value, jockey.prompt('rebase', { pr: String(t.value.pr), base: t.value.baseBranch, behind: String(t.value.behind) }))
 
 async function archive() {
   const task = t.value
-  if (task) await derby.attempt('Could not archive', () => api.ArchiveTask(task.id))
+  if (task) await jockey.attempt('Could not archive', () => api.ArchiveTask(task.id))
 }
 </script>
 
 <template>
-  <aside :style="{ width: derby.rightWidth + 'px' }">
+  <aside :style="{ width: jockey.rightWidth + 'px' }">
     <Splitter side="right" />
     <template v-if="t">
       <div class="head">
@@ -112,27 +112,27 @@ async function archive() {
         <div ref="bar" class="bar" :class="{ compact }">
           <button class="hb" :title="hasIssue ? 'Show the issue, its comments and your instructions' : 'Show the task'" :aria-label="hasIssue ? 'Issue' : 'Task'" @click="openTask"><Icon :name="hasIssue ? 'issue' : 'description'" /><span class="label">{{ hasIssue ? 'Issue' : 'Task' }}</span></button>
           <button class="hb" :class="{ off: !t.pr }" :aria-disabled="!t.pr" :title="t.pr ? 'Show the PR: its description, review and checks' : 'No PR yet'" aria-label="PR" @click="t.pr && openPR()"><Icon :name="prIcon" /><span class="label">PR</span></button>
-          <button v-if="!t.archived && !t.worktreeRemoved" class="hb" title="Open in Zed" aria-label="Zed" @click="derby.openWorktree()"><Icon name="code" /><span class="label">Zed</span></button>
+          <button v-if="!t.archived && !t.worktreeRemoved" class="hb" title="Open in Zed" aria-label="Zed" @click="jockey.openWorktree()"><Icon name="code" /><span class="label">Zed</span></button>
           <button class="hb" title="Open reports folder" aria-label="Reports" @click="openRunDir"><Icon name="folder" /><span class="label">Reports</span></button>
           <button class="hb" :class="{ warn: t.behind && !t.archived, off: !canRebase }" :aria-disabled="!canRebase" :title="rebaseTitle" aria-label="Rebase" @click="canRebase && rebase()"><Icon name="rebase" /><span class="label">Rebase</span></button>
           <button v-if="!t.archived" class="hb" title="Archive task" aria-label="Archive" @click="archive"><Icon name="archive" /><span class="label">Archive</span></button>
         </div>
       </div>
 
-      <div ref="timeline" class="timeline" :class="{ sized: derby.timelineHeight > 0 }" :style="derby.timelineHeight > 0 ? { height: derby.timelineHeight + 'px' } : {}">
-        <div class="row" :class="{ on: derby.onTaskStep }">
+      <div ref="timeline" class="timeline" :class="{ sized: jockey.timelineHeight > 0 }" :style="jockey.timelineHeight > 0 ? { height: jockey.timelineHeight + 'px' } : {}">
+        <div class="row" :class="{ on: jockey.onTaskStep }">
           <span class="rail">
             <span class="sdot d-done"></span>
             <span v-if="t.steps.length || t.next.ghost" class="line"></span>
           </span>
-          <button class="step" :title="t.source" @click="derby.openTask(t.id)"><span class="name-row"><span class="name">Task</span></span></button>
+          <button class="step" :title="t.source" @click="jockey.openTask(t.id)"><span class="name-row"><span class="name">Task</span></span></button>
         </div>
-        <div v-for="(s, i) in t.steps" :key="s.id" class="row" :class="{ on: derby.selStep?.id === s.id }">
+        <div v-for="(s, i) in t.steps" :key="s.id" class="row" :class="{ on: jockey.selStep?.id === s.id }">
           <span class="rail">
             <span :class="['sdot', dotCls(s)]"></span>
             <span v-if="i < t.steps.length - 1 || t.next.ghost" class="line"></span>
           </span>
-          <button class="step" :title="stepInfo(s)" @click="derby.openStep(t.id, s.id)">
+          <button class="step" :title="stepInfo(s)" @click="jockey.openStep(t.id, s.id)">
             <span class="name-row">
               <span class="name">{{ s.name }}</span>
               <span v-if="meta(s).text" :class="['meta', meta(s).cls]">{{ meta(s).text }}</span>
@@ -141,14 +141,14 @@ async function archive() {
           </button>
           <span class="acts">
             <!-- the first click only asks, in words -->
-            <button v-if="s.revert" class="act" :class="derby.confirmRevert === s.id ? 'danger' : 'icon'" :aria-label="derby.confirmRevert === s.id ? 'Discard its changes?' : `Revert ${s.name}`" :title="`Undo ${s.name} and later steps`" @click="derby.revertStep(s)">
-              <Icon name="revert" :size="13" /><template v-if="derby.confirmRevert === s.id">Discard its changes?</template>
+            <button v-if="s.revert" class="act" :class="jockey.confirmRevert === s.id ? 'danger' : 'icon'" :aria-label="jockey.confirmRevert === s.id ? 'Discard its changes?' : `Revert ${s.name}`" :title="`Undo ${s.name} and later steps`" @click="jockey.revertStep(s)">
+              <Icon name="revert" :size="13" /><template v-if="jockey.confirmRevert === s.id">Discard its changes?</template>
             </button>
             <template v-if="s.skip">
-              <button v-if="!(s.state === 'done' && !unsuccessful(s))" class="act icon" :aria-label="`Skip ${s.name} as succeeded`" title="Mark done" @click="derby.skipStep(s, true)"><Icon name="check" :size="13" /></button>
-              <button v-if="!unsuccessful(s)" class="act icon" :aria-label="`Skip ${s.name} as failed`" title="Mark failed" @click="derby.skipStep(s, false)"><Icon name="close" :size="13" /></button>
+              <button v-if="!(s.state === 'done' && !unsuccessful(s))" class="act icon" :aria-label="`Skip ${s.name} as succeeded`" title="Mark done" @click="jockey.skipStep(s, true)"><Icon name="check" :size="13" /></button>
+              <button v-if="!unsuccessful(s)" class="act icon" :aria-label="`Skip ${s.name} as failed`" title="Mark failed" @click="jockey.skipStep(s, false)"><Icon name="close" :size="13" /></button>
             </template>
-            <button v-if="s.rerun" class="act icon" :aria-label="`Rerun ${s.name}`" :title="`Rerun ${s.name}`" @click="derby.rerunStep(s)"><Icon name="rerun" :size="13" /></button>
+            <button v-if="s.rerun" class="act icon" :aria-label="`Rerun ${s.name}`" :title="`Rerun ${s.name}`" @click="jockey.rerunStep(s)"><Icon name="rerun" :size="13" /></button>
           </span>
         </div>
         <div v-if="t.next.ghost" class="row ghost" :title="`Starts after ${t.next.ghost.after}`">
@@ -159,7 +159,7 @@ async function archive() {
         </div>
       </div>
 
-      <div class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to resize; double-click to reset" @pointerdown.prevent="dragSplit" @dblclick="derby.setTimelineHeight(0)"></div>
+      <div class="hsplit" role="separator" aria-orientation="horizontal" title="Drag to resize; double-click to reset" @pointerdown.prevent="dragSplit" @dblclick="jockey.setTimelineHeight(0)"></div>
       <Preview />
     </template>
   </aside>

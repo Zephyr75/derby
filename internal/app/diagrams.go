@@ -3,7 +3,7 @@ package app
 // Diagrams: agents draw them with the archify skill, as standalone HTML pages
 // in the run directory named after their artifact (PLAN.html,
 // IMPLEMENT-2-flow.html…), and embed them in it as ![title](PLAN.html).
-// derby serves them to its webview at /run/<task id>/<file>, sandboxed: an
+// jockey serves them to its webview at /run/<task id>/<file>, sandboxed: an
 // agent wrote them, so they get no network and no access to the app.
 
 import (
@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"derby/internal/store"
+	"jockey/internal/store"
 )
 
 // Diagram is one HTML page in a task's run directory.
@@ -87,7 +87,7 @@ func head(path string, n int) []byte {
 	return b[:k]
 }
 
-// withTheme gives a page derby's theme: archify's native diagrams read
+// withTheme gives a page jockey's theme: archify's native diagrams read
 // ?theme=, its explainer pages only data-theme on <html>.
 func withTheme(b []byte, theme string) []byte {
 	lower := bytes.ToLower(b)
@@ -117,7 +117,7 @@ func withSignalFlow(b []byte) []byte {
 // embedFit lets an embedded page size its iframe to the diagram, so no empty
 // band shows under it: the canvas is cut to the content with a small equal
 // margin above and below, then its aspect ratio (an explainer page: its height) goes to
-// derby by postMessage, which works across the sandbox.
+// jockey by postMessage, which works across the sandbox.
 const embedFit = `<style>html[data-embed="true"] .diagram-container{padding:0!important}</style>
 <script>(function(){
 function trim(s,v){var t=Infinity,b=-Infinity;for(var i=0;i<s.children.length;i++){var r;try{r=s.children[i].getBBox()}catch(e){continue}
@@ -125,7 +125,7 @@ if(!r.width&&!r.height||r.width>=v.width*.95&&r.height>=v.height*.9)continue;t=M
 if(b>t){var m=Math.min(32,t-v.y);s.setAttribute('viewBox',[v.x,t-m,v.width,Math.min(v.height,b-t+2*m)].join(' '))}}
 function post(){var s=document.querySelector('.diagram-container svg'),v=s&&s.viewBox&&s.viewBox.baseVal;
 if(v&&v.width&&v.height)trim(s,v);
-parent.postMessage({derbyDiagram:v&&v.width&&v.height?{ratio:v.width/v.height}:{height:document.documentElement.scrollHeight}},'*')}
+parent.postMessage({jockeyDiagram:v&&v.width&&v.height?{ratio:v.width/v.height}:{height:document.documentElement.scrollHeight}},'*')}
 addEventListener('load',post)})()</script>`
 
 // diagramCSP keeps a page self-contained and away from the app, even when

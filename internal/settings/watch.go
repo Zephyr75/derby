@@ -11,7 +11,7 @@ import (
 )
 
 // Watch reloads the settings whenever a file under Dir changes (edited by
-// hand or by derby) and calls onChange after each successful reload.
+// hand or by jockey) and calls onChange after each successful reload.
 func (s *Store) Watch(ctx context.Context, onChange func()) error {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {

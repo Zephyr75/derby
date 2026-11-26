@@ -1,4 +1,4 @@
-// Package settings loads and saves derby's files under ~/.derby: config.toml,
+// Package settings loads and saves jockey's files under ~/.jockey: config.toml,
 // agents.toml and context/*.md.
 package settings
 
@@ -27,7 +27,7 @@ type Project struct {
 	CommonIssues bool   `toml:"common_issues,omitempty" json:"commonIssues"` // its issues live in the common issues repository (Config.IssuesRepo)
 }
 
-// Themes are derby's themes, each with a dark and a light variant: Fleet
+// Themes are jockey's themes, each with a dark and a light variant: Fleet
 // (Fleet Dark and Flatwhite), Catppuccin (Mocha and Latte) and GitHub Copilot.
 var Themes = []string{"fleet", "catppuccin", "copilot"}
 
@@ -59,8 +59,8 @@ type Config struct {
 	ZedCommand      string                 `toml:"zed_command" json:"zedCommand"`
 	ClaudeCommand   string                 `toml:"claude_command" json:"claudeCommand"`
 	MaxLiveSessions int                    `toml:"max_live_sessions" json:"maxLiveSessions"`
-	Notifications   bool                   `toml:"notifications" json:"notifications"`      // desktop notifications while derby is in the background
-	UseDefaults     bool                   `toml:"use_defaults" json:"useDefaults"`         // agents, prompts and skills are the repository's defaults/, not ~/.derby's (to work on derby itself)
+	Notifications   bool                   `toml:"notifications" json:"notifications"`      // desktop notifications while jockey is in the background
+	UseDefaults     bool                   `toml:"use_defaults" json:"useDefaults"`         // agents, prompts and skills are the repository's defaults/, not ~/.jockey's (to work on jockey itself)
 	MaxTabs         int                    `toml:"max_tabs" json:"maxTabs"`                 // open terminal tabs; the oldest closes first
 	Rules           string                 `toml:"rules" json:"rules"`                      // always followed by every agent
 	BranchPrefix    string                 `toml:"branch_prefix" json:"branchPrefix"`       // every new task's branch starts with it
@@ -93,7 +93,7 @@ type Agent struct {
 	Revert       bool     `toml:"revert,omitempty" json:"revert"`            // its latest step can be reverted while nothing is committed after it
 	Rerun        bool     `toml:"rerun,omitempty" json:"rerun"`              // its step can be run again on the current worktree while it is the latest
 	Choose       bool     `toml:"choose,omitempty" json:"choose"`            // when its artifact lists Options, Next step asks which one to take
-	Builtin      bool     `toml:"builtin,omitempty" json:"builtin"`          // run by derby itself, not Claude: Copilot
+	Builtin      bool     `toml:"builtin,omitempty" json:"builtin"`          // run by jockey itself, not Claude: Copilot
 	IgnoreRules  bool     `toml:"ignore_rules,omitempty" json:"ignoreRules"` // the common rules (Settings > Context) are not given to it
 	ShowDiff     bool     `toml:"show_diff,omitempty" json:"showDiff"`       // makes changes: its steps are listed in the diff pop-up
 	Sisters      bool     `toml:"sisters,omitempty" json:"sisters"`          // its artifact can ask for sister tasks in other repositories
@@ -287,7 +287,7 @@ func fillConfig(c *Config) {
 	case "latte":
 		ap.Theme, ap.Mode = "catppuccin", "light"
 	}
-	if !slices.Contains(Themes, ap.Theme) { // empty, or a theme derby no longer has
+	if !slices.Contains(Themes, ap.Theme) { // empty, or a theme jockey no longer has
 		ap.Theme = d.Appearance.Theme
 	}
 	if !slices.Contains(Modes, ap.Mode) {
@@ -477,7 +477,7 @@ func (s *Store) SetPrompt(id, text string) error {
 	return nil
 }
 
-var errUseDefaults = errors.New("Derby's default agents and prompts are in use (Settings > General): turn that off to edit them")
+var errUseDefaults = errors.New("Jockey's default agents and prompts are in use (Settings > General): turn that off to edit them")
 
 func (s *Store) usingDefaults() bool {
 	s.mu.RLock()
@@ -568,7 +568,7 @@ func (s *Store) SaveAgents(agents []Agent) error {
 	return nil
 }
 
-// CopilotID is the built-in agent derby runs itself: it asks Copilot for a
+// CopilotID is the built-in agent jockey runs itself: it asks Copilot for a
 // review of the PR, then waits for the review and the CI checks.
 const CopilotID = "copilot"
 
@@ -578,7 +578,7 @@ func Copilot() Agent {
 	return Agent{ID: CopilotID, Name: "Copilot", Trigger: "manual", Writes: "COPILOT-{n}.md", Builtin: true}
 }
 
-// gitSteps is what an agent with the former git boxes told Derby to do after
+// gitSteps is what an agent with the former git boxes told Jockey to do after
 // it, now said in its instructions.
 func gitSteps(a Agent) string {
 	s := "Once the artifact is written, commit all the changes with its title line and body as the message"

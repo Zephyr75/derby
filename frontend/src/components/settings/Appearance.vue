@@ -4,12 +4,12 @@
 import { computed } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { derby } from '../../lib/state'
+import { jockey } from '../../lib/state'
 import { themes, type ThemeDef } from '../../lib/themes'
 import type { ThemeMode, ThemeName } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 
-const ap = computed(() => derby.settings?.config.appearance)
+const ap = computed(() => jockey.settings?.config.appearance)
 const modes: { id: ThemeMode; name: string }[] = [
   { id: 'dark', name: 'Dark' },
   { id: 'light', name: 'Light' },
@@ -18,10 +18,10 @@ const modes: { id: ThemeMode; name: string }[] = [
 
 /** The theme's note; in use with System, the variant the OS picks now. */
 function note(t: ThemeDef) {
-  if (derby.themeName !== t.id || derby.themeMode !== 'system') return t.note
-  return `${t.note}, now ${derby.systemLight ? t.lightName : t.darkName}`
+  if (jockey.themeName !== t.id || jockey.themeMode !== 'system') return t.note
+  return `${t.note}, now ${jockey.systemLight ? t.lightName : t.darkName}`
 }
-const chosen = (t: ThemeDef, m: ThemeMode) => derby.themeName === t.id && derby.themeMode === m
+const chosen = (t: ThemeDef, m: ThemeMode) => jockey.themeName === t.id && jockey.themeMode === m
 
 const views = [
   { id: 'terminal', name: 'Terminal' },
@@ -29,23 +29,23 @@ const views = [
 ] as const
 
 async function pick(theme: ThemeName, mode: ThemeMode) {
-  const a = derby.settings?.config.appearance
+  const a = jockey.settings?.config.appearance
   if (!a) return
   a.theme = theme
   a.mode = mode
-  derby.edited()
-  await derby.attempt('Could not save the theme', () => api.SetTheme(theme, mode))
+  jockey.edited()
+  await jockey.attempt('Could not save the theme', () => api.SetTheme(theme, mode))
 }
 
 const save = debounce(() => {
-  const s = derby.settings
+  const s = jockey.settings
   if (!s) return
   const c = JSON.parse(JSON.stringify(s.config))
-  void derby.attempt('Could not save appearance', () => api.SaveAppearance(c.appearance, c.zedCommand))
+  void jockey.attempt('Could not save appearance', () => api.SaveAppearance(c.appearance, c.zedCommand))
 }, 600)
 
 function setFont(kind: 'ui' | 'term', e: Event) {
-  const a = derby.settings?.config.appearance
+  const a = jockey.settings?.config.appearance
   if (!a) return
   const v = (e.target as HTMLInputElement).value.trim()
   const m = /^(.*?)\s+([\d.]+)$/.exec(v)
@@ -59,7 +59,7 @@ function setFont(kind: 'ui' | 'term', e: Event) {
     a.termFont = name
     a.termFontSize = size
   }
-  derby.edited()
+  jockey.edited()
   save()
 }
 </script>
@@ -71,7 +71,7 @@ function setFont(kind: 'ui' | 'term', e: Event) {
   </div>
 
   <div class="themes card" role="radiogroup" aria-label="Theme">
-    <div v-for="t in themes" :key="t.id" class="theme" :class="{ on: derby.themeName === t.id }">
+    <div v-for="t in themes" :key="t.id" class="theme" :class="{ on: jockey.themeName === t.id }">
       <span class="shot">
         <span v-for="th in [t.dark, t.light]" :key="th" class="pane" :data-theme="th" :title="th === t.dark ? t.darkName : t.lightName">
           <span class="pchrome"></span>
@@ -113,7 +113,7 @@ function setFont(kind: 'ui' | 'term', e: Event) {
     <div class="r">
       <span class="grow">Session view <span class="muted small">how the center shows a step's Claude Code session; the toolbar switches it too</span></span>
       <span class="pill views" role="radiogroup" aria-label="Session view">
-        <button v-for="v in views" :key="v.id" role="radio" :aria-checked="derby.sessionView === v.id" :class="{ on: derby.sessionView === v.id }" @click="derby.setSessionView(v.id)"><Icon :name="v.id === 'chat' ? 'chat' : 'terminal'" :size="13" />{{ v.name }}</button>
+        <button v-for="v in views" :key="v.id" role="radio" :aria-checked="jockey.sessionView === v.id" :class="{ on: jockey.sessionView === v.id }" @click="jockey.setSessionView(v.id)"><Icon :name="v.id === 'chat' ? 'chat' : 'terminal'" :size="13" />{{ v.name }}</button>
       </span>
     </div>
   </div>

@@ -21,10 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"derby/internal/hooks"
-	"derby/internal/runner"
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/hooks"
+	"jockey/internal/runner"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
 // ChatItem is one entry of a step's conversation.
@@ -50,7 +50,7 @@ type Chat struct {
 	// else from the transcript read so far (Live: the statusline's).
 	Status SessionStatus `json:"status"`
 	Live   bool          `json:"live"`
-	// Skills: the session's skills and plugin commands (/derby:implement…),
+	// Skills: the session's skills and plugin commands (/jockey:implement…),
 	// when the transcript read listed them.
 	Skills []Skill `json:"skills"`
 	// Trust: the folder Claude Code asks to trust before it starts (a new
@@ -337,7 +337,7 @@ func userText(s string) []ChatItem {
 	return []ChatItem{{Kind: "user", Text: cut(s, chatTextMax)}}
 }
 
-// commandItem reads a /command the user ran, e.g. derby's agent commands.
+// commandItem reads a /command the user ran, e.g. jockey's agent commands.
 func commandItem(s string) (ChatItem, bool) {
 	m := cmdNameTag.FindStringSubmatch(s)
 	if m == nil {
@@ -641,7 +641,7 @@ func effortOf(raw json.RawMessage) string {
 }
 
 // stepStatus is a step's latest statusline report, with the account's plan
-// usage; ok is false when none came since derby started.
+// usage; ok is false when none came since jockey started.
 func (a *App) stepStatus(stepID string) (SessionStatus, bool) {
 	a.statusMu.Lock()
 	defer a.statusMu.Unlock()
@@ -655,7 +655,7 @@ func (a *App) stepStatus(stepID string) (SessionStatus, bool) {
 
 // SetStepModel changes the model and effort of a step's session (empty:
 // unchanged). Claude Code's /model and /effort would also change the user's
-// default for every new session, so derby restarts the session with --model
+// default for every new session, so jockey restarts the session with --model
 // and --effort instead, while Claude waits for the user.
 func (a *App) SetStepModel(stepID, model, effort string) error {
 	if effort != "" && !slices.Contains(settings.Efforts, effort) {
@@ -711,7 +711,7 @@ func skillsOf(names []string, content string) []Skill {
 	desc := map[string]string{}
 	for _, line := range strings.Split(content, "\n") {
 		line = strings.TrimPrefix(line, "- ")
-		best := "" // the longest name the line starts with: "derby:plan", not "derby"
+		best := "" // the longest name the line starts with: "jockey:plan", not "jockey"
 		for _, n := range names {
 			if strings.HasPrefix(line, n+": ") && len(n) > len(best) {
 				best = n

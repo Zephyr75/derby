@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"derby/internal/github"
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/github"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
 // Status is a task's derived status, shown on its card.
@@ -31,8 +31,8 @@ type StepView struct {
 	Paused   bool   `json:"paused"`   // stopped by the user until Resume
 	Rerun    bool   `json:"rerun"`    // Rerun applies (see markRerun)
 	Skip     bool   `json:"skip"`     // the check and cross buttons apply: the latest step, or one not finished
-	External bool   `json:"external"` // run by derby, not Claude: the Copilot review step
-	Busy     bool   `json:"-"`        // derby is running what follows its success: the automatic next step
+	External bool   `json:"external"` // run by jockey, not Claude: the Copilot review step
+	Busy     bool   `json:"-"`        // jockey is running what follows its success: the automatic next step
 }
 
 // Option is one next-step button.
@@ -82,7 +82,7 @@ type TaskView struct {
 	Labels      []string             `json:"labels"`      // labels of the open PR
 	Sisters     []SisterRef          `json:"sisters"`     // tasks for the other repositories of the same work
 	Part        string               `json:"part"`        // what this task's part of the work does, in a line (see Sisters)
-	Draft       bool                 `json:"draft"`       // the open PR is a draft (derby opens them so)
+	Draft       bool                 `json:"draft"`       // the open PR is a draft (jockey opens them so)
 	Conflicting bool                 `json:"conflicting"` // the open PR conflicts with its base: GitHub runs no checks
 	Feedback    []github.Feedback    `json:"feedback"`    // review threads (resolved ones too) and reviews of the open PR
 	Rejected    map[string]Rejection `json:"rejected"`    // open threads a step found wrong or unnecessary, by thread id
@@ -517,7 +517,7 @@ func nextOf(t store.Task, steps []StepView, agents []settings.Agent) Next {
 			nx.Text = fmt.Sprintf("PR #%d needs fixes: the PR tab lists Copilot's comments and the failing CI checks.", t.PRNumber)
 			ids = failureIDs(cop)
 		case last.Verdict == skipped:
-			nx.Text = fmt.Sprintf("Derby stopped waiting for Copilot on PR #%d.", t.PRNumber)
+			nx.Text = fmt.Sprintf("Jockey stopped waiting for Copilot on PR #%d.", t.PRNumber)
 		default:
 			nx.Text = fmt.Sprintf("Copilot found nothing to fix and CI passed on PR #%d. The task moves to Archive when the PR is merged or closed.", t.PRNumber)
 		}

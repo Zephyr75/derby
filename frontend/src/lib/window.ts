@@ -1,4 +1,4 @@
-// Window controls for derby's own titlebar (the window is frameless on Linux
+// Window controls for jockey's own titlebar (the window is frameless on Linux
 // and Windows; macOS keeps its traffic lights).
 
 const rt = () => (window as any).runtime

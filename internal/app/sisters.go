@@ -15,15 +15,15 @@ import (
 	"slices"
 	"strings"
 
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
 // SisterOffer is a repository a step asks for, without a sister task yet.
 type SisterOffer struct {
 	Repo    string `json:"repo"`    // as the artifact names it, e.g. okai-tcp-server
 	Scope   string `json:"scope"`   // what that part covers
-	Project string `json:"project"` // the derby project for it; "" when not added yet
+	Project string `json:"project"` // the jockey project for it; "" when not added yet
 	Part    string `json:"part"`    // its line in the plan's Parts overview, else the start of Scope
 	From    string `json:"-"`       // the artifact that asks for it
 }
@@ -160,7 +160,7 @@ func (a *App) summarised(group []store.Task, offers []SisterOffer, plans map[str
 			defer a.summarising.Delete(key)
 			lines := a.summariseParts(group, offers, plans)
 			if a.ctx.Err() != nil {
-				return // derby is quitting: try again next time
+				return // jockey is quitting: try again next time
 			}
 			b, _ := json.Marshal(partsCache{Sig: sig, Lines: lines})
 			_ = a.db.Set(key, string(b))
@@ -278,7 +278,7 @@ func (a *App) linkSister(taskID, sisterID string) error {
 	return a.db.Set(sistersKey(taskID), string(b))
 }
 
-// projectFor finds the derby project of a repository named in a plan.
+// projectFor finds the jockey project of a repository named in a plan.
 func (a *App) projectFor(repo string) (string, bool) {
 	for _, p := range a.settings.Config().Projects {
 		if strings.EqualFold(p.Name, repo) || strings.EqualFold(filepath.Base(p.Path), repo) {

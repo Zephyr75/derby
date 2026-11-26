@@ -9,7 +9,7 @@ import (
 	"testing"
 	"text/template"
 
-	"derby/defaults"
+	"jockey/defaults"
 )
 
 func TestCheckTriggers(t *testing.T) {
@@ -228,7 +228,7 @@ func TestInternalSkills(t *testing.T) {
 	}
 }
 
-// A new ~/.derby gets agents.toml and prompts.toml byte for byte as in the
+// A new ~/.jockey gets agents.toml and prompts.toml byte for byte as in the
 // repository's defaults/, so the two folders compare with a plain diff.
 func TestFilesMatchTheDefaults(t *testing.T) {
 	dir := t.TempDir()

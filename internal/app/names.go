@@ -15,8 +15,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
 // nameTasks names tasks in the background, one after the other: the given
@@ -105,7 +105,7 @@ func (a *App) haiku(prompt string) []byte {
 	cmd.Dir = a.Home
 	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
 		name, _, _ := strings.Cut(kv, "=")
-		return slices.Contains(inheritedSessionVars, name) || strings.HasPrefix(name, "DERBY_")
+		return slices.Contains(inheritedSessionVars, name) || strings.HasPrefix(name, "JOCKEY_")
 	})
 	out, _ := cmd.Output()
 	return out

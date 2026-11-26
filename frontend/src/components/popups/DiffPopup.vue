@@ -3,7 +3,7 @@
 // Changes tab), the selected file's read-only diff on the right.
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { api, errorText } from '../../lib/api'
-import { derby } from '../../lib/state'
+import { jockey } from '../../lib/state'
 import type { Changes, FileChange, FileDiff, Note, Step } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import DiffView from '../Diff.vue'
@@ -14,8 +14,8 @@ import Dropdown from '../ui/Dropdown.vue'
 import { SIDEBAR, useSidebar } from '../../lib/sidebar'
 
 // Unified or split, as Zed's diff toggle; remembered per viewer.
-const splitView = ref(read('derby.diff.split') === '1')
-watch(splitView, (v) => write('derby.diff.split', v ? '1' : '0'))
+const splitView = ref(read('jockey.diff.split') === '1')
+watch(splitView, (v) => write('jockey.diff.split', v ? '1' : '0'))
 function read(k: string) {
   try {
     return localStorage.getItem(k)
@@ -31,17 +31,17 @@ function write(k: string, v: string) {
   }
 }
 
-const stepId = computed(() => derby.diffOf?.step ?? '')
-const task = computed(() => derby.tasks.find((t) => t.steps.some((s) => s.id === stepId.value)))
+const stepId = computed(() => jockey.diffOf?.step ?? '')
+const task = computed(() => jockey.tasks.find((t) => t.steps.some((s) => s.id === stepId.value)))
 const step = computed(() => task.value?.steps.find((s) => s.id === stepId.value))
-const pickStep = (id: string) => derby.diffOf && (derby.diffOf = { step: id, path: '' })
+const pickStep = (id: string) => jockey.diffOf && (jockey.diffOf = { step: id, path: '' })
 // Only steps of agents set to "Makes changes" (Implement and Discuss by
 // default) make changes. Full, last, is the whole branch: a Copilot step's changes, the
 // same for every one of them.
 const changers = computed(() => {
   const steps = task.value?.steps ?? []
   const full = step.value?.external ? step.value : steps.filter((s) => s.external).pop()
-  return [...steps.filter((s) => !s.external && derby.settings?.agents.find((a) => a.id === s.agent)?.showDiff), ...(full ? [full] : [])]
+  return [...steps.filter((s) => !s.external && jockey.settings?.agents.find((a) => a.id === s.agent)?.showDiff), ...(full ? [full] : [])]
 })
 const label = (s: Step) => (s.external ? 'Full' : s.name)
 const stepItems = computed(() => changers.value.map((s) => ({ value: s.id, label: label(s) })))
@@ -51,7 +51,7 @@ const files = computed(() => changes.value?.files ?? [])
 // Files of the same path can exist in two repositories: a file is told apart by its task.
 const keyOf = (f: FileChange) => (f.task ?? '') + '\0' + f.path
 // Zed starts a file folded (lock files, generated code…) when its path has one of the fold words.
-const foldWords = computed(() => (derby.settings?.config.foldWords ?? []).map((w) => w.toLowerCase()).filter(Boolean))
+const foldWords = computed(() => (jockey.settings?.config.foldWords ?? []).map((w) => w.toLowerCase()).filter(Boolean))
 const foldedByDefault = (f: FileChange) => foldWords.value.some((w) => f.path.toLowerCase().includes(w))
 const folded = ref<Record<string, boolean>>({})
 const diffs = ref<Record<string, { diff?: FileDiff; error?: string }>>({})
@@ -65,8 +65,8 @@ async function loadChanges() {
   if (mine !== cseq) return
   // Opened from the artifact pop-up on a step without changes (Plan, an
   // earlier Review…): show the newest step that has some instead.
-  if (derby.diffOf?.auto) {
-    derby.diffOf.auto = false
+  if (jockey.diffOf?.auto) {
+    jockey.diffOf.auto = false
     if (!c?.files.length) {
       for (const s of changers.value.filter((x) => !x.external).reverse()) { // a step's own changes, not the (full) branch
         if (s.id === stepId.value) continue
@@ -106,7 +106,7 @@ watch(stepId, () => {
 // Uncommitted changes keep moving while the agent works.
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(
-  () => [step.value?.sha, step.value?.state, derby.selTask?.steps.length] as const,
+  () => [step.value?.sha, step.value?.state, jockey.selTask?.steps.length] as const,
   () => {
     clearTimeout(timer)
     timer = setTimeout(() => void loadChanges().then(() => loadVisible(true)), 800)
@@ -140,9 +140,9 @@ async function pick(path: string, taskId?: string) {
   if (el && scroller.value) scroller.value.scrollTo({ top: el.offsetTop, behavior: 'smooth' })
 }
 // The file picked from outside (the Changes tab).
-watch(() => derby.diffOf?.path, (p) => { if (p && files.value.length) void pick(p) })
+watch(() => jockey.diffOf?.path, (p) => { if (p && files.value.length) void pick(p) })
 watch(changes, () => {
-  const p = derby.diffOf?.path
+  const p = jockey.diffOf?.path
   if (p) void pick(p)
 }, { once: true })
 // The file in view is the one marked in the list.
@@ -164,26 +164,26 @@ const notePath = (f: FileChange) => (f.task && f.task !== task.value?.id && f.re
 const notesOf = (f: FileChange) => (task.value?.notes ?? []).filter((n) => n.path === notePath(f))
 function addNote(f: FileChange, n: Omit<Note, 'id' | 'path'>) {
   const t = task.value
-  if (t) void derby.setNotes(t, [...t.notes, { ...n, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), path: notePath(f) }])
+  if (t) void jockey.setNotes(t, [...t.notes, { ...n, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), path: notePath(f) }])
 }
 function updateNote(id: string, text: string) {
   const t = task.value
-  if (t) void derby.setNotes(t, t.notes.map((n) => (n.id === id ? { ...n, text } : n)))
+  if (t) void jockey.setNotes(t, t.notes.map((n) => (n.id === id ? { ...n, text } : n)))
 }
 function removeNote(id: string) {
   const t = task.value
-  if (t) void derby.setNotes(t, t.notes.filter((n) => n.id !== id))
+  if (t) void jockey.setNotes(t, t.notes.filter((n) => n.id !== id))
 }
 const sb = useSidebar('diff', 300)
-const close = () => derby.closeDiffPopup()
+const close = () => jockey.closeDiffPopup()
 
 // Zed shows this step's own diff: its commit (an Implement's is its
 // Review's), in the task's worktree; uncommitted work opens the worktree.
 async function openInZed() {
   const s = step.value
   if (!s) return
-  const lines = await derby.attempt('Could not open Zed', () => api.OpenInZed(s.taskId, s.id))
-  if (lines) derby.toast('Opening the diff in Zed', lines.join('\n'))
+  const lines = await jockey.attempt('Could not open Zed', () => api.OpenInZed(s.taskId, s.id))
+  if (lines) jockey.toast('Opening the diff in Zed', lines.join('\n'))
 }
 
 const box = ref<HTMLDivElement>()
@@ -207,7 +207,7 @@ function key(e: KeyboardEvent) {
       <Dropdown class="picker" :items="stepItems" :value="stepId" :placeholder="step ? label(step) : 'Step'" strong title="Other steps" @pick="chooseStep" />
       <span class="title">changes</span>
       <span class="grow"></span>
-      <button v-if="!derby.artifactOf" class="other" title="Show report" @click="derby.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
+      <button v-if="!jockey.artifactOf" class="other" title="Show report" @click="jockey.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
       <button class="pop-x" aria-label="Close" title="Close (Esc)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">

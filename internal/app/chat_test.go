@@ -8,8 +8,8 @@ import (
 func TestParseChat(t *testing.T) {
 	lines := strings.Join([]string{
 		`{"type":"ai-title","aiTitle":"Fix the unlock retry"}`,
-		`{"type":"user","message":{"role":"user","content":"<command-message>derby:implement</command-message>\n<command-name>/derby:implement</command-name>\n<command-args>4356 -- keep it small</command-args>"}}`,
-		`{"type":"user","isMeta":true,"message":{"role":"user","content":[{"type":"text","text":"You are the Derby **Implement** agent."}]}}`,
+		`{"type":"user","message":{"role":"user","content":"<command-message>jockey:implement</command-message>\n<command-name>/jockey:implement</command-name>\n<command-args>4356 -- keep it small</command-args>"}}`,
+		`{"type":"user","isMeta":true,"message":{"role":"user","content":[{"type":"text","text":"You are the Jockey **Implement** agent."}]}}`,
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"","signature":"x"}]}}`,
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Reading the plan."}]}}`,
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Edit","input":{"file_path":"/w/a.go","old_string":"a","new_string":"b"}}]}}`,
@@ -32,7 +32,7 @@ func TestParseChat(t *testing.T) {
 	if got := strings.Join(kinds, " "); got != "command text tool result note user error" {
 		t.Fatalf("kinds: %s", got)
 	}
-	if c := items[0]; c.Tool != "/derby:implement" || c.Text != "4356 -- keep it small" {
+	if c := items[0]; c.Tool != "/jockey:implement" || c.Text != "4356 -- keep it small" {
 		t.Errorf("command: %+v", c)
 	}
 	if r := items[3]; r.ID != "t1" || r.Diff != "@@ -3,1 +3,1 @@\n-a\n+b\n" || r.At != "" {
@@ -48,7 +48,7 @@ func TestParseChat(t *testing.T) {
 
 func TestChatBashAndSkills(t *testing.T) {
 	lines := strings.Join([]string{
-		`{"type":"attachment","attachment":{"type":"skill_listing","names":["derby","derby:plan","archify"],"content":"- derby:plan: Plan a task\n- archify: Draw diagrams"}}`,
+		`{"type":"attachment","attachment":{"type":"skill_listing","names":["jockey","jockey:plan","archify"],"content":"- jockey:plan: Plan a task\n- archify: Draw diagrams"}}`,
 		`{"type":"user","message":{"role":"user","content":"<bash-input>echo hi</bash-input>"}}`,
 		`{"type":"user","message":{"role":"user","content":"<bash-stdout>hi</bash-stdout><bash-stderr></bash-stderr>"}}`,
 	}, "\n") + "\n"

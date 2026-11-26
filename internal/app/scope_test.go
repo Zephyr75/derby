@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"derby/internal/settings"
+	"jockey/internal/settings"
 )
 
 func TestScopeLists(t *testing.T) {

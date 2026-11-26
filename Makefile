@@ -10,7 +10,7 @@ WAILS := $(or $(wildcard $(GOBIN_WAILS)),$(shell command -v wails 2>/dev/null),$
 dev:           ## desktop app with hot reload
 	$(WAILS) dev $(TAGS)
 
-build:         ## build/bin/derby
+build:         ## build/bin/jockey
 	$(WAILS) build $(TAGS)
 
 ui:            ## the UI alone in a browser, on the preview's mock data
@@ -22,5 +22,5 @@ test:
 check:
 	go vet ./internal/... && cd frontend && npm run check
 
-defaults-diff: ## what your ~/.derby agents and prompts change from defaults/ (empty: in sync)
-	@diff -u defaults/agents.toml $(HOME)/.derby/agents.toml; diff -u defaults/prompts.toml $(HOME)/.derby/prompts.toml; true
+defaults-diff: ## what your ~/.jockey agents and prompts change from defaults/ (empty: in sync)
+	@diff -u defaults/agents.toml $(HOME)/.jockey/agents.toml; diff -u defaults/prompts.toml $(HOME)/.jockey/prompts.toml; true

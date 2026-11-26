@@ -1,18 +1,18 @@
 <script setup lang="ts">
-// derby's top bar is the window's titlebar: drag it to move the window,
+// jockey's top bar is the window's titlebar: drag it to move the window,
 // double-click to maximise. On Linux and Windows the window is frameless and
 // the controls are drawn here; macOS keeps its traffic lights.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 import { label } from '../lib/keymap'
 import { isFullscreen, isMaximised, minimise, quit, toggleMaximise } from '../lib/window'
 import Icon from './ui/Icon.vue'
 
-const t = computed(() => derby.selTask)
-const scopeOpen = (m: string) => derby.overlay === 'scope' && derby.scope === m
-const controls = computed(() => derby.os !== 'darwin')
-const openTodos = computed(() => derby.todos.filter((x) => !x.done).length + derby.tasks.reduce((n, x) => n + x.todos.filter((y) => !y.done).length, 0))
-const todosKey = computed(() => label(derby.settings?.keymap.todos?.[0]))
+const t = computed(() => jockey.selTask)
+const scopeOpen = (m: string) => jockey.overlay === 'scope' && jockey.scope === m
+const controls = computed(() => jockey.os !== 'darwin')
+const openTodos = computed(() => jockey.todos.filter((x) => !x.done).length + jockey.tasks.reduce((n, x) => n + x.todos.filter((y) => !y.done).length, 0))
+const todosKey = computed(() => label(jockey.settings?.keymap.todos?.[0]))
 
 const maximised = ref(false)
 const fullscreen = ref(false)
@@ -35,37 +35,37 @@ function dblclick(e: MouseEvent) {
 </script>
 
 <template>
-  <header :class="{ mac: derby.os === 'darwin', full: fullscreen }" @dblclick="dblclick">
-    <button class="menu" :class="{ on: derby.view === 'settings' }" aria-label="Settings" title="Settings" @click="derby.command('settings')">
+  <header :class="{ mac: jockey.os === 'darwin', full: fullscreen }" @dblclick="dblclick">
+    <button class="menu" :class="{ on: jockey.view === 'settings' }" aria-label="Settings" title="Settings" @click="jockey.command('settings')">
       <Icon name="menu" :size="15" />
     </button>
-    <template v-if="derby.view === 'board' && t">
-      <button class="crumb project" title="Open a project in Zed" :class="{ on: scopeOpen('project') }" @click="derby.openOverlay('scope', 'project')">
+    <template v-if="jockey.view === 'board' && t">
+      <button class="crumb project" title="Open a project in Zed" :class="{ on: scopeOpen('project') }" @click="jockey.openOverlay('scope', 'project')">
         {{ t.projectName }}<Icon name="chevron" :size="12" />
       </button>
       <span class="sep" aria-hidden="true">/</span>
-      <button class="crumb" title="Open a worktree in Zed" :class="{ on: scopeOpen('worktree') }" @click="derby.openOverlay('scope', 'worktree')">
+      <button class="crumb" title="Open a worktree in Zed" :class="{ on: scopeOpen('worktree') }" @click="jockey.openOverlay('scope', 'worktree')">
         <Icon name="worktree" :size="12" /><span class="ct">{{ t.worktreeRel }}</span>
       </button>
       <span class="sep" aria-hidden="true">/</span>
-      <button class="crumb" title="Open a branch in Zed" :class="{ on: scopeOpen('branch') }" @click="derby.openOverlay('scope', 'branch')">
+      <button class="crumb" title="Open a branch in Zed" :class="{ on: scopeOpen('branch') }" @click="jockey.openOverlay('scope', 'branch')">
         <Icon name="branch" :size="12" /><span class="ct">{{ t.branch }}</span>
       </button>
     </template>
-    <span v-else-if="derby.view === 'settings'" class="muted label">Settings</span>
+    <span v-else-if="jockey.view === 'settings'" class="muted label">Settings</span>
     <span class="grow"></span>
-    <button class="todos" :class="{ on: derby.overlay === 'todos' }" :title="`Todos${todosKey ? ' (' + todosKey + ')' : ''}`" @click="derby.command('todos')">
+    <button class="todos" :class="{ on: jockey.overlay === 'todos' }" :title="`Todos${todosKey ? ' (' + todosKey + ')' : ''}`" @click="jockey.command('todos')">
       <Icon name="todo" :size="15" /><span v-if="openTodos" class="tcount">{{ openTodos }}</span>
     </button>
-    <button class="search" @click="derby.openOverlay('palette')">
+    <button class="search" @click="jockey.openOverlay('palette')">
       <Icon name="search" /><span class="grow stext">Search tasks</span>
     </button>
-    <button class="new" @click="derby.openOverlay('new')">
+    <button class="new" @click="jockey.openOverlay('new')">
       <Icon name="plus" :size="14" />New task
     </button>
     <div v-if="controls" class="win" aria-label="Window">
       <!-- Zed's Linux window controls (an 8px glyph in a 16px icon, in a 20px round button),
-           scaled by Zed's 16px UI font to derby's 13px: they look as big as Zed's -->
+           scaled by Zed's 16px UI font to jockey's 13px: they look as big as Zed's -->
       <button class="wc" aria-label="Minimise" title="Minimise" @click="minimise()">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 8h8" /></svg>
       </button>

@@ -4,7 +4,7 @@
 // or everything. A Zed picker, as the top bar's lists: a ghost button, then a
 // filter over the picks.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { derby, SISTERS } from '../lib/state'
+import { jockey, SISTERS } from '../lib/state'
 import Icon from './ui/Icon.vue'
 
 interface Row {
@@ -21,20 +21,20 @@ const input = ref<HTMLInputElement>()
 
 // Counts are archived tasks: a project's own, and the families' together.
 const all = computed<Row[]>(() => {
-  const archived = derby.tasks.filter((t) => t.archived)
-  const families = derby.sisterGroups
+  const archived = jockey.tasks.filter((t) => t.archived)
+  const families = jockey.sisterGroups
   const single = archived.filter((t) => !families.has(t.id))
-  const projects = derby.groups
+  const projects = jockey.groups
     .map((g) => ({ id: g.id, label: g.name, count: single.filter((t) => t.project === g.id).length, gone: g.gone }))
     .filter((r) => !r.gone || r.count)
   return [{ id: '', label: 'All projects', count: archived.length }, { id: SISTERS, label: 'Sisters', count: archived.length - single.length }, ...projects]
 })
-const label = computed(() => all.value.find((r) => r.id === derby.archiveScope)?.label ?? 'All projects')
+const label = computed(() => all.value.find((r) => r.id === jockey.archiveScope)?.label ?? 'All projects')
 const rows = computed(() => {
   const q = filter.value.toLowerCase().trim()
   return all.value.filter((r) => !q || r.label.toLowerCase().includes(q))
 })
-const current = () => Math.max(0, rows.value.findIndex((r) => r.id === derby.archiveScope))
+const current = () => Math.max(0, rows.value.findIndex((r) => r.id === jockey.archiveScope))
 watch(rows, () => (hi.value = current()))
 
 async function toggle() {
@@ -48,7 +48,7 @@ async function toggle() {
 
 function pick(r: Row) {
   open.value = false
-  derby.pickArchiveProject(r.id)
+  jockey.pickArchiveProject(r.id)
 }
 
 function key(e: KeyboardEvent) {
@@ -69,7 +69,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
 <template>
   <div ref="root" class="picker">
     <button type="button" class="trigger" :class="{ on: open }" title="Pick what to list" aria-haspopup="listbox" :aria-expanded="open" @click="toggle">
-      <Icon :name="derby.archiveScope === SISTERS ? 'sisters' : 'folder-open'" :size="14" class="fi" />
+      <Icon :name="jockey.archiveScope === SISTERS ? 'sisters' : 'folder-open'" :size="14" class="fi" />
       <span class="name">{{ label }}</span>
       <Icon name="chevron" :size="12" class="chev" />
     </button>
@@ -77,10 +77,10 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', outside, true))
       <label for="aq" class="sr-only">Filter projects</label>
       <input id="aq" ref="input" v-model="filter" placeholder="Filter projects…" autocomplete="off" spellcheck="false" @keydown="key" />
       <div class="rows" role="listbox">
-        <button v-for="(r, i) in rows" :key="r.id" type="button" class="row" role="option" :aria-selected="r.id === derby.archiveScope" :class="{ hi: i === hi }" @click="pick(r)" @mousemove="hi = i">
+        <button v-for="(r, i) in rows" :key="r.id" type="button" class="row" role="option" :aria-selected="r.id === jockey.archiveScope" :class="{ hi: i === hi }" @click="pick(r)" @mousemove="hi = i">
           <span class="label">{{ r.label }}</span>
           <span class="count">{{ r.count }}</span>
-          <span class="cur"><Icon v-if="r.id === derby.archiveScope" name="check" :size="13" /></span>
+          <span class="cur"><Icon v-if="r.id === jockey.archiveScope" name="check" :size="13" /></span>
         </button>
         <span v-if="!rows.length" class="none">Nothing found</span>
       </div>

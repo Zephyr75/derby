@@ -23,7 +23,7 @@ export interface Toast {
 let toastSeq = 0
 
 /** The id of a task's first step, Task: built in, it shows the task itself (its
- *  issue, comments and instructions). Derby runs nothing for it, so it is not in task.steps. */
+ *  issue, comments and instructions). Jockey runs nothing for it, so it is not in task.steps. */
 export const taskStepId = (taskId: string) => taskId + '/task'
 
 /** Panel widths: defaults, limits, and the per-viewer saved value. */
@@ -35,7 +35,7 @@ export type PanelSide = keyof typeof PANELS
 
 function savedWidth(side: PanelSide): number {
   try {
-    const v = Number(localStorage.getItem('derby.panel.' + side))
+    const v = Number(localStorage.getItem('jockey.panel.' + side))
     if (v >= PANELS[side].min && v <= PANELS[side].max) return v
   } catch {
     /* storage unavailable */
@@ -66,7 +66,7 @@ export interface ArchiveEntry {
   tasks: Task[]
 }
 
-class Derby {
+class Jockey {
   ready = false
   failed = ''
   os = 'linux'
@@ -91,7 +91,7 @@ class Derby {
   /** Projects folded in the left panel, by tab and project ("archive:core"): each tab folds its own. */
   collapsed: Record<string, boolean> = {}
   /** What the Archive lists: a project's archived tasks, the sister families (SISTERS), or '' for everything. */
-  archiveProject = savedText('derby.archive.project')
+  archiveProject = savedText('jockey.archive.project')
   guidance = ''
   toasts: Toast[] = []
   systemLight = false
@@ -101,10 +101,10 @@ class Derby {
   leftWidth = savedWidth('left')
   rightWidth = savedWidth('right')
   /** Hidden side panels (the toggles in the status bar). */
-  leftHidden = savedNumber('derby.panel.left.hidden') === 1
-  rightHidden = savedNumber('derby.panel.right.hidden') === 1
+  leftHidden = savedNumber('jockey.panel.left.hidden') === 1
+  rightHidden = savedNumber('jockey.panel.right.hidden') === 1
   /** Height of the steps list in the right panel; 0 lets it size itself. */
-  timelineHeight = savedNumber('derby.panel.timeline')
+  timelineHeight = savedNumber('jockey.panel.timeline')
   /** Bumped to reconnect the terminal, e.g. after a rerun. */
   termRev = 0
 
@@ -226,7 +226,7 @@ class Derby {
     on('toast', (d: { title: string; body: string; error: boolean }) => this.toast(d.title, d.body, d.error))
     on('menu', (what: string) => this.command(what))
     if (isDesktop) {
-      // Desktop notifications are only shown while derby is in the background.
+      // Desktop notifications are only shown while jockey is in the background.
       const report = () => void api.SetFocused(document.hasFocus() && !document.hidden)
       window.addEventListener('focus', report)
       window.addEventListener('blur', report)
@@ -346,7 +346,7 @@ class Derby {
     if (side === 'left') this.leftWidth = v
     else this.rightWidth = v
     try {
-      localStorage.setItem('derby.panel.' + side, String(v))
+      localStorage.setItem('jockey.panel.' + side, String(v))
     } catch {
       /* storage unavailable */
     }
@@ -355,7 +355,7 @@ class Derby {
   togglePanel(side: PanelSide) {
     const hidden = side === 'left' ? (this.leftHidden = !this.leftHidden) : (this.rightHidden = !this.rightHidden)
     try {
-      localStorage.setItem(`derby.panel.${side}.hidden`, hidden ? '1' : '0')
+      localStorage.setItem(`jockey.panel.${side}.hidden`, hidden ? '1' : '0')
     } catch {
       /* storage unavailable */
     }
@@ -364,7 +364,7 @@ class Derby {
   setTimelineHeight(h: number) {
     this.timelineHeight = Math.max(0, Math.round(h))
     try {
-      localStorage.setItem('derby.panel.timeline', String(this.timelineHeight))
+      localStorage.setItem('jockey.panel.timeline', String(this.timelineHeight))
     } catch {
       /* storage unavailable */
     }
@@ -489,7 +489,7 @@ class Derby {
   pickArchiveProject(id: string) {
     this.archiveProject = id
     try {
-      localStorage.setItem('derby.archive.project', id)
+      localStorage.setItem('jockey.archive.project', id)
     } catch {
       /* storage unavailable */
     }
@@ -713,7 +713,7 @@ class Derby {
     if (t && opt && !t.archived) void this.run(opt)
   }
 
-  /** prReady: '' without an open PR, 'draft' while derby's draft PR waits
+  /** prReady: '' without an open PR, 'draft' while jockey's draft PR waits
    *  for the Mark ready button, 'ready' once it is ready for review. */
   prReady(t: Task | null): '' | 'draft' | 'ready' {
     if (!t || t.archived || !t.pr || t.prState !== 'open') return ''
@@ -746,7 +746,7 @@ class Derby {
     return t.steps.some((s) => !s.external && (s.state === 'running' || s.state === 'idle' || s.state === 'approval'))
   }
 
-  /** canFix: derby can start a fix step on the task now. */
+  /** canFix: jockey can start a fix step on the task now. */
   canFix(t: Task): boolean {
     return !t.archived && !t.worktreeRemoved && !!this.fixers(t).length && !this.busy(t)
   }
@@ -792,7 +792,7 @@ class Derby {
     await this.attempt('Could not save the todos', () => api.SetTodos(t?.id ?? '', JSON.parse(JSON.stringify(todos))))
   }
 
-  /** prompt is one of derby's prompts (Settings > Context > Prompts), filled with vars. */
+  /** prompt is one of jockey's prompts (Settings > Context > Prompts), filled with vars. */
   prompt(id: string, vars: Record<string, string>): string {
     return fill(this.settings?.prompts.find((p) => p.id === id)?.text ?? '', vars)
   }
@@ -833,7 +833,7 @@ class Derby {
     return this.attempt('Could not stop Claude', () => api.StopStep(step.id))
   }
 
-  /** Stop Claude in derby and copy the command to continue it elsewhere. */
+  /** Stop Claude in jockey and copy the command to continue it elsewhere. */
   async stopAndCopy(step: Step) {
     await this.copyResume(step)
     await this.stopStep(step)
@@ -945,7 +945,7 @@ class Derby {
   private onKey(e: KeyboardEvent) {
     if (!this.settings) return
     // Ctrl+<letter> in a terminal is the terminal's (Ctrl+F moves the cursor,
-    // Ctrl+N recalls history): derby's shortcuts take it everywhere else.
+    // Ctrl+N recalls history): jockey's shortcuts take it everywhere else.
     const inTerm = (e.target as HTMLElement | null)?.closest?.('.xterm')
     if (inTerm && e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && /^[a-z]$/i.test(e.key)) return
     const action = actionFor(this.settings.keymap, e)
@@ -970,4 +970,4 @@ export const resumeCommand = (step: Step) => `claude --resume ${step.session}`
 /** The prefix of a sister family's category in the left panel. */
 export const SISTERS = ':sisters:' // no project id has a colon
 
-export const derby = reactive(new Derby())
+export const jockey = reactive(new Jockey())

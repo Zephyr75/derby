@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 import { label } from '../lib/keymap'
 import Icon from './ui/Icon.vue'
 
 const counts = computed(() => {
   const c = { running: 0, waiting: 0, approval: 0 }
   const projects = new Set<string>()
-  for (const t of derby.tasks) {
+  for (const t of jockey.tasks) {
     if (t.archived) continue
     const k = t.status.kind === 'failed' ? 'waiting' : t.status.kind // a failure waits for you
     if (k !== 'running' && k !== 'waiting' && k !== 'approval') continue
@@ -18,21 +18,21 @@ const counts = computed(() => {
 })
 const modelLabel = (m: string) => (m ? m[0].toUpperCase() + m.slice(1) : '')
 const right = computed(() => {
-  const t = derby.selTask
+  const t = jockey.selTask
   if (!t) return ''
   const parts = [t.branch, t.projectName]
-  if (derby.selStep) parts.unshift(modelLabel(derby.selStep.model))
+  if (jockey.selStep) parts.unshift(modelLabel(jockey.selStep.model))
   return parts.filter(Boolean).join(' · ')
 })
-const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show' : 'Hide'} ${what} (${label(derby.settings?.keymap[action]?.[0])})`
+const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show' : 'Hide'} ${what} (${label(jockey.settings?.keymap[action]?.[0])})`
 </script>
 
 <template>
   <footer>
-    <button class="dock" :class="{ off: derby.leftHidden }" :title="tip('tasks', derby.leftHidden, 'toggleLeft')" @click="derby.togglePanel('left')">
-      <Icon :name="derby.leftHidden ? 'panel-left-off' : 'panel-left'" :size="19" />
+    <button class="dock" :class="{ off: jockey.leftHidden }" :title="tip('tasks', jockey.leftHidden, 'toggleLeft')" @click="jockey.togglePanel('left')">
+      <Icon :name="jockey.leftHidden ? 'panel-left-off' : 'panel-left'" :size="19" />
     </button>
-    <button v-if="counts.running + counts.waiting + counts.approval" class="activity" :class="{ on: derby.overlay === 'activity' }" title="Show running tasks" @click="derby.openOverlay(derby.overlay === 'activity' ? 'none' : 'activity')">
+    <button v-if="counts.running + counts.waiting + counts.approval" class="activity" :class="{ on: jockey.overlay === 'activity' }" title="Show running tasks" @click="jockey.openOverlay(jockey.overlay === 'activity' ? 'none' : 'activity')">
       <span v-if="counts.running" class="item"><span class="dot s-running"></span>{{ counts.running }} running</span>
       <span v-if="counts.waiting" class="item"><span class="dot s-waiting"></span>{{ counts.waiting }} waiting for input</span>
       <span v-if="counts.approval" class="item"><span class="dot s-approval"></span>{{ counts.approval }} needs approval</span>
@@ -40,8 +40,8 @@ const tip = (what: string, hidden: boolean, action: string) => `${hidden ? 'Show
     </button>
     <span class="grow"></span>
     <span>{{ right }}</span>
-    <button class="dock" :class="{ off: derby.rightHidden }" :title="tip('steps', derby.rightHidden, 'toggleRight')" @click="derby.togglePanel('right')">
-      <Icon :name="derby.rightHidden ? 'panel-right-off' : 'panel-right'" :size="19" />
+    <button class="dock" :class="{ off: jockey.rightHidden }" :title="tip('steps', jockey.rightHidden, 'toggleRight')" @click="jockey.togglePanel('right')">
+      <Icon :name="jockey.rightHidden ? 'panel-right-off' : 'panel-right'" :size="19" />
     </button>
   </footer>
 </template>

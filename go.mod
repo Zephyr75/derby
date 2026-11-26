@@ -1,4 +1,4 @@
-module derby
+module jockey
 
 go 1.27.3
 

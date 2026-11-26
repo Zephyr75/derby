@@ -1,7 +1,7 @@
 package app
 
 // Revert: the latest step of an agent that can be reverted (Implement,
-// Discuss), while nothing committed after it, can be undone. derby keeps a
+// Discuss), while nothing committed after it, can be undone. jockey keeps a
 // snapshot of the worktree as each step starts; Revert puts the worktree back
 // to Implement's and removes it and every later step.
 
@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	"derby/internal/store"
+	"jockey/internal/store"
 )
 
 func snapKey(stepID string) string { return "snap:" + stepID }
@@ -31,7 +31,7 @@ func (a *App) snapshot(t store.Task, stepID string) {
 
 // revertable reports whether step i can be reverted: its agent can be
 // (Settings > Agents), no step of such an agent ran after it, it and every
-// step after it finished, nothing was committed since it started, and derby
+// step after it finished, nothing was committed since it started, and jockey
 // has a snapshot of its start.
 func (a *App) revertable(t store.Task, steps []StepView, i int, commits []commit) bool {
 	s := steps[i]

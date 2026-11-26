@@ -1,10 +1,10 @@
-# Derby implementation plan
+# Jockey implementation plan
 
 Oct 31, 2026 · @Antoine
 
 ## Goal and scope
 
-Derby is a standalone desktop app (Go + Wails) that runs Claude Code through a configurable pipeline of agents, on tasks from several repositories at once, each task in its own git worktree. It is a companion to Zed: same look, same themes, one click to open any task or step in Zed. The [UI preview](https://claude.ai/artifact/Jh2X5X1tHHsqxrRJ3M36e4) is the reference for every screen; its 16 artboards are listed under Frontend.
+Jockey is a standalone desktop app (Go + Wails) that runs Claude Code through a configurable pipeline of agents, on tasks from several repositories at once, each task in its own git worktree. It is a companion to Zed: same look, same themes, one click to open any task or step in Zed. The [UI preview](https://claude.ai/artifact/Jh2X5X1tHHsqxrRJ3M36e4) is the reference for every screen; its 16 artboards are listed under Frontend.
 
 Terms used below:
 
@@ -24,11 +24,11 @@ Workflow rules:
 5. A task moves to the Archive when its PR is merged or closed, or by hand; it can be restored.
 6. Tasks from all projects run in parallel; the left panel groups them by project.
 
-Out of scope for v1: remote access, multiple users, Linear or Jira sources, editing code inside derby (Zed does that).
+Out of scope for v1: remote access, multiple users, Linear or Jira sources, editing code inside jockey (Zed does that).
 
 ## Architecture
 
-Derby is one Wails app: a Go process that owns all state and every Claude Code process, and a TypeScript frontend rendered in the system webview. Wails is the Go equivalent of Electron or Tauri: Go methods are bound to the frontend as async functions, and Go emits events the frontend subscribes to.
+Jockey is one Wails app: a Go process that owns all state and every Claude Code process, and a TypeScript frontend rendered in the system webview. Wails is the Go equivalent of Electron or Tauri: Go methods are bound to the frontend as async functions, and Go emits events the frontend subscribes to.
 
 | Layer | Responsibility | Tech |
 | --- | --- | --- |
@@ -49,14 +49,14 @@ Why a WebSocket for terminals: Wails events carry JSON and suit state changes, b
 Files on disk:
 
 ```
-~/.derby/
+~/.jockey/
   config.toml                 # projects, appearance (dark | light | system), fonts, zed command, max live sessions
   agents.toml                 # agent definitions (Settings > Agents)
   context/general.md          # Settings > Context
   context/<project>.md
   keymap.json                 # Settings > Shortcuts
   hooks.json                  # Claude Code settings file with the hooks
-  derby.db                     # tasks, steps, sessions, archive
+  jockey.db                     # tasks, steps, sessions, archive
   runs/<project>/<task>/      # PLAN.md, IMPLEMENT-1.md, REVIEW-1.md, PR.md, FEEDBACK.md
   views/<project>/<task>-implement-1/   # disposable diff worktrees
 <each repo>/.worktrees/<task>/          # task worktrees, excluded via .git/info/exclude
@@ -136,7 +136,7 @@ Each step is an interactive `claude` built from its agent definition in Settings
 [[agent]]
 id = "impl"
 name = "Implement"
-command = "/derby:implement {task} -- {guidance}"
+command = "/jockey:implement {task} -- {guidance}"
 model = "opus"                 # --model
 trigger = "manual"             # or "after:impl" for Review
 writes = "IMPLEMENT-{n}.md"
@@ -153,24 +153,24 @@ The order of agents is the pipeline. Placeholders: `{task}` (issue number, or `-
 
 ```
 cd ~/code/pony/pony-core/.worktrees/4356
-DERBY_URL=http://127.0.0.1:<port> DERBY_TOKEN=<token> \
-DERBY_TASK=core:4356 DERBY_STEP=impl-2 DERBY_RUN_DIR=~/.derby/runs/pony-core/4356 \
-claude --settings ~/.derby/hooks.json --add-dir ~/.derby/runs/pony-core/4356 \
+JOCKEY_URL=http://127.0.0.1:<port> JOCKEY_TOKEN=<token> \
+JOCKEY_TASK=core:4356 JOCKEY_STEP=impl-2 JOCKEY_RUN_DIR=~/.jockey/runs/pony-core/4356 \
+claude --settings ~/.jockey/hooks.json --add-dir ~/.jockey/runs/pony-core/4356 \
        --model opus --permission-mode acceptEdits \
        --allowedTools "Read Edit Write Bash(go test:*)" --disallowedTools "Bash(git commit:*) Bash(git push:*)" \
-       "/derby:implement 4356 -- keep the retry budget configurable"
+       "/jockey:implement 4356 -- keep the retry budget configurable"
 ```
 
 **Task source in the prompt.** The runner writes `TASK.md` to the run dir before the first step: the issue number and repo when there is an issue, the description when there is one, and `source: issue | issue+description | local` in front matter. Every agent's skill reads `TASK.md` first; only Plan fetches the issue body with `gh issue view`.
 
-**Context.** Before each launch the runner writes `CONTEXT.md` to the run dir: general context, then the project context, filtered by the agents each block applies to. The plugin's `context` skill tells every agent to read it. The repo's `CLAUDE.md` is loaded by Claude Code itself; the per-project toggle in Settings only controls whether derby mentions it.
+**Context.** Before each launch the runner writes `CONTEXT.md` to the run dir: general context, then the project context, filtered by the agents each block applies to. The plugin's `context` skill tells every agent to read it. The repo's `CLAUDE.md` is loaded by Claude Code itself; the per-project toggle in Settings only controls whether jockey mentions it.
 
-**Hooks** (`~/.derby/hooks.json`) post each event's JSON to the receiver; the token stops other local processes from faking events.
+**Hooks** (`~/.jockey/hooks.json`) post each event's JSON to the receiver; the token stops other local processes from faking events.
 
 ```json
 {
   "hooks": {
-    "SessionStart":     [{ "hooks": [{ "type": "command", "command": "[ -n \"$DERBY_URL\" ] && curl -s -X POST \"$DERBY_URL/hook?event=SessionStart\" -H \"X-Derby-Token: $DERBY_TOKEN\" -H \"X-Derby-Step: $DERBY_TASK/$DERBY_STEP\" --data-binary @-" }] }],
+    "SessionStart":     [{ "hooks": [{ "type": "command", "command": "[ -n \"$JOCKEY_URL\" ] && curl -s -X POST \"$JOCKEY_URL/hook?event=SessionStart\" -H \"X-Jockey-Token: $JOCKEY_TOKEN\" -H \"X-Jockey-Step: $JOCKEY_TASK/$JOCKEY_STEP\" --data-binary @-" }] }],
     "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "same, event=UserPromptSubmit" }] }],
     "Notification":     [{ "hooks": [{ "type": "command", "command": "same, event=Notification" }] }],
     "Stop":             [{ "hooks": [{ "type": "command", "command": "same, event=Stop" }] }]
@@ -180,7 +180,7 @@ claude --settings ~/.derby/hooks.json --add-dir ~/.derby/runs/pony-core/4356 \
 
 **Resume.** Opening a step whose process has ended runs `claude --resume <session_id>` with the same cwd, env and flags, so hooks keep reporting to that step.
 
-**Push** is half agent, half code: the Push agent writes `PR.md`; derby then runs `git push`, `gh pr create --body-file PR.md`, polls the PR reviews until Copilot's arrives and appends its comments to `FEEDBACK.md`. That output streams into the Push tab.
+**Push** is half agent, half code: the Push agent writes `PR.md`; jockey then runs `git push`, `gh pr create --body-file PR.md`, polls the PR reviews until Copilot's arrives and appends its comments to `FEEDBACK.md`. That output streams into the Push tab.
 
 ## Git, worktrees and Zed
 
@@ -198,7 +198,7 @@ Every task lives in its own worktree on its own branch, and every finished Imple
 **Step diff in Zed.** A disposable view worktree sits at the step's commit, with the index reset to its parent, so Zed's git panel shows exactly that step's changes as uncommitted edits. The live worktree is never touched.
 
 ```
-V=~/.derby/views/pony-core/4356-implement-1
+V=~/.jockey/views/pony-core/4356-implement-1
 git -C ~/code/pony/pony-core worktree remove --force "$V" 2>/dev/null
 git -C ~/code/pony/pony-core worktree add --detach "$V" b7c41d9
 git -C "$V" reset b7c41d9^      # mixed reset: files stay, changes become unstaged
@@ -207,9 +207,9 @@ zed "$V"
 
 Plan and Review steps have no commit; their Zed button opens the live worktree. View worktrees are pruned when the task is deleted or on startup.
 
-Every git command runs with `-C <project path>`, so tasks from different repos never share state; only the derby process is common. A LOCAL task uses `local-<slug>` in place of the issue number everywhere (`agent/local-rebalance-heatmap`).
+Every git command runs with `-C <project path>`, so tasks from different repos never share state; only the jockey process is common. A LOCAL task uses `local-<slug>` in place of the issue number everywhere (`agent/local-rebalance-heatmap`).
 
-Prerequisites, checked in Settings > Projects with a warning row when missing: the `zed` CLI on `PATH` (the command is configurable in Appearance), `gh` authenticated with access to each project's repo, and `.worktrees/` in each repo's `.git/info/exclude` (derby adds it). Each project has a port range in Settings; a task gets `DERBY_PORT_BASE` from its project's range so parallel dev servers never collide.
+Prerequisites, checked in Settings > Projects with a warning row when missing: the `zed` CLI on `PATH` (the command is configurable in Appearance), `gh` authenticated with access to each project's repo, and `.worktrees/` in each repo's `.git/info/exclude` (jockey adds it). Each project has a port range in Settings; a task gets `JOCKEY_PORT_BASE` from its project's range so parallel dev servers never collide.
 
 ## Frontend
 
@@ -303,7 +303,7 @@ Build in this order. Milestones 1 to 3 prove the risky part (embedded terminals 
 9. **Push, Copilot, Archive.** PR.md, push, PR creation, Copilot polling into FEEDBACK.md, archive on merge or close, Restore, Remove worktree.
    - Done when: merging the PR on GitHub moves the task to Archive within a few minutes.
 10. **Context and polish.** Settings > Context, startup reconciliation (dead processes → failed), Mark done, live-session cap, packaging for macOS and Linux.
-    - Done when: killing derby mid-step and restarting leaves every task in a sensible state.
+    - Done when: killing jockey mid-step and restarting leaves every task in a sensible state.
 
 ## Risks and open questions
 

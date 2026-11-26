@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 </script>
 
 <template>
-  <div v-if="derby.toasts.length" class="stack" aria-live="polite">
-    <div v-for="t in derby.toasts" :key="t.id" class="toast popup" :class="{ error: t.error }">
+  <div v-if="jockey.toasts.length" class="stack" aria-live="polite">
+    <div v-for="t in jockey.toasts" :key="t.id" class="toast popup" :class="{ error: t.error }">
       <span class="title">{{ t.title }}</span>
       <span v-if="t.body" class="body">{{ t.body }}</span>
     </div>

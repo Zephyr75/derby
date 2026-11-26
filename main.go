@@ -1,4 +1,4 @@
-// Command derby is a desktop app that runs Claude Code through a pipeline of
+// Command jockey is a desktop app that runs Claude Code through a pipeline of
 // agents, on tasks from several repositories, each in its own git worktree.
 package main
 
@@ -16,16 +16,16 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
-	"derby/internal/app"
-	"derby/internal/holder"
+	"jockey/internal/app"
+	"jockey/internal/holder"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
-	// `derby hold <socket> -- <cmd>` keeps one Claude Code session alive
-	// across derby restarts (see internal/holder).
+	// `jockey hold <socket> -- <cmd>` keeps one Claude Code session alive
+	// across jockey restarts (see internal/holder).
 	if len(os.Args) > 1 && os.Args[1] == "hold" {
 		os.Exit(holder.Main(os.Args[2:]))
 	}
@@ -38,13 +38,13 @@ func main() {
 	shell := &Shell{svc: svc}
 
 	opts := &options.App{
-		Title:            "Derby",
+		Title:            "Jockey",
 		Width:            1440,
 		Height:           900,
 		MinWidth:         960,
 		MinHeight:        600,
 		BackgroundColour: &options.RGBA{R: 0x18, G: 0x19, B: 0x1b, A: 0xff},
-		// derby's top bar is the titlebar: it drags the window and holds the
+		// jockey's top bar is the titlebar: it drags the window and holds the
 		// window controls. macOS keeps its traffic lights (TitleBarHidden:
 		// the inset variant places them for a taller toolbar, below the bar's centre).
 		Frameless:   runtime.GOOS != "darwin",
@@ -55,9 +55,9 @@ func main() {
 		Mac: &mac.Options{
 			TitleBar:             mac.TitleBarHidden(),
 			WebviewIsTransparent: false,
-			About:                &mac.AboutInfo{Title: "Derby", Message: "Claude Code agents, one worktree per task."},
+			About:                &mac.AboutInfo{Title: "Jockey", Message: "Claude Code agents, one worktree per task."},
 		},
-		Linux: &linux.Options{ProgramName: "derby"},
+		Linux: &linux.Options{ProgramName: "jockey"},
 	}
 	// ⌘P and ⌘N also work as menu items on macOS; elsewhere the frontend
 	// handles every shortcut and the window has no menu bar.

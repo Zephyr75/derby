@@ -8,7 +8,7 @@ import (
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"derby/internal/app"
+	"jockey/internal/app"
 )
 
 // Shell connects the bound App service to the Wails runtime: events, the
@@ -23,10 +23,10 @@ type Shell struct {
 func (s *Shell) startup(ctx context.Context) {
 	s.ctx = ctx
 	if err := wruntime.InitializeNotifications(ctx); err != nil {
-		log.Printf("derby: notifications: %v", err)
+		log.Printf("jockey: notifications: %v", err)
 	} else {
 		s.notifyOK.Store(true)
-		// A click on a notification brings derby forward on that task.
+		// A click on a notification brings jockey forward on that task.
 		wruntime.OnNotificationResponse(ctx, func(r wruntime.NotificationResult) {
 			if r.Error != nil {
 				return
@@ -39,9 +39,9 @@ func (s *Shell) startup(ctx context.Context) {
 		})
 	}
 	if err := app.Start(s.svc, ctx, s); err != nil {
-		log.Printf("derby: startup: %v", err)
+		log.Printf("jockey: startup: %v", err)
 		wruntime.MessageDialog(ctx, wruntime.MessageDialogOptions{
-			Type: wruntime.ErrorDialog, Title: "Derby could not start", Message: err.Error(),
+			Type: wruntime.ErrorDialog, Title: "Jockey could not start", Message: err.Error(),
 		})
 		wruntime.Quit(ctx)
 	}
@@ -60,11 +60,11 @@ func (s *Shell) Notify(title, body, taskID string) {
 		return
 	}
 	err := wruntime.SendNotification(s.ctx, wruntime.NotificationOptions{
-		ID: fmt.Sprintf("derby-%d", s.notifyN.Add(1)), Title: title, Body: body,
+		ID: fmt.Sprintf("jockey-%d", s.notifyN.Add(1)), Title: title, Body: body,
 		Data: map[string]interface{}{"taskId": taskID},
 	})
 	if err != nil {
-		log.Printf("derby: notify: %v", err)
+		log.Printf("jockey: notify: %v", err)
 	}
 }
 

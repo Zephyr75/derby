@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onUpdated, ref, watch } from 'vue'
 import { api } from '../lib/api'
-import { derby, taskName } from '../lib/state'
+import { jockey, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 
-const t = computed(() => derby.selTask)
+const t = computed(() => jockey.selTask)
 const nx = computed(() => t.value?.next)
 const runnable = computed(() => !!t.value && !t.value.archived && !!nx.value?.options.length)
 // Nothing to act on, e.g. while an agent runs: the box hides.
@@ -17,30 +17,30 @@ const show = computed(() => {
 
 async function restore() {
   const task = t.value
-  if (task) await derby.restoreTask(task)
+  if (task) await jockey.restoreTask(task)
 }
-// Deleting is for good: derby forgets the task and removes its worktree, local
+// Deleting is for good: jockey forgets the task and removes its worktree, local
 // branch and run files. Two clicks.
 async function deleteTask() {
   const task = t.value
   if (!task) return
-  if (derby.confirmDelete !== task.id) {
-    derby.confirmDelete = task.id
+  if (jockey.confirmDelete !== task.id) {
+    jockey.confirmDelete = task.id
     return
   }
-  derby.confirmDelete = ''
-  const lines = await derby.attempt('Could not delete the task', () => api.DeleteTask(task.id))
-  if (lines) derby.toast('Deleted ' + (task.issue ? '#' + task.issue : taskName(task)), lines.join('\n'))
+  jockey.confirmDelete = ''
+  const lines = await jockey.attempt('Could not delete the task', () => api.DeleteTask(task.id))
+  if (lines) jockey.toast('Deleted ' + (task.issue ? '#' + task.issue : taskName(task)), lines.join('\n'))
 }
-const markDone = (id: string) => derby.attempt('Mark done failed', () => api.MarkDone(id))
+const markDone = (id: string) => jockey.attempt('Mark done failed', () => api.MarkDone(id))
 // One click per repository the plan also needs: its sister task, or first its project.
 async function createSister(repo: string) {
   const task = t.value
   if (!task) return
-  const s = await derby.attempt('Could not create the sister task', () => api.CreateSister(task.id, repo))
-  if (s) derby.toast('Sister task created', `${repo}: ${s.title}`)
+  const s = await jockey.attempt('Could not create the sister task', () => api.CreateSister(task.id, repo))
+  if (s) jockey.toast('Sister task created', `${repo}: ${s.title}`)
 }
-const addProject = () => derby.attempt('Could not add the project', () => api.AddProject())
+const addProject = () => jockey.attempt('Could not add the project', () => api.AddProject())
 
 // Buttons pair up two per line; with an odd count the first, the main one,
 // takes the first line alone. If a paired label does not fit in half the
@@ -84,34 +84,34 @@ onUpdated(fit)
     <div v-for="o in nx.sisters" :key="o.repo" class="sister">
       <p :title="o.scope"><b>The plan also needs {{ o.repo }}</b>: {{ o.part || o.scope }}</p>
       <button v-if="o.project" class="btn primary" :title="`Create a sister task in ${o.repo}`" @click="createSister(o.repo)"><Icon name="plus" :size="13" /><span>Create sister task</span></button>
-      <button v-else class="btn" :title="`Add ${o.repo} to Derby first`" @click="addProject"><Icon name="plus" :size="13" /><span>Add as a project</span></button>
+      <button v-else class="btn" :title="`Add ${o.repo} to Jockey first`" @click="addProject"><Icon name="plus" :size="13" /><span>Add as a project</span></button>
     </div>
 
     <template v-if="runnable">
       <label for="guide" class="sr-only">Guidance for Claude</label>
       <p v-if="nx.warning" class="warn"><Icon name="warn" :size="14" />{{ nx.warning }}</p>
       <p v-if="nx.elsewhere.length" class="warn">
-        <Icon name="warn" :size="14" />Steps also edited files outside the worktree, in {{ nx.elsewhere.join(', ') }}. Derby only commits {{ t.branch }}: check those edits yourself.
+        <Icon name="warn" :size="14" />Steps also edited files outside the worktree, in {{ nx.elsewhere.join(', ') }}. Jockey only commits {{ t.branch }}: check those edits yourself.
       </p>
-      <textarea id="guide" v-model="derby.guidance" rows="3" :class="{ need: nx.warning && !derby.guidance.trim() }" :placeholder="nx.warning ? 'Which option? e.g. take option B, because…' : 'Guidance for Claude (optional)'"></textarea>
+      <textarea id="guide" v-model="jockey.guidance" rows="3" :class="{ need: nx.warning && !jockey.guidance.trim() }" :placeholder="nx.warning ? 'Which option? e.g. take option B, because…' : 'Guidance for Claude (optional)'"></textarea>
     </template>
 
-    <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so Derby cannot restore this task or touch its repository. Delete task only removes it from derby.</p>
+    <p v-if="t.projectGone">{{ t.projectName }} is no longer in Settings &gt; Projects, so Jockey cannot restore this task or touch its repository. Delete task only removes it from jockey.</p>
 
     <div ref="opts" class="opts" :class="{ stack }">
       <template v-if="runnable">
-        <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" :title="o.label" @click="derby.run(o)"><Icon name="play" :size="13" /><span>{{ o.label }}</span></button>
+        <button v-for="(o, i) in nx.options" :key="o.agent + o.n" class="btn" :class="{ primary: i === 0 }" :title="o.label" @click="jockey.run(o)"><Icon name="play" :size="13" /><span>{{ o.label }}</span></button>
       </template>
       <button v-if="nx.markDone" class="btn" @click="markDone(nx.markDone)"><span>Mark done</span></button>
       <template v-if="t.archived">
         <button v-if="!t.worktreeRemoved && !t.projectGone" class="btn" @click="restore"><span>Restore to Tasks</span></button>
         <button
           class="btn"
-          :class="{ danger: derby.confirmDelete === t.id }"
+          :class="{ danger: jockey.confirmDelete === t.id }"
           title="The PR stays on GitHub"
           @click="deleteTask"
         >
-          <span>{{ derby.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}</span>
+          <span>{{ jockey.confirmDelete === t.id ? 'Delete for good? This cannot be undone' : t.projectGone ? 'Delete task' : 'Delete task and worktree' }}</span>
         </button>
       </template>
     </div>

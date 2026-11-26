@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// derby's icons, from Lucide (lucide.dev), by the names derby uses.
+// jockey's icons, from Lucide (lucide.dev), by the names jockey uses.
 import { computed, type Component } from 'vue'
 import {
   Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, FoldVertical, Folder, FolderOpen, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu, UnfoldVertical,

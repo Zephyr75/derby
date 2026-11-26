@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// derby's logo: the jockey helmet of build/appicon.png, without its tile.
+// jockey's logo: the jockey helmet of build/appicon.png, without its tile.
 import logo from '../../assets/logo.png'
 
 withDefaults(defineProps<{ size?: number }>(), { size: 96 })

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
 func TestDiagrams(t *testing.T) {
@@ -84,10 +84,10 @@ func TestSisterOffersFromAllowedAgents(t *testing.T) {
 }
 
 // An agent can ask the user in a form (the step waits for them) and commit
-// the work itself: derby records the commit as the step's.
+// the work itself: jockey records the commit as the step's.
 func TestFormThenCommit(t *testing.T) {
 	a, _ := newTestApp(t)
-	ags := append(a.settings.Agents(), settings.Agent{ID: "form", Name: "Form", Command: "/derby:form {task}", Trigger: "manual", Writes: "FORM.md"})
+	ags := append(a.settings.Agents(), settings.Agent{ID: "form", Name: "Form", Command: "/jockey:form {task}", Trigger: "manual", Writes: "FORM.md"})
 	if err := a.SaveAgents(ags); err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ esac
 	return path
 }
 
-// The Push agent opens the PR itself: after it succeeds derby finds the PR of
+// The Push agent opens the PR itself: after it succeeds jockey finds the PR of
 // the branch, Copilot's step starts with the PR's title and description in
 // COPILOT-n.md; Explain is manual and stays unstarted.
 func TestAfterPushFindsThePR(t *testing.T) {

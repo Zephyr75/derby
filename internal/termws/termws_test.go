@@ -9,7 +9,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"derby/internal/runner"
+	"jockey/internal/runner"
 )
 
 func TestRoundTrip(t *testing.T) {
@@ -34,11 +34,11 @@ func TestRoundTrip(t *testing.T) {
 	if err := c.Write(ctx, websocket.MessageText, []byte(`{"type":"resize","cols":100,"rows":30}`)); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Write(ctx, websocket.MessageBinary, []byte("hello derby\r")); err != nil {
+	if err := c.Write(ctx, websocket.MessageBinary, []byte("hello jockey\r")); err != nil {
 		t.Fatal(err)
 	}
 	var got strings.Builder
-	for !strings.Contains(got.String(), "hello derby") {
+	for !strings.Contains(got.String(), "hello jockey") {
 		_, b, err := c.Read(ctx)
 		if err != nil {
 			t.Fatalf("read: %v (got %q)", err, got.String())

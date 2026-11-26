@@ -4,7 +4,7 @@
 // branches; picking one opens it in Zed.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
-import { derby, type ScopeMode } from '../../lib/state'
+import { jockey, type ScopeMode } from '../../lib/state'
 import type { Branch, Worktree } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 
@@ -16,9 +16,9 @@ interface Row {
   open: () => Promise<void>
 }
 
-const t = computed(() => derby.selTask)
-const project = computed(() => t.value?.project ?? derby.projects[0]?.id ?? '')
-const pname = computed(() => derby.project(project.value)?.name ?? project.value)
+const t = computed(() => jockey.selTask)
+const project = computed(() => t.value?.project ?? jockey.projects[0]?.id ?? '')
+const pname = computed(() => jockey.project(project.value)?.name ?? project.value)
 const worktrees = ref<Worktree[]>()
 const branches = ref<Branch[]>()
 const filter = ref('')
@@ -36,23 +36,23 @@ onMounted(() => {
 async function load(mode: ScopeMode) {
   const id = project.value
   if (!id) return
-  if (mode === 'worktree' && !worktrees.value) worktrees.value = (await derby.attempt('Could not list the worktrees', () => api.ProjectWorktrees(id))) ?? []
-  if (mode === 'branch' && !branches.value) branches.value = (await derby.attempt('Could not list the branches', () => api.ProjectBranches(id))) ?? []
+  if (mode === 'worktree' && !worktrees.value) worktrees.value = (await jockey.attempt('Could not list the worktrees', () => api.ProjectWorktrees(id))) ?? []
+  if (mode === 'branch' && !branches.value) branches.value = (await jockey.attempt('Could not list the branches', () => api.ProjectBranches(id))) ?? []
 }
-watch(() => derby.scope, load, { immediate: true })
+watch(() => jockey.scope, load, { immediate: true })
 
 // A path inside the project, relative to it; else the folder's name.
 function short(path: string) {
-  const root = derby.project(project.value)?.path ?? ''
+  const root = jockey.project(project.value)?.path ?? ''
   if (root && path.startsWith(root + '/')) return path.slice(root.length + 1)
   return path.split('/').pop() || path
 }
 
 const all = computed<Row[] | undefined>(() => {
   const id = project.value
-  if (derby.scope === 'project')
-    return derby.projects.map((p) => ({ key: p.id, label: p.name, detail: p.path, current: p.id === id, open: () => api.OpenProjectInZed(p.id) }))
-  if (derby.scope === 'worktree')
+  if (jockey.scope === 'project')
+    return jockey.projects.map((p) => ({ key: p.id, label: p.name, detail: p.path, current: p.id === id, open: () => api.OpenProjectInZed(p.id) }))
+  if (jockey.scope === 'worktree')
     return worktrees.value?.map((w) => ({
       key: w.path,
       label: w.main ? pname.value : short(w.path),
@@ -74,12 +74,12 @@ const rows = computed(() => {
 })
 watch(rows, () => (hi.value = Math.max(0, rows.value.findIndex((r) => r.current))), { immediate: true })
 
-const placeholder = computed(() => (derby.scope === 'project' ? 'Open a project in Zed…' : derby.scope === 'worktree' ? 'Open a worktree in Zed…' : 'Open a branch in Zed…'))
+const placeholder = computed(() => (jockey.scope === 'project' ? 'Open a project in Zed…' : jockey.scope === 'worktree' ? 'Open a worktree in Zed…' : 'Open a branch in Zed…'))
 const empty = computed(() => (all.value ? 'Nothing found' : 'Loading…'))
 
 function open(r: Row) {
-  derby.overlay = 'none'
-  void derby.attempt('Could not open Zed', r.open)
+  jockey.overlay = 'none'
+  void jockey.attempt('Could not open Zed', r.open)
 }
 
 const modes: ScopeMode[] = ['project', 'worktree', 'branch']
@@ -87,7 +87,7 @@ function key(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') hi.value = Math.min(rows.value.length - 1, hi.value + 1)
   else if (e.key === 'ArrowUp') hi.value = Math.max(0, hi.value - 1)
   else if (e.key === 'Tab' && t.value) {
-    derby.scope = modes[(modes.indexOf(derby.scope) + (e.shiftKey ? 2 : 1)) % 3]
+    jockey.scope = modes[(modes.indexOf(jockey.scope) + (e.shiftKey ? 2 : 1)) % 3]
     filter.value = ''
   } else if (e.key === 'Enter' && rows.value[hi.value]) open(rows.value[hi.value])
   else return
@@ -96,14 +96,14 @@ function key(e: KeyboardEvent) {
 </script>
 
 <template>
-  <button class="scrim" aria-label="Close" @click="derby.overlay = 'none'"></button>
-  <div class="box popup" :class="{ mac: derby.os === 'darwin' }" :style="at !== undefined ? { left: at + 'px' } : undefined" role="dialog" :aria-label="placeholder">
+  <button class="scrim" aria-label="Close" @click="jockey.overlay = 'none'"></button>
+  <div class="box popup" :class="{ mac: jockey.os === 'darwin' }" :style="at !== undefined ? { left: at + 'px' } : undefined" role="dialog" :aria-label="placeholder">
     <label for="sq" class="sr-only">{{ placeholder }}</label>
     <input id="sq" ref="input" v-model="filter" :placeholder="placeholder" autocomplete="off" spellcheck="false" @keydown="key" />
     <div class="rows" role="listbox">
       <button v-for="(r, i) in rows" :key="r.key" class="row" role="option" :aria-selected="i === hi" :class="{ hi: i === hi }" :title="r.detail" @click="open(r)" @mousemove="hi = i">
-        <span class="label" :class="{ mono: derby.scope !== 'project' }">{{ r.label }}</span>
-        <span class="detail">{{ derby.scope === 'project' ? '' : r.detail }}</span>
+        <span class="label" :class="{ mono: jockey.scope !== 'project' }">{{ r.label }}</span>
+        <span class="detail">{{ jockey.scope === 'project' ? '' : r.detail }}</span>
         <Icon v-if="r.current" name="check" :size="13" class="cur" />
       </button>
       <span v-if="!rows.length" class="none">{{ empty }}</span>

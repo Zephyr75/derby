@@ -11,7 +11,7 @@ import (
 
 // Claude Code asks whether to trust a folder it never ran in (a new task's
 // worktree) before anything else, hooks included. The chat view shows that
-// question so it can be answered without the terminal: derby reads it from
+// question so it can be answered without the terminal: jockey reads it from
 // the session's output and moves the dialog's cursor to "Yes".
 
 const trustScanMax = 256 << 10 // the dialog comes first: a longer output is past it

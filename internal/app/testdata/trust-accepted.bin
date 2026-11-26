@@ -3,7 +3,7 @@ Claude Code's fullscreen renderer has repeatedly failed to start on this machine
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 [2GAccessing[12Gworkspace:
 
-[2G/private/tmp/derby-trust-fixture
+[2G/private/tmp/jockey-trust-fixture
 
 [2GQuick[8Gsafety[15Gcheck:[22GIs[25Gthis[30Ga[32Gproject[40Gyou[44Gcreated[52Gor[55Gone[59Gyou[63Gtrust?[70G(Like[76Gyour[81Gown[85Gcode,[91Ga
 [2Gwell-known[13Gopen[18Gsource[25Gproject,[34Gor[37Gwork[42Gfrom[47Gyour[52Gteam).[59GIf[62Gnot,[67Gtake[72Ga[74Gmoment[81Gto[84Greview[91Gwhat's[98Gin
@@ -22,14 +22,14 @@ Claude Code's fullscreen renderer has repeatedly failed to start on this machine
 
 [1C[3A[>4m[<u[?1004l[?2031l[?2004l[1D[3B[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[G[1A[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[1B[K[17A[?2004h[?2031h[?1004h]0;✳ Claude Code[2G▐▛███▛█[12GClaude[19GCode[24Gv2.1.311
 ▝▜██████▀[12GOpus[17G5.5[21Gwith[26Gmedium[33Geffort[40G·[42GClaude[49GTeam
-[2G▝▝[7G▝▝[12G/private/tmp/derby-trust-fixture
+[2G▝▝[7G▝▝[12G/private/tmp/jockey-trust-fixture
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯ Try[7G"create[15Ga[17Gutil[22Glogging.py[33Gthat..."
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 [3G⏵⏵[6Gauto[11Gmode[16Gon[19G(shift+tab[30Gto[33Gcycle)[40G·[42G←[44Gfor[48Gagents[81G◐[83Gmedium[90G·[92G/effort
-[2C[3A[?25h[>0q[c[?25l[2D[3B[2C[1A[Opus 5.5] │[16Gderby-trus[27G-fixture +derby-trust-fix[53Gure
+[2C[3A[?25h[>0q[c[?25l[2D[3B[2C[1A[Opus 5.5] │[16Gjockey-trus[27G-fixture +jockey-trust-fix[53Gure
 [3GContext[11G░░░░░░[18G0%
 [3G⏵⏵[6Gauto[11Gmode[16Gon[19G(shift+tab[30Gto[33Gcycle)[40G·[42G←[44Gfor[48Gagents
 [2C[5A[?25h

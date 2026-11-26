@@ -7,30 +7,30 @@ import (
 	"strings"
 )
 
-// Derby was called herd: its folder was ~/.herd, its commands /herd:<agent>
-// and its variables HERD_*. MigrateHome moves that folder to ~/.derby once,
+// Jockey was called derby: its folder was ~/.derby, its commands /derby:<agent>
+// and its variables DERBY_*. MigrateHome moves that folder to ~/.jockey once,
 // leaving a link at the old path for the Claude Code sessions started before
 // (their run directories and hooks settings), and renames them in your
 // agents.toml and prompts.toml, so they stay identical to defaults/.
 func MigrateHome() {
-	if os.Getenv("DERBY_HOME") != "" {
+	if os.Getenv("JOCKEY_HOME") != "" {
 		return
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
 	}
-	if err := migrateHome(filepath.Join(home, ".herd"), filepath.Join(home, ".derby")); err != nil {
-		log.Printf("moving ~/.herd to ~/.derby: %v", err)
+	if err := migrateHome(filepath.Join(home, ".derby"), filepath.Join(home, ".jockey")); err != nil {
+		log.Printf("moving ~/.derby to ~/.jockey: %v", err)
 	}
 }
 
-// oldNames renames herd's names in a settings file, as the repository was.
-var oldNames = strings.NewReplacer("HERD", "DERBY", "Herd", "Derby", "herd", "derby")
+// oldNames renames derby's names in a settings file, as the repository was.
+var oldNames = strings.NewReplacer("DERBY", "JOCKEY", "Derby", "Jockey", "derby", "jockey")
 
 func migrateHome(old, cur string) error {
 	if _, err := os.Lstat(cur); err == nil {
-		return nil // moved already, or a fresh ~/.derby
+		return nil // moved already, or a fresh ~/.jockey
 	}
 	if fi, err := os.Lstat(old); err != nil || !fi.IsDir() {
 		return nil // nothing to move
@@ -39,7 +39,7 @@ func migrateHome(old, cur string) error {
 		return err
 	}
 	if err := os.Symlink(cur, old); err != nil {
-		log.Printf("linking ~/.herd to ~/.derby: %v", err)
+		log.Printf("linking ~/.derby to ~/.jockey: %v", err)
 	}
 	for _, name := range []string{"agents.toml", "prompts.toml"} {
 		path := filepath.Join(cur, name)

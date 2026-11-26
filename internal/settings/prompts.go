@@ -7,18 +7,18 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"derby/defaults"
+	"jockey/defaults"
 )
 
-// Prompt is a text Derby adds to what agents get, beside their own
+// Prompt is a text Jockey adds to what agents get, beside their own
 // instructions. prompts.toml lists every one; Settings > Context > Prompts
 // edits it there.
 type Prompt struct {
 	ID      string `toml:"id" json:"id"`
 	Name    string `toml:"name" json:"name"`
-	Where   string `toml:"where" json:"where"`           // where Derby uses it
-	Vars    string `toml:"vars,omitempty" json:"vars"`   // what Derby replaces in it
-	Skill   string `toml:"skill,omitempty" json:"skill"` // set: an internal skill, /derby:<Skill> in every session; Where is its description
+	Where   string `toml:"where" json:"where"`           // where Jockey uses it
+	Vars    string `toml:"vars,omitempty" json:"vars"`   // what Jockey replaces in it
+	Skill   string `toml:"skill,omitempty" json:"skill"` // set: an internal skill, /jockey:<Skill> in every session; Where is its description
 	Default string `toml:"-" json:"default"`
 	Text    string `toml:"text" json:"text"` // the text in use: the user's, else Default
 }
@@ -40,9 +40,9 @@ const (
 	PromptFeedback  = "fixFeedback"
 	PromptNotes     = "diffNotes"
 	PromptTodo      = "todo"
-	// Internal skills: Claude Code skills Derby ships in its plugin.
+	// Internal skills: Claude Code skills Jockey ships in its plugin.
 	PromptRegression = "regressionTests"
-	// Derby's own texts around the agents' prompts.
+	// Jockey's own texts around the agents' prompts.
 	PromptBlock    = "stepBlock"
 	PromptContext  = "context"
 	PromptRules    = "rules"
@@ -56,7 +56,7 @@ const (
 // DefaultPrompts lists every prompt (defaults/prompts.toml), in the order
 // Settings shows them. The first six are the shared parts of every agent's
 // system prompt, in that order; each agent's own instructions only say what
-// is special to it. The last ones are Derby's own texts around them.
+// is special to it. The last ones are Jockey's own texts around them.
 func DefaultPrompts() []Prompt {
 	var pf promptsFile
 	if _, err := toml.Decode(string(defaults.Prompts), &pf); err != nil {

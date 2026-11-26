@@ -2,9 +2,9 @@
 # Stands in for claude in tests: posts hooks like Claude Code would, writes
 # the step's artifact, then waits for input like an interactive session.
 post() {
-  [ -r "$DERBY_ENDPOINT" ] && . "$DERBY_ENDPOINT" # the current derby, as in the real hook
-  printf '%s' "$2" | curl -s -m 3 -X POST "$DERBY_URL/hook?event=$1" \
-    -H "X-Derby-Token: $DERBY_TOKEN" -H "X-Derby-Step: $DERBY_TASK/$DERBY_STEP" --data-binary @- >/dev/null
+  [ -r "$JOCKEY_ENDPOINT" ] && . "$JOCKEY_ENDPOINT" # the current jockey, as in the real hook
+  printf '%s' "$2" | curl -s -m 3 -X POST "$JOCKEY_URL/hook?event=$1" \
+    -H "X-Jockey-Token: $JOCKEY_TOKEN" -H "X-Jockey-Step: $JOCKEY_TASK/$JOCKEY_STEP" --data-binary @- >/dev/null
 }
 resume=""
 for a in "$@"; do [ "$prev" = "--resume" ] && resume="$a"; [ "$a" = "--" ] && prompted=1; prev="$a"; done
@@ -12,28 +12,28 @@ if [ -n "$resume" ] && [ -z "$prompted" ]; then
   post SessionStart "{\"session_id\":\"$resume\",\"source\":\"resume\"}"
   echo "resumed $resume"
   read -r line
-  printf '%s' "$line" > "$DERBY_RUN_DIR/typed" # what was typed into the session
+  printf '%s' "$line" > "$JOCKEY_RUN_DIR/typed" # what was typed into the session
   exit 0
 fi
 if [ -n "$CLAUDE_CODE_CHILD_SESSION$CLAUDECODE" ]; then echo "inherited Claude Code session markers" >&2; exit 3; fi
 post SessionStart '{"source":"startup"}'
 post UserPromptSubmit '{}'
 echo "fake claude: ${@: -1}"
-case "$DERBY_STEP" in
-  impl-*) echo "change $DERBY_N" >> "file-$DERBY_N.txt"
-          printf -- '---\nstatus: done\n---\n# Changes\n- edited\n' > "$DERBY_ARTIFACT" ;;
-  review-*) printf -- "---\nstatus: ${FAKE_REVIEW:-done}\n---\n# Findings\n- one\n" > "$DERBY_ARTIFACT"
-            [ -n "$FAKE_COMMIT" ] && git add -A && git commit -q -m "review $DERBY_N" ;;
+case "$JOCKEY_STEP" in
+  impl-*) echo "change $JOCKEY_N" >> "file-$JOCKEY_N.txt"
+          printf -- '---\nstatus: done\n---\n# Changes\n- edited\n' > "$JOCKEY_ARTIFACT" ;;
+  review-*) printf -- "---\nstatus: ${FAKE_REVIEW:-done}\n---\n# Findings\n- one\n" > "$JOCKEY_ARTIFACT"
+            [ -n "$FAKE_COMMIT" ] && git add -A && git commit -q -m "review $JOCKEY_N" ;;
   form-*) post PreToolUse '{"tool_name":"AskUserQuestion"}'
           read -r answer; post PostToolUse '{"tool_name":"AskUserQuestion"}'
-          printf -- '---\nstatus: done\n---\nfeat(x): the title #1\n\nThe body.\n' > "$DERBY_ARTIFACT"
+          printf -- '---\nstatus: done\n---\nfeat(x): the title #1\n\nThe body.\n' > "$JOCKEY_ARTIFACT"
           git add -A && git commit -q -m "feat(x): the title #1" ;;
   ask-*) post Notification '{"notification_type":"permission_prompt","message":"Claude needs your permission to use Bash"}'
          read -r answer; post PostToolUse '{}'
-         printf -- '---\nstatus: done\n---\n' > "$DERBY_ARTIFACT" ;;
-  *) printf -- "---\nstatus: ${FAKE_STATUS:-done}\n---\n# Goal\nx\n" > "$DERBY_ARTIFACT"
-     [ -n "$FAKE_OPTIONS" ] && printf -- '## Options\n- A\n- B\n' >> "$DERBY_ARTIFACT"
-     [ -n "$FAKE_SISTER" ] && printf -- '## Other repositories\n- %s: echo the pause id\n' "$FAKE_SISTER" >> "$DERBY_ARTIFACT" ;;
+         printf -- '---\nstatus: done\n---\n' > "$JOCKEY_ARTIFACT" ;;
+  *) printf -- "---\nstatus: ${FAKE_STATUS:-done}\n---\n# Goal\nx\n" > "$JOCKEY_ARTIFACT"
+     [ -n "$FAKE_OPTIONS" ] && printf -- '## Options\n- A\n- B\n' >> "$JOCKEY_ARTIFACT"
+     [ -n "$FAKE_SISTER" ] && printf -- '## Other repositories\n- %s: echo the pause id\n' "$FAKE_SISTER" >> "$JOCKEY_ARTIFACT" ;;
 esac
 post Stop '{}'
 read -r line

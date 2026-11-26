@@ -2,7 +2,7 @@
 // Opened from the status bar counts: every task that is working or needs
 // you, grouped by what it is doing. A click opens the task.
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { derby, taskName } from '../../lib/state'
+import { jockey, taskName } from '../../lib/state'
 import TaskRef from '../ui/TaskRef.vue'
 import type { Task } from '../../lib/types'
 
@@ -11,7 +11,7 @@ const tick = setInterval(() => (now.value = Date.now()), 30_000)
 onBeforeUnmount(() => clearInterval(tick))
 
 const groups = computed(() => {
-  const active = derby.tasks.filter((t) => !t.archived)
+  const active = jockey.tasks.filter((t) => !t.archived)
   const of = (k: string) => active.filter((t) => t.status.kind === k)
   return [
     { kind: 'approval', label: 'Needs approval', tasks: of('approval') },
@@ -34,13 +34,13 @@ function current(t: Task) {
 }
 
 function open(t: Task) {
-  derby.overlay = 'none'
-  derby.pickTask(t.id)
+  jockey.overlay = 'none'
+  jockey.pickTask(t.id)
 }
 </script>
 
 <template>
-  <button class="scrim" aria-label="Close activity" @click="derby.overlay = 'none'"></button>
+  <button class="scrim" aria-label="Close activity" @click="jockey.overlay = 'none'"></button>
   <div class="box popup" role="dialog" aria-label="Activity">
     <div class="head pop-head">
       <span class="title">Activity</span>

@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { api, errorText } from '../lib/api'
-import { derby, resumeCommand } from '../lib/state'
+import { jockey, resumeCommand } from '../lib/state'
 import type { Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
 
@@ -13,27 +13,27 @@ import Icon from './ui/Icon.vue'
 // running the same session elsewhere, e.g. claude --resume in Zed.
 const props = defineProps<{ step: Step }>()
 const paused = () => props.step.paused && !props.step.live
-const others = () => (props.step.live ? undefined : derby.elsewhere[props.step.id])
+const others = () => (props.step.live ? undefined : jockey.elsewhere[props.step.id])
 
 async function resumeAnyway() {
-  await derby.resumeAnyway(props.step)
+  await jockey.resumeAnyway(props.step)
   if (!paused()) connect(props.step.id)
 }
 async function checkAgain() {
   const procs = await api.SessionElsewhere(props.step.id).catch(() => [])
-  if (procs.length) derby.elsewhere[props.step.id] = procs
+  if (procs.length) jockey.elsewhere[props.step.id] = procs
   else {
-    delete derby.elsewhere[props.step.id]
-    await derby.resumeStep(props.step)
+    delete jockey.elsewhere[props.step.id]
+    await jockey.resumeStep(props.step)
     if (!paused()) connect(props.step.id)
   }
 }
 
 // An archived task resumes once restored, unless it can no longer run.
-const task = computed(() => derby.task(props.step.taskId))
+const task = computed(() => jockey.task(props.step.taskId))
 const canRestore = computed(() => !!task.value && !task.value.worktreeRemoved && !task.value.projectGone)
 async function resumeHere() {
-  if (await derby.restoreFor(props.step)) attempt.value++
+  if (await jockey.restoreFor(props.step)) attempt.value++
 }
 
 const el = ref<HTMLDivElement>()
@@ -58,7 +58,7 @@ function cssTheme() {
 function connect(id: string, resume = false) {
   cleanup?.()
   if (!el.value || (paused() && !resume)) return
-  const ap = derby.settings?.config.appearance
+  const ap = jockey.settings?.config.appearance
   ended.value = false
   exitCode.value = null
   const t = new Terminal({
@@ -130,7 +130,7 @@ function connect(id: string, resume = false) {
     .catch(async (e) => {
       // The resume guard: another process runs this session.
       const procs = await api.SessionElsewhere(id).catch(() => [])
-      if (procs.length) derby.elsewhere[id] = procs
+      if (procs.length) jockey.elsewhere[id] = procs
       else t.write(`\x1b[31m${errorText(e)}\x1b[0m\r\n`)
       ended.value = true
     })
@@ -167,7 +167,7 @@ onBeforeUnmount(() => cleanup?.())
 
 // Live theme switch.
 watch(
-  () => derby.theme,
+  () => jockey.theme,
   () =>
     requestAnimationFrame(() => {
       if (term) term.options.theme = cssTheme()
@@ -190,11 +190,11 @@ watch(
     </div>
     <div v-else-if="paused()" class="paused">
       <span class="ico"><Icon name="stop" :size="22" /></span>
-      <span class="title">Claude is stopped in Derby</span>
+      <span class="title">Claude is stopped in Jockey</span>
       <span class="text">Continue this session elsewhere, e.g. in a Zed terminal, with the resume command. Resume here when you are done, so only one Claude runs it at a time.</span>
       <span class="row">
-        <button class="btn" @click="derby.copyResume(step)"><Icon name="copy" :size="14" />Copy claude --resume</button>
-        <button class="btn primary" @click="derby.resumeStep(step)"><Icon name="play" :size="13" />Resume here</button>
+        <button class="btn" @click="jockey.copyResume(step)"><Icon name="copy" :size="14" />Copy claude --resume</button>
+        <button class="btn primary" @click="jockey.resumeStep(step)"><Icon name="play" :size="13" />Resume here</button>
       </span>
     </div>
     <div v-else-if="ended" class="paused">
@@ -204,7 +204,7 @@ watch(
       <span v-else-if="task?.archived" class="text">This task is archived. Restore it to Tasks to resume this session here, or continue it elsewhere, e.g. in a Zed terminal, with the resume command.</span>
       <span v-else class="text">Resume this session here, or continue it elsewhere, e.g. in a Zed terminal, with the resume command.</span>
       <span class="row">
-        <button class="btn" @click="derby.copyResume(step)"><Icon name="copy" :size="14" />Copy claude --resume</button>
+        <button class="btn" @click="jockey.copyResume(step)"><Icon name="copy" :size="14" />Copy claude --resume</button>
         <button v-if="!task?.archived || canRestore" class="btn primary" @click="resumeHere"><Icon name="play" :size="13" />{{ task?.archived ? 'Restore and resume' : 'Resume here' }}</button>
       </span>
     </div>

@@ -2,7 +2,7 @@
 // Files a step changed: its commit, or the uncommitted work while it is the
 // task's latest step. A click opens the diff pop-up on that file.
 import { computed } from 'vue'
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 import type { Changes } from '../lib/types'
 import ChangedFiles, { sourceLabel, totalsOf } from './ChangedFiles.vue'
 import NotesBar from './NotesBar.vue'
@@ -12,7 +12,7 @@ const props = defineProps<{ changes: Changes | null }>()
 const totals = computed(() => props.changes && totalsOf(props.changes))
 
 function pick(path: string) {
-  if (derby.selStep) derby.openDiffPopup(derby.selStep.id, path)
+  if (jockey.selStep) jockey.openDiffPopup(jockey.selStep.id, path)
 }
 </script>
 
@@ -25,7 +25,7 @@ function pick(path: string) {
       <span class="c-add">+{{ totals!.add }}</span>
       <span class="c-del">−{{ totals!.del }}</span>
     </PaneHead>
-    <NotesBar v-if="derby.selTask?.notes.length" class="notes" :task="derby.selTask" />
+    <NotesBar v-if="jockey.selTask?.notes.length" class="notes" :task="jockey.selTask" />
     <ChangedFiles :changes="changes" bare @pick="pick" />
     <p class="hint">Open a file and click the + that shows on a line to comment on it (drag it for several lines).</p>
   </template>

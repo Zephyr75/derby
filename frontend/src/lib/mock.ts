@@ -28,22 +28,22 @@ export const mockTrusting = new Set<string>()
 const ISSUE_TITLES: Record<string, string> = { '1190': 'Pause rides when the battery drops under 5%', '4356': 'Retry BLE unlock on flaky connections' }
 
 const agents: Agent[] = [
-  { id: 'plan', name: 'Plan', command: '/derby:plan {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'PLAN.md', revert: false, rerun: false, choose: true, builtin: false, ignoreRules: false, showDiff: false, sisters: true, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', onFail: ['plan'],
+  { id: 'plan', name: 'Plan', command: '/jockey:plan {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'PLAN.md', revert: false, rerun: false, choose: true, builtin: false, ignoreRules: false, showDiff: false, sisters: true, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', onFail: ['plan'],
     instructions: 'Read the task source: the GitHub issue, the description, or both.\nExplore the repo and decide an approach.\nWrite PLAN.md with Goal, Approach (a mermaid flowchart), Files and Out of scope.\nDo not edit code. End with front matter status: done.' },
-  { id: 'impl', name: 'Implement', command: '/derby:implement {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'IMPLEMENT-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: [], effort: 'xhigh', onFail: ['impl', 'discuss', 'plan'],
-    instructions: 'Read PLAN.md, and the newest REVIEW-n.md, TEST-n.md and COPILOT-n.md when they exist.\nImplement the plan in this worktree and run the relevant tests.\nDo not commit: Derby commits your changes when the Review step ends.\nWrite IMPLEMENT-{n}.md with Changes, Tests and Notes for the reviewer. End with status: done.' },
-  { id: 'discuss', name: 'Discuss', command: '/derby:discuss {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'DISCUSS-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: ['review', 'impl'], effort: 'xhigh', onFail: ['discuss', 'impl'],
+  { id: 'impl', name: 'Implement', command: '/jockey:implement {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'IMPLEMENT-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: [], effort: 'xhigh', onFail: ['impl', 'discuss', 'plan'],
+    instructions: 'Read PLAN.md, and the newest REVIEW-n.md, TEST-n.md and COPILOT-n.md when they exist.\nImplement the plan in this worktree and run the relevant tests.\nDo not commit: Jockey commits your changes when the Review step ends.\nWrite IMPLEMENT-{n}.md with Changes, Tests and Notes for the reviewer. End with status: done.' },
+  { id: 'discuss', name: 'Discuss', command: '/jockey:discuss {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'DISCUSS-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: ['review', 'impl'], effort: 'xhigh', onFail: ['discuss', 'impl'],
     instructions: 'This step is a conversation: implement the plan together with the user.\nOnly when the user says the work is done, write DISCUSS-{n}.md: What changed, Files, Notes for the reviewer.\nEnd with status: done.' },
-  { id: 'review', name: 'Review', command: '/derby:review {task}', model: 'opus', trigger: 'after:impl', writes: 'REVIEW-{n}.md', revert: false, rerun: true, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['test', 'impl', 'discuss'], effort: 'xhigh', onFail: ['impl', 'discuss'],
+  { id: 'review', name: 'Review', command: '/jockey:review {task}', model: 'opus', trigger: 'after:impl', writes: 'REVIEW-{n}.md', revert: false, rerun: true, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['test', 'impl', 'discuss'], effort: 'xhigh', onFail: ['impl', 'discuss'],
     instructions: 'Review the uncommitted changes in this worktree (git status, git diff HEAD) against PLAN.md.\nWrite REVIEW-{n}.md with the findings, most important first. End with status: done if the changes are ready, or status: failed if they need changes.\nNever edit code, and do not commit: Commit and push commits once the tests pass.' },
-  { id: 'test', name: 'Test', command: '/derby:test {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'TEST-{n}.md', revert: false, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['push', 'impl', 'discuss'], effort: 'xhigh', onFail: ['impl', 'discuss'],
+  { id: 'test', name: 'Test', command: '/jockey:test {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'TEST-{n}.md', revert: false, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['push', 'impl', 'discuss'], effort: 'xhigh', onFail: ['impl', 'discuss'],
     instructions: 'Read PLAN.md, the IMPLEMENT files and the REVIEW files.\nWrite tests for the reviewed changes, following the repo\'s test conventions.\nRun them. Change only tests, never the code under test.\nWrite TEST-{n}.md with Tests added, How to run and Results. End with status: done.' },
-  { id: 'push', name: 'Push', command: '/derby:push {task}', model: 'haiku', trigger: 'manual', writes: 'PUSH.md', revert: false, rerun: false, choose: false, builtin: false, ignoreRules: true, showDiff: false, sisters: false, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', onFail: [],
-    instructions: 'First rebase on origin/{base} when it has new commits (git rebase --autostash); on a conflict, abort and end with status: failed.\nWrite PUSH.md: a title line, then a body summarising PLAN.md and the IMPLEMENT files.\nAdd Closes #{issue} when the task has an issue.\nDo not push: Derby pushes, opens the PR and collects the Copilot review.' },
+  { id: 'push', name: 'Push', command: '/jockey:push {task}', model: 'haiku', trigger: 'manual', writes: 'PUSH.md', revert: false, rerun: false, choose: false, builtin: false, ignoreRules: true, showDiff: false, sisters: false, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', onFail: [],
+    instructions: 'First rebase on origin/{base} when it has new commits (git rebase --autostash); on a conflict, abort and end with status: failed.\nWrite PUSH.md: a title line, then a body summarising PLAN.md and the IMPLEMENT files.\nAdd Closes #{issue} when the task has an issue.\nDo not push: Jockey pushes, opens the PR and collects the Copilot review.' },
 ]
 
 const context: Record<string, Context> = {
-  general: { id: 'general', text: '# General context\n- Match the style already in the repo; no new dependencies without asking.\n- Never commit or push: Derby does it.\n- Artifacts go to $DERBY_RUN_DIR and start with YAML front matter.\n- Prefer small diffs; explain trade-offs in the artifact, not in code comments.\n', claudeMd: false, knowledge: '' },
+  general: { id: 'general', text: '# General context\n- Match the style already in the repo; no new dependencies without asking.\n- Never commit or push: Jockey does it.\n- Artifacts go to $JOCKEY_RUN_DIR and start with YAML front matter.\n- Prefer small diffs; explain trade-offs in the artifact, not in code comments.\n', claudeMd: false, knowledge: '' },
   core: { id: 'core', text: '# pony-core\n- Go services live in internal/<domain>.\n- Run go test ./internal/<domain>/... before writing IMPLEMENT.\n- Rider-facing errors go through internal/errs.\n', claudeMd: true, knowledge: '' },
   rider: { id: 'rider', text: '# pony-rider-app\n- React Native, TypeScript strict.\n- UI copy lives in src/i18n; never hardcode strings.\n- Run pnpm test <area> before writing IMPLEMENT.\n', claudeMd: true, knowledge: '' },
   infra: { id: 'infra', text: '# pony-infra\n- Terraform 1.9, azurerm provider.\n- Never run terraform apply; validate and plan only.\n- Tag every resource with team = mobility.\n', claudeMd: false, knowledge: '' },
@@ -61,10 +61,10 @@ const settings: Settings = {
   agents, context,
   keymap: { toggleLeft: ['Alt+E'], toggleRight: ['Alt+A'], messages: ['Alt+S'], close: ['Escape'] },
   prompts: [
-    { id: 'step', name: 'How a step works', where: "Every agent's system prompt, after the Derby step block", vars: '', skill: '', default: '# How a step works\n- Work from the guidance, then the step this one follows.', text: '# How a step works\n- Work from the guidance, then the step this one follows.' },
+    { id: 'step', name: 'How a step works', where: "Every agent's system prompt, after the Jockey step block", vars: '', skill: '', default: '# How a step works\n- Work from the guidance, then the step this one follows.', text: '# How a step works\n- Work from the guidance, then the step this one follows.' },
     { id: 'regressionTests', name: 'regression-tests', where: "Run pony-core's regression tests on the local stack, an offline copy of QA in Docker, and report each suite's result. Never against QA or prod.", vars: '', skill: 'regression-tests', default: '# Regression tests\nRun make regtest-local.', text: '# Regression tests\nRun make regtest-local.' },
   ],
-  dir: '~/.derby',
+  dir: '~/.jockey',
 }
 
 interface Fx {
@@ -202,7 +202,7 @@ const T: MockTask[] = [
 ]
 
 const proj = (id: string) => projects.find((p) => p.id === id) ?? projects[0]
-// derby's own step after a push: it waits for Copilot's review.
+// jockey's own step after a push: it waits for Copilot's review.
 const copilotA: Agent = { id: 'copilot', name: 'Copilot', command: '', model: 'opus', trigger: 'manual', writes: 'COPILOT-{n}.md', revert: false, rerun: false, choose: false, builtin: true, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], effort: 'xhigh', onFail: [], instructions: '' }
 const agent = (id: string) => (id === 'copilot' ? copilotA : agents.find((a) => a.id === id) ?? agents[0])
 const displayName = (a: Agent, n: number) => (a.writes.includes('{n}') ? `${a.name} ${n}` : a.name)
@@ -286,7 +286,7 @@ function derive(t: MockTask): Task {
     id: t.id, project: t.project, slug: t.slug, issue: t.issue, title: t.title, name: NAMES[t.id] ?? '', description: t.description, createdAt: '',
     archived: !!t.archived, archivedAt: t.archivedOn ?? '', pr: t.pr ?? 0, prUrl: t.pr ? `https://github.com/pony-org/${t.project}/pull/${t.pr}` : '', prState: t.prState ?? '', release: t.release ?? '', stages: t.prState === 'merged' ? ['qa', 'main'] : [], worktreeRemoved: !!t.removed,
     projectName: p.name, repo: p.repo, issueRepo: '', sister: !!t.sister, sisters: (t.sisterOf ?? []).map((id) => ({ id, project: proj(find(id).project).name, part: find(id).part ?? '' })), part: t.part ?? '', baseBranch: p.baseBranch, worktree: `${p.path}/.worktrees/${t.slug}`, worktreeRel: `.worktrees/${t.slug}`,
-    branch: t.branch ?? 'ar-' + t.slug, runDir: `~/.derby/runs/${p.name}/${t.slug}`,
+    branch: t.branch ?? 'ar-' + t.slug, runDir: `~/.jockey/runs/${p.name}/${t.slug}`,
     source: t.issue && t.description ? `GitHub issue #${t.issue} + description · ${p.repo}` : t.issue ? `GitHub issue #${t.issue} · ${p.repo}` : 'LOCAL · description only, no GitHub issue',
     status, steps, next, projectGone: !projects.some((x) => x.id === t.project), checks: t.checks ?? [], labels: t.labels ?? [], draft: t.draft ?? false, conflicting: false, feedback: t.feedback ?? [], rejected: t.rejected ?? {}, behind: 0, notes: t.notes ?? [], todos: t.todos ?? [],
   }
@@ -311,7 +311,7 @@ const chatSent: Record<string, ChatItem[]> = {}
 export function mockChat(stepId: string): ChatItem[] {
   const [tid, key] = [stepId.slice(0, stepId.lastIndexOf('/')), stepId.slice(stepId.lastIndexOf('/') + 1)]
   const t = find(tid), s = t.steps.find((x) => x.key === key)!
-  const fx = t.fx, p = proj(t.project), run = `~/.derby/runs/${p.name}/${t.slug}`
+  const fx = t.fx, p = proj(t.project), run = `~/.jockey/runs/${p.name}/${t.slug}`
   const files = fx.files ?? ['README.md'], test = fx.test ?? 'make test'
   const it = (kind: ChatItem['kind'], o: Partial<ChatItem> = {}): ChatItem => ({ kind, id: '', text: '', tool: '', input: null, diff: '', isError: false, ...o })
   let n = 0
@@ -321,7 +321,7 @@ export function mockChat(stepId: string): ChatItem[] {
   }
   const cmd = s.agent === 'impl' ? 'implement' : s.agent
   const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
-  const out: ChatItem[] = [it('command', { tool: `/derby:${cmd}`, text: `${t.issue || '--local'}${s.guide ? ' -- ' + s.guide : ''}`, at: ago(s.state === 'done' ? 26 * 60 : 12) })]
+  const out: ChatItem[] = [it('command', { tool: `/jockey:${cmd}`, text: `${t.issue || '--local'}${s.guide ? ' -- ' + s.guide : ''}`, at: ago(s.state === 'done' ? 26 * 60 : 12) })]
   out.push(it('text', { text: `Reading the run files first: \`TASK.md\`, the newest plan${s.n > 1 ? ' and the last review' : ''}.` }))
   out.push(...tool('Read', { file_path: `${run}/PLAN-1.md` }, '---\nstatus: done\n---\n\n**TLDR**: …'))
   if (s.agent === 'plan') {
@@ -356,12 +356,12 @@ export function mockChat(stepId: string): ChatItem[] {
 export function mockTerminal(stepId: string): string {
   const [tid, key] = [stepId.slice(0, stepId.lastIndexOf('/')), stepId.slice(stepId.lastIndexOf('/') + 1)]
   const t = find(tid), s = t.steps.find((x) => x.key === key)!
-  const fx = t.fx, p = proj(t.project), run = `~/.derby/runs/${p.name}/${t.slug}`
+  const fx = t.fx, p = proj(t.project), run = `~/.jockey/runs/${p.name}/${t.slug}`
   const files = fx.files ?? ['README.md'], test = fx.test ?? 'make test'
   const out: string[] = []
   const L = (x: string, c = '') => out.push(c + x + C.reset)
   const cmd = s.agent === 'impl' ? 'implement' : s.agent
-  L(`> /derby:${cmd} ${t.issue || '--local'}${s.guide ? ' -- ' + s.guide : ''}`, C.bold)
+  L(`> /jockey:${cmd} ${t.issue || '--local'}${s.guide ? ' -- ' + s.guide : ''}`, C.bold)
   L('')
   if (s.agent === 'plan') {
     if (t.issue) { L(`⏺ Bash(gh issue view ${t.issue} --repo ${p.repo})`); L(`  ⎿ "${t.title}" · 3 comments`, C.grey) }
@@ -381,7 +381,7 @@ export function mockTerminal(stepId: string): string {
     } else {
       L(`⏺ Bash(${test})`); L('  ⎿ ' + (fx.testOut || 'ok'), C.grey)
       if (s.state === 'running') { L(''); L(`✻ Writing IMPLEMENT-${s.n}.md…  (esc to interrupt)`, C.yellow) }
-      else { L(`⏺ Write(${run}/IMPLEMENT-${s.n}.md)`); L('  ⎿ status: done', C.grey); L(''); L(`● derby: committed ${s.sha} "[${t.slug}] implement-${s.n}" · Review ${s.n} started automatically`, C.cyan) }
+      else { L(`⏺ Write(${run}/IMPLEMENT-${s.n}.md)`); L('  ⎿ status: done', C.grey); L(''); L(`● jockey: committed ${s.sha} "[${t.slug}] implement-${s.n}" · Review ${s.n} started automatically`, C.cyan) }
     }
   } else if (s.agent === 'review') {
     const sha = prevSha(t, s.key)
@@ -389,8 +389,8 @@ export function mockTerminal(stepId: string): string {
     if (s.state === 'running') { L(''); L(`✻ Reviewing ${sha}…  (esc to interrupt)`, C.yellow) }
     else { (fx.findings ?? []).forEach((f) => L('  · ' + f, C.grey)); L(`⏺ Write(${run}/REVIEW-${s.n}.md)`); L('  ⎿ status: ' + (s.verdict === 'failed' ? 'failed' : 'done'), s.verdict === 'failed' ? C.yellow : C.cyan) }
   } else {
-    L(`⏺ Write(${run}/PUSH.md)`); L(`● derby: git push -u origin agent/${t.slug}`, C.cyan); L(`● derby: gh pr create --body-file PUSH.md  →  #${t.pr}`, C.cyan)
-    L(`● derby: Copilot review, ${(fx.copilot ?? []).length} comments in COPILOT-${s.n}.md`, C.cyan)
+    L(`⏺ Write(${run}/PUSH.md)`); L(`● jockey: git push -u origin agent/${t.slug}`, C.cyan); L(`● jockey: gh pr create --body-file PUSH.md  →  #${t.pr}`, C.cyan)
+    L(`● jockey: Copilot review, ${(fx.copilot ?? []).length} comments in COPILOT-${s.n}.md`, C.cyan)
   }
   return out.join('\r\n') + '\r\n'
 }
@@ -399,7 +399,7 @@ function mockArtifact(stepId: string): Artifact {
   const [tid, key] = [stepId.slice(0, stepId.lastIndexOf('/')), stepId.slice(stepId.lastIndexOf('/') + 1)]
   const t = find(tid), s = t.steps.find((x) => x.key === key)!, a = agent(s.agent), fx = t.fx
   const file = a.writes.replace('{n}', String(s.n))
-  const base = { path: `~/.derby/runs/${proj(t.project).name}/${t.slug}/${file}`, file }
+  const base = { path: `~/.jockey/runs/${proj(t.project).name}/${t.slug}/${file}`, file }
   if (s.state !== 'done') return { ...base, exists: false, front: null, body: '' }
   const list = (x: string[]) => x.map((i) => '- ' + i).join('\n')
   if (s.agent === 'plan') {
@@ -524,7 +524,7 @@ export const api: Api = {
   OpenWorktreeInZed: () => ok(undefined),
   OpenBranchInZed: () => ok(undefined),
   ReadArtifact: (sid) => ok(mockArtifact(sid)),
-  StepPrompt: (sid) => ok({ path: '', file: sid + '.md', exists: true, front: null, body: '# Command\n\n`/derby:implement 9970`' }),
+  StepPrompt: (sid) => ok({ path: '', file: sid + '.md', exists: true, front: null, body: '# Command\n\n`/jockey:implement 9970`' }),
   TerminalURL: (sid) => ok('mock:' + sid),
   ResumeStep: (sid) => (new URLSearchParams(location.search).get('elsewhere') ? Promise.reject('Claude Code is still running this session in another process') : ok('mock:' + sid)),
   ResumeStepAnyway: (sid) => ok('mock:' + sid),
@@ -578,8 +578,8 @@ export const api: Api = {
   SetTodos: (id, todos) => { if (!id) { others = todos; emit('todos:changed', others); return ok(undefined) } const t = find(id); t.todos = todos; changed(t); return ok(undefined) },
   SetPrompt: (id, text) => { const p = settings.prompts.find((x) => x.id === id); if (p) p.text = text || p.default; emit('settings:changed', settings); return ok(undefined) },
   AgentContext: (a) => ok([
-    { title: 'System prompt', where: "Appended to Claude Code's own system prompt", text: '# Derby step\n- task: core:1234 (Example task), project core\n\n# Writing\n- Mark each claim you have not verified.' },
-    { title: 'Command /derby:' + a.id, where: "The step's first message", text: `You are the Derby **${a.name}** agent.\n\n${a.instructions}` },
+    { title: 'System prompt', where: "Appended to Claude Code's own system prompt", text: '# Jockey step\n- task: core:1234 (Example task), project core\n\n# Writing\n- Mark each claim you have not verified.' },
+    { title: 'Command /jockey:' + a.id, where: "The step's first message", text: `You are the Jockey **${a.name}** agent.\n\n${a.instructions}` },
   ]),
   SaveContext: (c) => { settings.context[c.id] = c; emit('settings:changed', settings); return ok(undefined) },
   SaveProject: (p) => { const i = projects.findIndex((x) => x.id === p.id); if (i >= 0) projects[i] = p; else projects.push(p); emit('settings:changed', settings); return ok(undefined) },
@@ -588,13 +588,13 @@ export const api: Api = {
   AddProjectPath: () => Promise.reject('Adding projects needs the desktop app'),
   SetSessionView: (view) => { settings.config.appearance.sessionView = view as any; emit('settings:changed', settings); return ok(undefined) },
   StepChat: (step) => ok({ items: mockTrusting.has(step) ? [] : mockChat(step), offset: 1, reset: true, title: 'Retry BLE unlock on flaky connections', found: true, live: true, trust: mockTrusting.has(step) ? '/Users/me/pony-core/.worktrees/4356' : '',
-    skills: [{ name: 'derby:implement', description: 'Derby Implement agent' }, { name: 'derby:review', description: 'Derby Review agent' }, { name: 'archify', description: 'Create validated architecture diagrams as explorable HTML' }, { name: 'humanizer:humanizer', description: 'Rewrite AI-sounding text' }],
+    skills: [{ name: 'jockey:implement', description: 'Jockey Implement agent' }, { name: 'jockey:review', description: 'Jockey Review agent' }, { name: 'archify', description: 'Create validated architecture diagrams as explorable HTML' }, { name: 'humanizer:humanizer', description: 'Rewrite AI-sounding text' }],
     status: { model: 'claude-opus-5-5', modelName: 'Opus 5.5', effort: 'xhigh', contextUsed: 61400, contextSize: 200000, plan: { fiveHour: 23, fiveHourReset: Math.floor(Date.now() / 1000) + 7200, week: 41, weekReset: Math.floor(Date.now() / 1000) + 3 * 86400, at: 1 } } }),
   SetStepModel: () => ok(undefined),
   AnswerQuestions: () => ok(undefined),
   TrustFolder: (step) => { mockTrusting.delete(step); return ok(undefined) },
   StepFiles: (_s, q) => ok(['internal/', 'internal/unlock/', 'internal/unlock/ble.go', 'internal/unlock/budget.go', 'internal/config/config.go', 'README.md'].filter((f) => f.toLowerCase().includes(q.toLowerCase()))),
-  AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.derby/runs/core/4356/attachments/' + f.split('/').pop())),
+  AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.jockey/runs/core/4356/attachments/' + f.split('/').pop())),
   SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false, at: new Date().toISOString() }); return ok(undefined) },
   InterruptStep: () => ok(undefined),
   SetTheme: (theme, mode) => { Object.assign(settings.config.appearance, { theme, mode }); emit('settings:changed', settings); return ok(undefined) },

@@ -1,5 +1,5 @@
-// Builds derby.css, the stylesheet design-sync uploads to Claude Design:
-// derby's own theme and base CSS (frontend/src/themes), with two changes
+// Builds jockey.css, the stylesheet design-sync uploads to Claude Design:
+// jockey's own theme and base CSS (frontend/src/themes), with two changes
 // for design pages. Run from the repo root: node .design-sync/theme/build.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -10,9 +10,9 @@ const read = (f) => readFileSync(themes + f, 'utf8');
 const dark = read('fleet-dark.css').replace("[data-theme='fleet-dark'] {", ":root,\n[data-theme='fleet-dark'] {");
 if (!dark.includes(':root,')) throw new Error('fleet-dark.css: theme selector not found');
 
-// derby's window never scrolls (its panels do); a design page may.
+// jockey's window never scrolls (its panels do); a design page may.
 const pages = `
-/* design-sync: pages scroll, unlike derby's window */
+/* design-sync: pages scroll, unlike jockey's window */
 html,
 body {
   height: auto;
@@ -21,4 +21,4 @@ body {
 }
 `;
 
-writeFileSync('.design-sync/theme/derby.css', [dark, read('flatwhite.css'), read('base.css'), pages].join('\n'));
+writeFileSync('.design-sync/theme/jockey.css', [dark, read('flatwhite.css'), read('base.css'), pages].join('\n'));

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { derby, type SettingsTab } from '../../lib/state'
+import { jockey, type SettingsTab } from '../../lib/state'
 import Toasts from '../Toasts.vue'
 import General from './General.vue'
 import Agents from './Agents.vue'
@@ -12,9 +12,9 @@ import About from './About.vue'
 
 const nav: [SettingsTab, string][] = [['general', 'General'], ['projects', 'Projects'], ['agents', 'Agents'], ['context', 'Context'], ['appearance', 'Appearance'], ['shortcuts', 'Shortcuts'], ['about', 'About']]
 const file = computed(
-  () => ({ general: 'config.toml', agents: 'agents.toml', context: 'context/ and prompts.toml', projects: 'config.toml', appearance: 'config.toml', shortcuts: 'config.toml', about: '' })[derby.settingsTab],
+  () => ({ general: 'config.toml', agents: 'agents.toml', context: 'context/ and prompts.toml', projects: 'config.toml', appearance: 'config.toml', shortcuts: 'config.toml', about: '' })[jockey.settingsTab],
 )
-const dir = computed(() => derby.settings?.dir ?? '~/.derby')
+const dir = computed(() => jockey.settings?.dir ?? '~/.jockey')
 // The home folder as ~, so the path fits the panel.
 const short = computed(() => dir.value.replace(/^\/(?:Users|home)\/[^/]+(?=\/)/, '~'))
 </script>
@@ -22,20 +22,20 @@ const short = computed(() => dir.value.replace(/^\/(?:Users|home)\/[^/]+(?=\/)/,
 <template>
   <aside>
     <span class="head">Settings</span>
-    <button v-for="[id, label] in nav" :key="id" class="item" :class="{ on: derby.settingsTab === id }" @click="derby.settingsTab = id">{{ label }}</button>
+    <button v-for="[id, label] in nav" :key="id" class="item" :class="{ on: jockey.settingsTab === id }" @click="jockey.settingsTab = id">{{ label }}</button>
     <span class="grow"></span>
     <span v-if="file" class="path" :title="`${dir}/${file}`">{{ short }}/{{ file }}</span>
-    <button class="back" @click="derby.view = 'board'">Back to board</button>
+    <button class="back" @click="jockey.view = 'board'">Back to board</button>
   </aside>
 
   <section>
     <div class="col">
-      <General v-if="derby.settingsTab === 'general'" />
-      <Agents v-else-if="derby.settingsTab === 'agents'" />
-      <ContextPane v-else-if="derby.settingsTab === 'context'" />
-      <Projects v-else-if="derby.settingsTab === 'projects'" />
-      <Appearance v-else-if="derby.settingsTab === 'appearance'" />
-      <Shortcuts v-else-if="derby.settingsTab === 'shortcuts'" />
+      <General v-if="jockey.settingsTab === 'general'" />
+      <Agents v-else-if="jockey.settingsTab === 'agents'" />
+      <ContextPane v-else-if="jockey.settingsTab === 'context'" />
+      <Projects v-else-if="jockey.settingsTab === 'projects'" />
+      <Appearance v-else-if="jockey.settingsTab === 'appearance'" />
+      <Shortcuts v-else-if="jockey.settingsTab === 'shortcuts'" />
       <About v-else />
     </div>
     <Toasts />

@@ -1,6 +1,6 @@
-# Feature ideas for derby
+# Feature ideas for jockey
 
-Suggestions that build on what derby already does. Effort: **S** small, **M** medium, **L** large.
+Suggestions that build on what jockey already does. Effort: **S** small, **M** medium, **L** large.
 
 ## Top picks
 
@@ -10,7 +10,7 @@ Suggestions that build on what derby already does. Effort: **S** small, **M** me
 | **Changed files per step** in the right panel (`git diff --stat` of the step's commit, with +/- counts) | Shows what a step did without opening Zed. Click a file to open it in Zed | S |
 | **Resume guard**: before Resume, check whether a `claude --resume <id>` process is still running (e.g. in Zed) and warn | Closes the remaining gap in the manual Stop / Resume flow | S |
 | **Usage per step and per task** (tokens and cost, from the transcript `.jsonl`) in the timeline and status bar | Parallel sessions burn through limits fast. Already listed as a risk in the plan | M |
-| **Sessions that survive a derby restart** (run claude under `dtach` or `tmux` and reattach) | Quitting derby kills every live step today | M |
+| **Sessions that survive a jockey restart** (run claude under `dtach` or `tmux` and reattach) | Quitting jockey kills every live step today | M |
 
 ## Git and pull requests
 
@@ -18,7 +18,7 @@ Suggestions that build on what derby already does. Effort: **S** small, **M** me
 - **CI checks on the task card** (`gh pr checks`): the PR shows red or green next to its number. **S**
 - **Human review comments into FEEDBACK.md**, not only Copilot's, with a one-click "Implement feedback" step. **M**
 - **Better commit messages**: build the commit message from the IMPLEMENT artifact's summary (conventional commits), with an optional squash before Push. **S**
-- **Merge from derby**: a Merge button once checks pass and the PR is approved, then auto-archive. **S**
+- **Merge from jockey**: a Merge button once checks pass and the PR is approved, then auto-archive. **S**
 - **Bulk cleanup**: remove worktrees of tasks merged more than N days ago, and show the disk used by `.worktrees/`. **S**
 
 ## Sessions and terminal
@@ -27,7 +27,7 @@ Suggestions that build on what derby already does. Effort: **S** small, **M** me
 - **Search in a step's output** (xterm search addon). **S**
 - **Fork a step**: `claude --resume <id> --fork-session` to try another approach without losing the original. **M**
 - **Rerun with another model**: retry a step on Sonnet or Opus from the timeline menu. **S**
-- **Dev server per task**: a project-level "run" command (e.g. `make dev`) started in a tab, using the task's port range (`DERBY_PORT_BASE`). **M**
+- **Dev server per task**: a project-level "run" command (e.g. `make dev`) started in a tab, using the task's port range (`JOCKEY_PORT_BASE`). **M**
 
 ## Pipeline and agents
 
@@ -45,7 +45,7 @@ Suggestions that build on what derby already does. Effort: **S** small, **M** me
 
 ## UI
 
-- **Hamburger as an app menu**, like Zed: Settings, Shortcuts, Open ~/.derby, Check prerequisites, Quit. **S**
+- **Hamburger as an app menu**, like Zed: Settings, Shortcuts, Open ~/.jockey, Check prerequisites, Quit. **S**
 - **Command palette for actions**, not only tasks: Stop, Resume, Copy resume command, Open diff, Archive. **S**
 
 ## Later (out of scope for v1 in the plan)

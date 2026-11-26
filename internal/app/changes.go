@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"derby/internal/settings"
-	"derby/internal/store"
+	"jockey/internal/settings"
+	"jockey/internal/store"
 )
 
 // FileChange is one file a step changed.
@@ -111,7 +111,7 @@ func (a *App) stepChanges(stepID string) (Changes, error) {
 	i := slices.IndexFunc(steps, func(x store.Step) bool { return x.ID == s.ID })
 	if c := segmentCommit(a.branchCommits(t), steps, i); i >= 0 && c != nil {
 		sha = c.SHA
-		for _, y := range steps { // the step that made it, when derby did
+		for _, y := range steps { // the step that made it, when jockey did
 			if madeBy([]store.Step{y}, c.SHA) {
 				out.Via = agentFor(a.settings.Agents(), y.Agent).DisplayName(y.N)
 			}
@@ -463,12 +463,12 @@ type Proc struct {
 	Cmd string `json:"cmd"`
 }
 
-// SessionElsewhere lists processes outside derby that run a step's session,
-// e.g. claude --resume <id> in a Zed terminal. Resuming it in derby as well
+// SessionElsewhere lists processes outside jockey that run a step's session,
+// e.g. claude --resume <id> in a Zed terminal. Resuming it in jockey as well
 // would put two processes on one conversation.
 func (a *App) SessionElsewhere(stepID string) ([]Proc, error) {
 	if _, live := a.run.Get(stepID); live {
-		return []Proc{}, nil // derby's own process
+		return []Proc{}, nil // jockey's own process
 	}
 	s, err := a.db.Step(stepID)
 	if err != nil {
@@ -485,7 +485,7 @@ func sessionProcs(id string) []Proc {
 	}
 	for _, p := range processes() {
 		if len(p.args) > 3 && p.args[1] == "hold" && p.args[3] == "--" {
-			continue // a derby session holder: its claude child is what counts
+			continue // a jockey session holder: its claude child is what counts
 		}
 		for i, arg := range p.args {
 			prev := ""

@@ -5,7 +5,7 @@
 // PR's own buttons.
 import { computed, reactive, ref, watch } from 'vue'
 import { api } from '../lib/api'
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 import { usePR, word } from '../lib/pr'
 import type { Artifact, Feedback, Step, Task } from '../lib/types'
 import Icon from './ui/Icon.vue'
@@ -18,7 +18,7 @@ const pr = reactive(usePR(props))
 const doc = ref<Artifact | null>(null)
 let seq = 0
 watch(
-  () => [props.step?.id, derby.artifactRev] as const,
+  () => [props.step?.id, jockey.artifactRev] as const,
   ([id]) => {
     const mine = ++seq
     if (!id) return void (doc.value = null)

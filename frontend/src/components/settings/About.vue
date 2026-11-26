@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { api } from '../../lib/api'
-import { derby } from '../../lib/state'
+import { jockey } from '../../lib/state'
 import Logo from '../ui/Logo.vue'
 
 const repo = 'https://github.com/Zephyr75/derby'
-const open = () => derby.attempt('Could not open the link', () => api.OpenURL(repo))
+const open = () => jockey.attempt('Could not open the link', () => api.OpenURL(repo))
 </script>
 
 <template>
   <div class="hero card">
     <Logo :size="44" />
     <div class="id">
-      <h1>Derby</h1>
+      <h1>Jockey</h1>
       <p class="muted">Runs Claude Code through a pipeline of agents you define, each task in its own git worktree.</p>
     </div>
   </div>
@@ -23,7 +23,7 @@ const open = () => derby.attempt('Could not open the link', () => api.OpenURL(re
     </div>
     <div class="r">
       <span class="grow">Settings, tasks and runs</span>
-      <code class="muted">{{ derby.settings?.dir ?? '~/.derby' }}</code>
+      <code class="muted">{{ jockey.settings?.dir ?? '~/.jockey' }}</code>
     </div>
     <div class="r">
       <span class="grow">License</span>

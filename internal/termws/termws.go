@@ -16,7 +16,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"derby/internal/runner"
+	"jockey/internal/runner"
 )
 
 // Handler serves terminal sockets.

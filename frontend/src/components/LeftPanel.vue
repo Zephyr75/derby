@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { derby, taskName } from '../lib/state'
+import { jockey, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
 import TaskCard from './TaskCard.vue'
 import ArchivePicker from './ArchivePicker.vue'
@@ -9,84 +9,84 @@ import Splitter from './ui/Splitter.vue'
 import type { Task } from '../lib/types'
 
 const counts = computed(() => ({
-  active: derby.tasks.filter((t) => !t.archived).length,
-  archived: derby.tasks.filter((t) => t.archived).length,
+  active: jockey.tasks.filter((t) => !t.archived).length,
+  archived: jockey.tasks.filter((t) => t.archived).length,
 }))
-const groups = computed(() => derby.groups.map((p) => ({ p, tasks: derby.panelTasks(p.id) })).filter((g) => !g.p.gone || g.tasks.length))
+const groups = computed(() => jockey.groups.map((p) => ({ p, tasks: jockey.panelTasks(p.id) })).filter((g) => !g.p.gone || g.tasks.length))
 
 // A sister family's category, named after its big sister (even when only
 // one of its tasks is in this list).
 function family(tasks: Task[]) {
   // Every task of the family, archived ones included.
-  const all = (derby.sisterGroups.get(tasks[0].id) ?? []).map((id) => derby.task(id)).filter((t): t is Task => !!t)
+  const all = (jockey.sisterGroups.get(tasks[0].id) ?? []).map((id) => jockey.task(id)).filter((t): t is Task => !!t)
   const big = all.find((t) => !t.sister) ?? tasks[0]
-  return { key: derby.familyKey(tasks[0]), tasks, name: taskName(big), tip: 'Sister tasks in ' + all.map((t) => t.projectName).join(', ') }
+  return { key: jockey.familyKey(tasks[0]), tasks, name: taskName(big), tip: 'Sister tasks in ' + all.map((t) => t.projectName).join(', ') }
 }
 
 // Tasks: sister families first, each in its own category; single tasks
 // under their project.
-const families = computed(() => derby.panelFamilies().map(family))
+const families = computed(() => jockey.panelFamilies().map(family))
 
 // Archive: the pick's tasks (a project's, the sister families or all), newest
 // first, each family folded into one row.
-const archive = computed(() => derby.archiveEntries().map((e) => (e.family ? { ...family(e.tasks), family: true } : { key: e.key, tasks: e.tasks, family: false, name: '', tip: '' })))
+const archive = computed(() => jockey.archiveEntries().map((e) => (e.family ? { ...family(e.tasks), family: true } : { key: e.key, tasks: e.tasks, family: false, name: '', tip: '' })))
 
 function addProject() {
-  derby.view = 'settings'
-  derby.settingsTab = 'projects'
+  jockey.view = 'settings'
+  jockey.settingsTab = 'projects'
 }
 </script>
 
 <template>
-  <aside :style="{ width: derby.leftWidth + 'px' }">
+  <aside :style="{ width: jockey.leftWidth + 'px' }">
     <Splitter side="left" />
     <div class="tabs" role="tablist">
-      <button role="tab" :aria-selected="derby.left === 'tasks'" :class="{ on: derby.left === 'tasks' }" @click="derby.left = 'tasks'">Tasks <span class="count">{{ counts.active }}</span></button>
-      <button role="tab" :aria-selected="derby.left === 'archive'" :class="{ on: derby.left === 'archive' }" @click="derby.left = 'archive'">Archive <span class="count">{{ counts.archived }}</span></button>
+      <button role="tab" :aria-selected="jockey.left === 'tasks'" :class="{ on: jockey.left === 'tasks' }" @click="jockey.left = 'tasks'">Tasks <span class="count">{{ counts.active }}</span></button>
+      <button role="tab" :aria-selected="jockey.left === 'archive'" :class="{ on: jockey.left === 'archive' }" @click="jockey.left = 'archive'">Archive <span class="count">{{ counts.archived }}</span></button>
     </div>
 
-    <ArchivePicker v-if="derby.left === 'archive' && derby.groups.length" />
+    <ArchivePicker v-if="jockey.left === 'archive' && jockey.groups.length" />
 
     <div class="list">
-      <template v-if="derby.left === 'archive'">
+      <template v-if="jockey.left === 'archive'">
         <template v-for="e in archive" :key="e.key">
           <template v-if="e.family">
-            <button class="group fam" :aria-expanded="!derby.isCollapsed(e.key)" :title="e.tip" @click="derby.toggleCollapsed(e.key)">
+            <button class="group fam" :aria-expanded="!jockey.isCollapsed(e.key)" :title="e.tip" @click="jockey.toggleCollapsed(e.key)">
               <Icon name="sisters" />
               <span class="name">{{ e.name }}</span>
               <span class="n">{{ e.tasks.length }}</span>
             </button>
-            <div v-if="!derby.isCollapsed(e.key)" class="nest">
+            <div v-if="!jockey.isCollapsed(e.key)" class="nest">
               <div v-for="(t, i) in e.tasks" :key="t.id" class="cardw"><TaskCard :task="t" family :big="i === 0 && !t.sister" /></div>
             </div>
           </template>
-          <div v-else class="cardw"><TaskCard :task="e.tasks[0]" :project="!derby.archiveScope" /></div>
+          <div v-else class="cardw"><TaskCard :task="e.tasks[0]" :project="!jockey.archiveScope" /></div>
         </template>
-        <span v-if="!archive.length && derby.groups.length" class="nothing">Nothing archived</span>
+        <span v-if="!archive.length && jockey.groups.length" class="nothing">Nothing archived</span>
       </template>
       <template v-else>
         <template v-for="f in families" :key="f.key">
-          <button class="group" :aria-expanded="!derby.isCollapsed(f.key)" :title="f.tip" @click="derby.toggleCollapsed(f.key)">
+          <button class="group" :aria-expanded="!jockey.isCollapsed(f.key)" :title="f.tip" @click="jockey.toggleCollapsed(f.key)">
             <Icon name="sisters" />
             <span class="name">{{ f.name }}</span>
           </button>
-          <div v-if="!derby.isCollapsed(f.key)" class="nest">
+          <div v-if="!jockey.isCollapsed(f.key)" class="nest">
             <div v-for="(t, i) in f.tasks" :key="t.id" class="cardw"><TaskCard :task="t" family :big="i === 0 && !t.sister" /></div>
           </div>
         </template>
         <template v-for="g in groups" :key="g.p.id">
-          <button class="group" :aria-expanded="!derby.isCollapsed(g.p.id)" @click="derby.toggleCollapsed(g.p.id)">
-            <Icon :name="derby.isCollapsed(g.p.id) ? 'folder' : 'folder-open'" />
+          <button class="group" :aria-expanded="!jockey.isCollapsed(g.p.id)" @click="jockey.toggleCollapsed(g.p.id)">
+            <Icon :name="jockey.isCollapsed(g.p.id) ? 'folder' : 'folder-open'" />
             <span class="name">{{ g.p.name }}</span>
             <span v-if="g.p.gone" class="gone" title="Project removed">removed</span>
           </button>
-          <span v-if="!derby.isCollapsed(g.p.id) && !g.tasks.length" class="empty">No open tasks</span>
-          <div v-else-if="!derby.isCollapsed(g.p.id)" class="nest">
+          <span v-if="!jockey.isCollapsed(g.p.id) && !g.tasks.length" class="empty">No open tasks</span>
+          <div v-else-if="!jockey.isCollapsed(g.p.id)" class="nest">
             <div v-for="t in g.tasks" :key="t.id" class="cardw"><TaskCard :task="t" /></div>
           </div>
         </template>
       </template>
-      <div v-if="derby.left === 'archive' ? !derby.groups.length : !groups.length" class="none">
+      <div v-if="jockey.left === 'archive' ? !jockey.groups.length : !groups.length" class="none">
         <p>No projects yet.</p>
         <button class="btn" @click="addProject">Add a project</button>
       </div>

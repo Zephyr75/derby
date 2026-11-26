@@ -12,7 +12,7 @@ import (
 func TestHasShellChild(t *testing.T) {
 	ps := `      1 /sbin/init
    4115 /usr/bin/zsh -c source /home/u/.claude/shell-snapshots/snapshot-zsh-1.sh 2>/dev/null || true && eval 'sleep 20'
-   4115 sh -c [ -r "$DERBY_ENDPOINT" ] && curl …
+   4115 sh -c [ -r "$JOCKEY_ENDPOINT" ] && curl …
    4116 /usr/bin/node mcp-server.js`
 	if !hasShellChild(ps, 4115) {
 		t.Error("the background zsh of claude 4115 was not found")
@@ -22,17 +22,17 @@ func TestHasShellChild(t *testing.T) {
 	}
 }
 
-// A hook that finds no derby (it is restarting) spools its event, and the
-// next derby replays it.
-func TestSpoolWhenNoDerby(t *testing.T) {
+// A hook that finds no jockey (it is restarting) spools its event, and the
+// next jockey replays it.
+func TestSpoolWhenNoJockey(t *testing.T) {
 	home := t.TempDir()
 	endpoint := filepath.Join(home, "endpoint")
-	if err := os.WriteFile(endpoint, []byte("DERBY_URL=http://127.0.0.1:1\nDERBY_TOKEN=x\n"), 0o600); err != nil {
+	if err := os.WriteFile(endpoint, []byte("JOCKEY_URL=http://127.0.0.1:1\nJOCKEY_TOKEN=x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range []string{"UserPromptSubmit", "Stop"} {
 		cmd := exec.Command("sh", "-c", Command(e))
-		cmd.Env = append(os.Environ(), "DERBY_ENDPOINT="+endpoint, "DERBY_TASK=p:1", "DERBY_STEP=test-1")
+		cmd.Env = append(os.Environ(), "JOCKEY_ENDPOINT="+endpoint, "JOCKEY_TASK=p:1", "JOCKEY_STEP=test-1")
 		cmd.Stdin = strings.NewReader(`{"session_id":"s1"}`)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("%s: %v %s", e, err, out)
@@ -50,26 +50,26 @@ func TestSpoolWhenNoDerby(t *testing.T) {
 	}
 }
 
-// A hook that reaches derby spools nothing.
-func TestHookPostsToDerby(t *testing.T) {
+// A hook that reaches jockey spools nothing.
+func TestHookPostsToJockey(t *testing.T) {
 	got := make(chan Event, 1)
 	srv := httptest.NewServer(&Receiver{Token: "tok", OnEvent: func(ev Event) { got <- ev }})
 	defer srv.Close()
 	home := t.TempDir()
 	endpoint := filepath.Join(home, "endpoint")
-	if err := os.WriteFile(endpoint, []byte("DERBY_URL="+srv.URL+"\nDERBY_TOKEN=tok\n"), 0o600); err != nil {
+	if err := os.WriteFile(endpoint, []byte("JOCKEY_URL="+srv.URL+"\nJOCKEY_TOKEN=tok\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("sh", "-c", Command("Stop"))
-	cmd.Env = append(os.Environ(), "DERBY_ENDPOINT="+endpoint, "DERBY_TASK=p:1", "DERBY_STEP=test-1")
+	cmd.Env = append(os.Environ(), "JOCKEY_ENDPOINT="+endpoint, "JOCKEY_TASK=p:1", "JOCKEY_STEP=test-1")
 	cmd.Stdin = strings.NewReader(`{"session_id":"s1"}`)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("%v %s", err, out)
 	}
 	if ev := <-got; ev.Name != "Stop" || ev.StepID != "p:1/test-1" || ev.SessionID != "s1" {
-		t.Errorf("derby got %+v", ev)
+		t.Errorf("jockey got %+v", ev)
 	}
 	if _, err := os.Stat(filepath.Join(home, "spool")); err == nil {
-		t.Error("an event derby received was spooled too")
+		t.Error("an event jockey received was spooled too")
 	}
 }

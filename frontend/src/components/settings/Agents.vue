@@ -1,24 +1,24 @@
 <script setup lang="ts">
 // Settings > Agents: the pipeline and one agent's definition. Edits save to
-// ~/.derby/agents.toml and regenerate the agent's /derby: command. The first
-// agent starts every task; Copilot is built in (derby runs it, not Claude).
+// ~/.jockey/agents.toml and regenerate the agent's /jockey: command. The first
+// agent starts every task; Copilot is built in (jockey runs it, not Claude).
 // With the defaults in use (Settings > General) the page only shows them.
 import { computed, ref } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { derby } from '../../lib/state'
+import { jockey } from '../../lib/state'
 import { afterOf, type Agent } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import Dropdown from '../ui/Dropdown.vue'
 import ContextPreview from './ContextPreview.vue'
 
-const agents = computed(() => derby.settings?.agents ?? [])
+const agents = computed(() => jockey.settings?.agents ?? [])
 const claudeAgents = computed(() => agents.value.filter((a) => !a.builtin))
 const firstId = computed(() => claudeAgents.value[0]?.id ?? '')
 const selId = ref(claudeAgents.value[0]?.id ?? '')
 const A = computed(() => agents.value.find((a) => a.id === selId.value) ?? claudeAgents.value[0])
 const confirmDelete = ref(false)
-const locked = computed(() => !!derby.settings?.config.useDefaults)
+const locked = computed(() => !!jockey.settings?.config.useDefaults)
 
 const models: [string, string][] = [['fable', 'Fable'], ['opus', 'Opus'], ['sonnet', 'Sonnet'], ['haiku', 'Haiku']]
 const efforts = ['low', 'medium', 'high', 'xhigh', 'max']
@@ -27,11 +27,11 @@ const isAuto = (a: Agent) => a.trigger.startsWith('after:')
 const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
 const save = debounce(() => {
-  const s = derby.settings
-  if (s) void derby.attempt('Could not save agents.toml', () => api.SaveAgents(JSON.parse(JSON.stringify(s.agents))))
+  const s = jockey.settings
+  if (s) void jockey.attempt('Could not save agents.toml', () => api.SaveAgents(JSON.parse(JSON.stringify(s.agents))))
 }, 500)
 function changed() {
-  derby.edited()
+  jockey.edited()
   save()
 }
 
@@ -45,7 +45,7 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
 
 const nameOf = (id: string) => agents.value.find((x) => x.id === id)?.name ?? id
 const afterName = (a: Agent) => nameOf(afterOf(a.trigger))
-const sub = (a: Agent) => (a.builtin ? 'run by Derby · ' : modelLabel(a.model) + ' · ') + (isAuto(a) ? 'automatic after ' + afterName(a) : a.builtin ? 'not started' : 'manual')
+const sub = (a: Agent) => (a.builtin ? 'run by Jockey · ' : modelLabel(a.model) + ' · ') + (isAuto(a) ? 'automatic after ' + afterName(a) : a.builtin ? 'not started' : 'manual')
 
 // "Starts after X" would loop when X (or what X waits for) starts after this agent.
 function loops(a: Agent, target: string) {
@@ -85,12 +85,12 @@ const idFor = (name: string) => {
   return id
 }
 function addAgent() {
-  const s = derby.settings
+  const s = jockey.settings
   const name = newName.value.trim()
   if (!s || !name) return
   const id = idFor(name)
   s.agents.push({
-    id, name, command: `/derby:${id} {task} -- {guidance}`, model: 'sonnet', trigger: 'manual', writes: id.toUpperCase() + '-{n}.md',
+    id, name, command: `/jockey:${id} {task} -- {guidance}`, model: 'sonnet', trigger: 'manual', writes: id.toUpperCase() + '-{n}.md',
     revert: false, rerun: false, choose: false, builtin: false,
     ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], onFail: [], effort: 'xhigh',
     instructions: 'Describe what this agent reads, what it does and what it writes.',
@@ -104,7 +104,7 @@ function addAgent() {
 // sits after the agent it follows.
 const index = computed(() => claudeAgents.value.findIndex((a) => a.id === A.value?.id))
 function move(delta: number) {
-  const s = derby.settings
+  const s = jockey.settings
   const a = A.value
   if (!s || !a || a.builtin) return
   const list = s.agents.filter((x) => !x.builtin)
@@ -112,11 +112,11 @@ function move(delta: number) {
   const j = i + delta
   if (j < 0 || j >= list.length) return
   ;[list[i], list[j]] = [list[j], list[i]]
-  s.agents = [...list, ...s.agents.filter((x) => x.builtin)] // derby puts Copilot back after its agent
+  s.agents = [...list, ...s.agents.filter((x) => x.builtin)] // jockey puts Copilot back after its agent
   changed()
 }
 function remove() {
-  const s = derby.settings
+  const s = jockey.settings
   if (!s || !A.value || A.value.builtin) return
   if (!confirmDelete.value) {
     confirmDelete.value = true
@@ -149,8 +149,8 @@ function pick(id: string) {
 <template>
   <div class="intro">
     <h1>Agents</h1>
-    <p>Each step of a task runs one agent: a Claude Code session started with the agent's command, model and instructions, in Claude Code's auto mode. The first agent starts every task; the order below is the pipeline. Nothing about an agent is built into Derby: commit, push and the PR are in the Push agent's instructions.</p>
-    <p v-if="locked" class="locked">Derby's default agents are in use (Settings &gt; General): they are shown here but cannot be edited.</p>
+    <p>Each step of a task runs one agent: a Claude Code session started with the agent's command, model and instructions, in Claude Code's auto mode. The first agent starts every task; the order below is the pipeline. Nothing about an agent is built into Jockey: commit, push and the PR are in the Push agent's instructions.</p>
+    <p v-if="locked" class="locked">Jockey's default agents are in use (Settings &gt; General): they are shown here but cannot be edited.</p>
   </div>
 
   <div class="pipeline">
@@ -175,7 +175,7 @@ function pick(id: string) {
       <fieldset class="lock" :disabled="locked">
       <template v-if="A.builtin">
         <p class="special">
-          Built in: Derby runs it, because it works with GitHub. It asks Copilot to review the PR, then waits for the review and the CI checks (checked every
+          Built in: Jockey runs it, because it works with GitHub. It asks Copilot to review the PR, then waits for the review and the CI checks (checked every
           minute), and fails when there is something to fix; the PR tab shows both. When it passes, the task is done (green). Its report,
           {{ A.writes.replace('{n}', 'n') }}, holds the PR's title and description.
         </p>

@@ -3,7 +3,7 @@
 // project picker): a ghost button in the thread's corner opens a filterable
 // list, a pick goes back to that message. The message being read has a dot.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 import { label } from '../lib/keymap'
 import Icon from './ui/Icon.vue'
 
@@ -22,7 +22,7 @@ const root = ref<HTMLElement>()
 const input = ref<HTMLInputElement>()
 const list = ref<HTMLElement>()
 const shown = computed(() => props.marks.length > 1)
-const open = computed(() => shown.value && derby.messages)
+const open = computed(() => shown.value && jockey.messages)
 
 const firstLine = (s: string) => s.split('\n').find((l) => l.trim()) ?? ''
 const rows = computed(() => {
@@ -77,7 +77,7 @@ watch(open, async (on) => {
   } else window.removeEventListener('pointerdown', outside, true)
 })
 
-const close = () => (derby.messages = false)
+const close = () => (jockey.messages = false)
 function pick(m: Mark) {
   emit('go', m.turn)
 }
@@ -99,7 +99,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', outside, true)
   props.thread?.removeEventListener('scroll', queue)
   cancelAnimationFrame(raf)
-  derby.messages = false
+  jockey.messages = false
 })
 
 // "Today", "Yesterday", else "Nov 18".
@@ -109,12 +109,12 @@ function when(at: string) {
   const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(+d).setHours(0, 0, 0, 0)) / 864e5)
   return days === 0 ? 'Today' : days === 1 ? 'Yesterday' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
-const tip = computed(() => `Your messages (${label(derby.settings?.keymap.messages?.[0])})`)
+const tip = computed(() => `Your messages (${label(jockey.settings?.keymap.messages?.[0])})`)
 </script>
 
 <template>
   <div v-if="shown" ref="root" class="picker">
-    <button type="button" class="trigger" :class="{ on: open }" :title="tip" aria-haspopup="listbox" :aria-expanded="open" @click="derby.messages = !derby.messages">
+    <button type="button" class="trigger" :class="{ on: open }" :title="tip" aria-haspopup="listbox" :aria-expanded="open" @click="jockey.messages = !jockey.messages">
       <span>Your messages</span>
       <b>{{ marks.length }}</b>
       <Icon name="chevron" :size="12" />

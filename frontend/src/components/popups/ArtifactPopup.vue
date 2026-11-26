@@ -1,26 +1,26 @@
 <script setup lang="ts">
 // The task's artifacts, large: every step's markdown listed on the left, the
 // selected one rendered on the right for easier reading. Prompt shows what
-// derby sent the step's agent instead: its command, instructions and system prompt.
+// jockey sent the step's agent instead: its command, instructions and system prompt.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
-import { derby } from '../../lib/state'
+import { jockey } from '../../lib/state'
 import type { Artifact } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import ArtifactView from '../ArtifactView.vue'
 import Splitter from '../ui/Splitter.vue'
 import { SIDEBAR, useSidebar } from '../../lib/sidebar'
 
-const task = computed(() => derby.tasks.find((t) => t.steps.some((s) => s.id === derby.artifactOf)))
+const task = computed(() => jockey.tasks.find((t) => t.steps.some((s) => s.id === jockey.artifactOf)))
 const steps = computed(() => task.value?.steps ?? [])
-const step = computed(() => steps.value.find((s) => s.id === derby.artifactOf))
+const step = computed(() => steps.value.find((s) => s.id === jockey.artifactOf))
 const art = ref<Artifact | null>(null)
 const prompt = ref(false)
 
 // Reload as Claude rewrites it.
 let seq = 0
 watch(
-  () => [derby.artifactOf, step.value?.state, derby.artifactRev, prompt.value] as const,
+  () => [jockey.artifactOf, step.value?.state, jockey.artifactRev, prompt.value] as const,
   async ([id, , , p]) => {
     const mine = ++seq
     art.value = null
@@ -30,20 +30,20 @@ watch(
   { immediate: true },
 )
 watch(
-  () => derby.artifactOf,
+  () => jockey.artifactOf,
   () => scroll.value?.scrollTo({ top: 0 }),
 )
 
-const pick = (id: string) => (derby.artifactOf = id)
+const pick = (id: string) => (jockey.artifactOf = id)
 const sb = useSidebar('artifact', 220)
-const close = () => derby.closeArtifactPopup()
+const close = () => jockey.closeArtifactPopup()
 const box = ref<HTMLDivElement>()
 const scroll = ref<HTMLDivElement>()
 onMounted(() => box.value?.focus())
 
 // Up and down move through the steps.
 function key(e: KeyboardEvent) {
-  const i = steps.value.findIndex((s) => s.id === derby.artifactOf)
+  const i = steps.value.findIndex((s) => s.id === jockey.artifactOf)
   if (e.key === 'ArrowDown' && i < steps.value.length - 1) pick(steps.value[i + 1].id)
   else if (e.key === 'ArrowUp' && i > 0) pick(steps.value[i - 1].id)
   else return
@@ -62,13 +62,13 @@ function key(e: KeyboardEvent) {
       <button class="other" :title="prompt ? 'Back to the report' : 'Show the prompt'" @click="prompt = !prompt">
         <Icon :name="prompt ? 'file' : 'terminal'" :size="13" />{{ prompt ? 'Artifact' : 'Prompt' }}
       </button>
-      <button v-if="!derby.diffOf" class="other" title="Show changes" @click="derby.showDiffToo(derby.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
+      <button v-if="!jockey.diffOf" class="other" title="Show changes" @click="jockey.showDiffToo(jockey.artifactOf)"><Icon name="diff" :size="13" />Changes</button>
       <button class="pop-x" aria-label="Close" title="Close (Esc)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div v-if="!sb.hidden.value" class="side-wrap" :style="{ width: sb.width.value + 'px' }">
         <div class="side">
-          <button v-for="s in steps" :key="s.id" class="item" :class="{ on: s.id === derby.artifactOf }" @click="pick(s.id)">
+          <button v-for="s in steps" :key="s.id" class="item" :class="{ on: s.id === jockey.artifactOf }" @click="pick(s.id)">
             <span class="name">{{ s.name }}</span>
             <span class="file mono">{{ s.artifact }}</span>
           </button>
@@ -78,7 +78,7 @@ function key(e: KeyboardEvent) {
       <div ref="scroll" class="scroll">
         <div class="page">
           <p v-if="!art" class="empty">Loading…</p>
-          <p v-else-if="!art.exists && prompt" class="empty">Derby did not keep the prompt of this step: it keeps the ones it sends from now on.</p>
+          <p v-else-if="!art.exists && prompt" class="empty">Jockey did not keep the prompt of this step: it keeps the ones it sends from now on.</p>
           <p v-else-if="!art.exists" class="empty">{{ art.file || 'The artifact' }} has not been written yet.</p>
           <ArtifactView v-else :art="art" :task="task?.id ?? ''" :zoom="1.6" />
         </div>

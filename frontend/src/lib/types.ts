@@ -36,7 +36,7 @@ export interface Agent {
   revert: boolean // its latest step can be reverted while nothing is committed after it
   rerun: boolean // its step can be run again while it is the latest
   choose: boolean // when its artifact lists Options, Next step asks which one to take
-  builtin: boolean // run by derby itself, not Claude: Copilot
+  builtin: boolean // run by jockey itself, not Claude: Copilot
   ignoreRules: boolean // the common rules are not given to this agent
   showDiff: boolean // makes changes: its steps are listed in the diff pop-up
   sisters: boolean // its artifact can ask for sister tasks in other repositories
@@ -144,7 +144,7 @@ export interface FileDiff {
   sources: boolean // false: too big, old and new are empty
 }
 
-/** A process outside derby running a session. */
+/** A process outside jockey running a session. */
 export interface Proc {
   pid: number
   cmd: string
@@ -156,7 +156,7 @@ export interface Config {
   claudeCommand: string
   maxLiveSessions: number
   notifications: boolean
-  useDefaults: boolean // agents, prompts and skills are the repository's defaults/, not ~/.derby's
+  useDefaults: boolean // agents, prompts and skills are the repository's defaults/, not ~/.jockey's
   maxTabs: number
   rules: string // followed by every agent
   branchPrefix: string // every new task's branch starts with it
@@ -172,16 +172,16 @@ export interface Settings {
   agents: Agent[]
   context: Record<string, Context>
   keymap: Keymap
-  prompts: Prompt[] // what derby adds to agents and fix steps (Settings > Context > Prompts)
+  prompts: Prompt[] // what jockey adds to agents and fix steps (Settings > Context > Prompts)
   dir: string
 }
 
 export interface Prompt {
   id: string
   name: string
-  where: string // where derby uses it
-  vars: string // what derby replaces in it
-  skill: string // set: an internal skill, /derby:<skill> in every session; where is its description
+  where: string // where jockey uses it
+  vars: string // what jockey replaces in it
+  skill: string // set: an internal skill, /jockey:<skill> in every session; where is its description
   default: string
   text: string // the text in use
 }
@@ -219,7 +219,7 @@ export interface Step {
   paused: boolean // stopped by the user until Resume
   rerun: boolean // Rerun applies: the latest step, of an agent that can be rerun
   skip: boolean // the check and cross buttons apply: the latest step, or one not finished
-  external: boolean // run by derby, not Claude: the Copilot review step
+  external: boolean // run by jockey, not Claude: the Copilot review step
 }
 
 export interface Option {
@@ -228,7 +228,7 @@ export interface Option {
   label: string
 }
 
-/** A repository the plan also needs; project is '' until it is a derby project. */
+/** A repository the plan also needs; project is '' until it is a jockey project. */
 export interface SisterOffer {
   repo: string
   scope: string
@@ -281,7 +281,7 @@ export interface Task {
   projectGone: boolean // its project was removed from Settings > Projects
   checks: CICheck[] // CI checks of the open PR
   labels: string[] // labels of the open PR
-  draft: boolean // the open PR is a draft (derby opens them so)
+  draft: boolean // the open PR is a draft (jockey opens them so)
   conflicting: boolean // the open PR conflicts with its base: GitHub runs no checks
   feedback: Feedback[] // what reviewers still ask for on the open PR
   rejected: Record<string, { step: string; name: string }> // open threads a step found wrong or unnecessary, by thread id
@@ -333,7 +333,7 @@ export interface CICheck {
 }
 
 /** An open GitHub issue assigned to you, for New task. */
-/** A task's issue with its comments (GetTaskIssue); images load through derby. */
+/** A task's issue with its comments (GetTaskIssue); images load through jockey. */
 export interface TaskIssue {
   number: number
   repo: string

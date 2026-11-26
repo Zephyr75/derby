@@ -4,7 +4,7 @@
 // commentable, a + button shows on the hovered line: a click comments on that
 // line, a drag (or a shift-click on another line's +) on a range, marked by
 // a bar down the gutter. The comments show under their last line. With a
-// path in a language derby has a grammar for, the code is highlighted.
+// path in a language jockey has a grammar for, the code is highlighted.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { highlight, type Seg } from '../lib/highlight'
 import type { Note } from '../lib/types'

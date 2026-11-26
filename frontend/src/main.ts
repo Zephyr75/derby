@@ -15,7 +15,7 @@ import './themes/base.css'
 import './themes/syntax.css'
 import { createApp } from 'vue'
 import App from './App.vue'
-import { derby } from './lib/state'
+import { jockey } from './lib/state'
 
-void derby.init()
+void jockey.init()
 createApp(App).mount('#app')

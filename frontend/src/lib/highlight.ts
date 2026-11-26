@@ -47,7 +47,7 @@ const exts: Record<string, string> = Object.assign(Object.create(null), {
   md: 'markdown', markdown: 'markdown',
 })
 
-/** langOf is the language of a file, by its name; '' when derby has none for it. */
+/** langOf is the language of a file, by its name; '' when jockey has none for it. */
 export function langOf(path: string): string {
   const name = path.split('/').pop() ?? ''
   if (/^(GNUmakefile|[Mm]akefile)$/.test(name)) return 'make'
@@ -102,7 +102,7 @@ function load(id: string) {
         return { lang, query: new Query(lang, await queries[`../grammars/${query}.scm`]()) }
       })
       .catch((e) => {
-        console.warn(`derby: no highlighting for ${id}:`, e)
+        console.warn(`jockey: no highlighting for ${id}:`, e)
         return null
       })
     loaded.set(id, p)

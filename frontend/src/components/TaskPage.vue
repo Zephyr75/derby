@@ -5,13 +5,13 @@
 // again from GitHub) and its comments.
 import { computed, ref, watch } from 'vue'
 import { api, errorText } from '../lib/api'
-import { derby } from '../lib/state'
+import { jockey } from '../lib/state'
 import ArtifactView from './ArtifactView.vue'
 import type { Artifact, TaskIssue } from '../lib/types'
 
 defineProps<{ compact?: boolean }>()
 
-const t = computed(() => derby.selTask)
+const t = computed(() => jockey.selTask)
 
 const issue = ref<TaskIssue | null>(null)
 const error = ref('')

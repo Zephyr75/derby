@@ -25,7 +25,7 @@ func TestReadTrust(t *testing.T) {
 		if ok != c.ok || downs != c.downs {
 			t.Errorf("%s: ok %v downs %d, want %v %d", c.file, ok, downs, c.ok, c.downs)
 		}
-		if ok && folder != "/private/tmp/derby-trust-fixture" {
+		if ok && folder != "/private/tmp/jockey-trust-fixture" {
 			t.Errorf("%s: folder %q", c.file, folder)
 		}
 	}

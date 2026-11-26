@@ -276,7 +276,7 @@ select.input {
   background-repeat: no-repeat;
   background-position: right 8px center;
 }
-/* Checkboxes are Zed's Switch: a round thumb in a pill, at derby's 13px
+/* Checkboxes are Zed's Switch: a round thumb in a pill, at jockey's 13px
    for Zed's 16px (32x20 there). */
 input[type='checkbox'] {
   appearance: none;

@@ -1,4 +1,4 @@
-// Derby's themes, each a dark and a light variant (a [data-theme] block in
+// Jockey's themes, each a dark and a light variant (a [data-theme] block in
 // themes/*.css). Settings > Appearance lists one row per theme, with Dark,
 // Light and System (follows the OS).
 import type { ThemeMode, ThemeName } from './types'

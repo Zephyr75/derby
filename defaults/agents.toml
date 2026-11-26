@@ -1,7 +1,7 @@
 [[agent]]
 id = "plan"
 name = "Plan"
-command = "/derby:plan {task} -- {guidance}"
+command = "/jockey:plan {task} -- {guidance}"
 model = "sonnet"
 effort = "medium"
 trigger = "manual"
@@ -11,7 +11,7 @@ sisters = true
 next = ["impl", "discuss"]
 on_fail = ["plan"]
 instructions = '''
-Read ISSUE.md too when the task has a GitHub issue (Derby copied it there, comments included). Explore the repo and decide an approach. Do not edit code.
+Read ISSUE.md too when the task has a GitHub issue (Jockey copied it there, comments included). Explore the repo and decide an approach. Do not edit code.
 When an earlier PLAN exists (planning again after a failed plan, a discussion or a failed step), start from it and from what showed it wrong (the step this one follows, your guidance): keep what still holds, and say right after the TLDR what changed from it and why.
 PLAN-{n}.md sections, after the TLDR:
 1. Goal: what is wrong or missing today and what will be true once it is done.
@@ -26,7 +26,7 @@ Fail when the task cannot be done as described.'''
 [[agent]]
 id = "impl"
 name = "Implement"
-command = "/derby:implement {task} -- {guidance}"
+command = "/jockey:implement {task} -- {guidance}"
 model = "sonnet"
 effort = "medium"
 trigger = "manual"
@@ -36,7 +36,7 @@ show_diff = true
 sisters = true
 on_fail = ["impl", "discuss", "plan"]
 instructions = '''
-The newest PLAN is the target: its New flow, Files and the option picked. What to do now depends on the step this one follows (Derby step block):
+The newest PLAN is the target: its New flow, Files and the option picked. What to do now depends on the step this one follows (Jockey step block):
 - after Plan: build the plan's New flow and Files.
 - after a failed Review: fix each finding of that REVIEW-n.md that holds.
 - after a failed Test: its failing tests show bugs; fix the code, never the tests (TEST-n.md explains each).
@@ -54,7 +54,7 @@ Fail when you could not implement it (say what blocks).'''
 [[agent]]
 id = "discuss"
 name = "Discuss"
-command = "/derby:discuss {task} -- {guidance}"
+command = "/jockey:discuss {task} -- {guidance}"
 model = "sonnet"
 effort = "medium"
 trigger = "manual"
@@ -74,7 +74,7 @@ Fail when the user stops the work.'''
 [[agent]]
 id = "review"
 name = "Review"
-command = "/derby:review {task}"
+command = "/jockey:review {task}"
 model = "sonnet"
 effort = "medium"
 trigger = "after:impl"
@@ -83,14 +83,14 @@ rerun = true
 next = ["test", "impl", "discuss"]
 on_fail = ["impl", "discuss"]
 instructions = '''
-Review the uncommitted changes (git status, git diff HEAD): what changed since Derby's last commit. Check them against the newest PLAN (its New flow and Files) and the newest IMPLEMENT or DISCUSS file (what it says it changed, and the feedback it says it fixed or rejected). When an earlier REVIEW failed, check that each of its findings is fixed or rightly rejected. Never edit code, and do not ask for tests: Test adds them.
+Review the uncommitted changes (git status, git diff HEAD): what changed since Jockey's last commit. Check them against the newest PLAN (its New flow and Files) and the newest IMPLEMENT or DISCUSS file (what it says it changed, and the feedback it says it fixed or rejected). When an earlier REVIEW failed, check that each of its findings is fixed or rightly rejected. Never edit code, and do not ask for tests: Test adds them.
 REVIEW-{n}.md: the findings, most important first, each with its file and line and what to change.
 Done when the changes are ready, failed when they need changes.'''
 
 [[agent]]
 id = "test"
 name = "Test"
-command = "/derby:test {task} -- {guidance}"
+command = "/jockey:test {task} -- {guidance}"
 model = "sonnet"
 effort = "medium"
 trigger = "manual"
@@ -104,14 +104,14 @@ Write tests for the uncommitted changes (git status, git diff HEAD), following t
 First check the tests this branch already added or changed (git diff origin/{base} on the test files): update or remove the ones that no longer match the code. Never change tests that exist on {base}.
 Run them. Change only tests: if one shows a bug, keep it failing and explain it.
 Report only checks that ran, with the exact command and pass/fail counts. If a run cannot start (no credentials or network), say so; never point tests at real resources to make them run.
-In pony-core, once the tests pass, run the regression-tests skill (derby:regression-tests) too, on the changes under test.
+In pony-core, once the tests pass, run the regression-tests skill (jockey:regression-tests) too, on the changes under test.
 TEST-{n}.md sections, after the TLDR: Tests added, How to run, Results, and Regression (the skill's results) in pony-core.
 Done when the tests (and the regression run) pass, failed when one shows a bug.'''
 
 [[agent]]
 id = "push"
 name = "Push"
-command = "/derby:push {task}"
+command = "/jockey:push {task}"
 model = "sonnet"
 effort = "medium"
 trigger = "manual"
@@ -140,7 +140,7 @@ on_fail = ["impl", "discuss"]
 [[agent]]
 id = "explain"
 name = "Explain"
-command = "/derby:explain {task} -- {guidance}"
+command = "/jockey:explain {task} -- {guidance}"
 model = "sonnet"
 effort = "medium"
 trigger = "manual"
@@ -148,7 +148,7 @@ writes = "EXPLAIN-{n}.md"
 next = ["explain", "discuss", "impl"]
 on_fail = ["explain"]
 instructions = '''
-Write EXPLAIN-{n}.md as the best possible explanation of this whole change, in every repository when the task has sister tasks (their run directories and worktrees are in the Derby step block): clear and intuitive, and thorough enough that the reader never needs to open the diff. Do not be brief: a reviewer should come away knowing exactly what the code now does and why.
+Write EXPLAIN-{n}.md as the best possible explanation of this whole change, in every repository when the task has sister tasks (their run directories and worktrees are in the Jockey step block): clear and intuitive, and thorough enough that the reader never needs to open the diff. Do not be brief: a reviewer should come away knowing exactly what the code now does and why.
 Read TASK.md and the newest PLAN, then each repository's diff in full: git diff origin/{base}...HEAD (in a sister task's worktree, its own base), and open the changed files when the diff lacks context.
 Structure:
 - the TLDR, then the problem and the approach in plain words (ELI5 where something is hard to picture);
@@ -156,5 +156,5 @@ Structure:
 - per repository, every changed file (git diff --stat) under its own heading or bullet: what it does in the codebase, then each change in it, function by function, with the reason; for tests, what each one proves;
 - edge cases, error handling, migrations or config the change touches, and what to check when reviewing.
 Add archify diagrams where a picture is clearer than words (flows, sequences, data shapes).
-Also write EXPLAIN-{n}.files next to it, in the same folder: the changed files, one path per line (relative to their repository's root), in the order the report goes through them, so Derby's changed files view follows the explanation.
+Also write EXPLAIN-{n}.files next to it, in the same folder: the changed files, one path per line (relative to their repository's root), in the order the report goes through them, so Jockey's changed files view follows the explanation.
 Write only EXPLAIN-{n}.md and EXPLAIN-{n}.files: never change the code, commit or push.'''

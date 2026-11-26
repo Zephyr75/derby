@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watchEffect } from 'vue'
-import { derby } from './lib/state'
+import { jockey } from './lib/state'
 import TitleBar from './components/TitleBar.vue'
 import StatusBar from './components/StatusBar.vue'
 import LeftPanel from './components/LeftPanel.vue'
@@ -15,10 +15,10 @@ import Todos from './components/popups/Todos.vue'
 import ViewPopups from './components/popups/ViewPopups.vue'
 
 watchEffect(() => {
-  document.documentElement.dataset.theme = derby.theme
+  document.documentElement.dataset.theme = jockey.theme
 })
 watchEffect(() => {
-  const ap = derby.settings?.config.appearance
+  const ap = jockey.settings?.config.appearance
   if (!ap) return
   const root = document.documentElement.style
   root.setProperty('--ui-font', `'${ap.uiFont}', 'Geist', system-ui, sans-serif`)
@@ -28,28 +28,28 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div v-if="derby.failed" class="fatal">
-    <strong>Derby could not load</strong>
-    <span class="mono">{{ derby.failed }}</span>
+  <div v-if="jockey.failed" class="fatal">
+    <strong>Jockey could not load</strong>
+    <span class="mono">{{ jockey.failed }}</span>
   </div>
-  <div v-else-if="derby.ready" class="app">
+  <div v-else-if="jockey.ready" class="app">
     <TitleBar />
     <main>
-      <template v-if="derby.view === 'board'">
-        <LeftPanel v-if="!derby.leftHidden" />
+      <template v-if="jockey.view === 'board'">
+        <LeftPanel v-if="!jockey.leftHidden" />
         <Center />
-        <RightPanel v-if="!derby.rightHidden" />
+        <RightPanel v-if="!jockey.rightHidden" />
       </template>
       <Settings v-else />
     </main>
     <StatusBar />
 
-    <Palette v-if="derby.overlay === 'palette'" />
-    <ScopePicker v-if="derby.overlay === 'scope'" />
-    <NewTask v-if="derby.overlay === 'new'" />
-    <Activity v-if="derby.overlay === 'activity'" />
-    <Todos v-if="derby.overlay === 'todos'" />
-    <ViewPopups v-if="derby.overlay === 'views' && (derby.diffOf || derby.artifactOf || derby.diagramOf)" />
+    <Palette v-if="jockey.overlay === 'palette'" />
+    <ScopePicker v-if="jockey.overlay === 'scope'" />
+    <NewTask v-if="jockey.overlay === 'new'" />
+    <Activity v-if="jockey.overlay === 'activity'" />
+    <Todos v-if="jockey.overlay === 'todos'" />
+    <ViewPopups v-if="jockey.overlay === 'views' && (jockey.diffOf || jockey.artifactOf || jockey.diagramOf)" />
   </div>
 </template>
 

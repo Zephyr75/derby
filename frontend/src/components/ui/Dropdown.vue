@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// derby's dropdown: a chip that opens a small menu. The chip shows the
+// jockey's dropdown: a chip that opens a small menu. The chip shows the
 // picked item, or the slot's content (e.g. "+ Add").
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Icon from './Icon.vue'

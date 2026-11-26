@@ -3,22 +3,22 @@
 // issue shows in full (description, comments, images) before the task starts.
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errorText } from '../../lib/api'
-import { derby } from '../../lib/state'
+import { jockey } from '../../lib/state'
 import { isMac } from '../../lib/keymap'
 import Icon from '../ui/Icon.vue'
 import Dropdown from '../ui/Dropdown.vue'
 import ArtifactView from '../ArtifactView.vue'
 import type { Artifact, Issue } from '../../lib/types'
 
-// derby.previewNew pre-fills the preview's artboards 4 to 6 in the browser mock.
+// jockey.previewNew pre-fills the preview's artboards 4 to 6 in the browser mock.
 const presets: Record<string, { p: string; i: string; d: string }> = {
   issue: { p: 'core', i: '1190', d: '' },
   both: { p: 'core', i: '1190', d: 'Start with the API flag only; the app change is a separate task.' },
   local: { p: 'rider', i: '', d: 'Add haptic feedback when a ride starts and ends.' },
 }
-const pre = presets[derby.previewNew]
+const pre = presets[jockey.previewNew]
 
-const project = ref(pre?.p ?? derby.selTask?.project ?? derby.projects[0]?.id ?? '')
+const project = ref(pre?.p ?? jockey.selTask?.project ?? jockey.projects[0]?.id ?? '')
 const issue = ref(pre?.i ?? '')
 // The repository of the picked issue when it is not the project's issues repository.
 const issueRepo = ref('')
@@ -61,13 +61,13 @@ const previewMeta = computed(() =>
   [front('author') && 'by ' + front('author'), front('created'), front('labels'), comments.value ? `${comments.value} comment${comments.value > 1 ? 's' : ''}` : 'no comments'].filter(Boolean).join(' · '),
 )
 
-const p = computed(() => derby.project(project.value))
+const p = computed(() => jockey.project(project.value))
 const nIssue = computed(() => issue.value.trim())
 const nDesc = computed(() => desc.value.trim())
 const mode = computed(() => (nIssue.value && nDesc.value ? 'both' : nIssue.value ? 'issue' : nDesc.value ? 'local' : 'none'))
 // The branch: the prefix from Settings, then words from the issue title or
 // the description, until the user edits it.
-const prefix = computed(() => derby.settings?.config.branchPrefix ?? 'ar-')
+const prefix = computed(() => jockey.settings?.config.branchPrefix ?? 'ar-')
 const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 7).join('-')
 const branchEdited = ref(false)
 const branchInput = ref('')
@@ -92,7 +92,7 @@ const hint = computed(
     })[mode.value],
 )
 const keys = isMac() ? '⌘⏎' : 'Ctrl+⏎'
-const first = computed(() => derby.settings?.agents.find((a) => !a.builtin)?.name ?? 'Plan')
+const first = computed(() => jockey.settings?.agents.find((a) => !a.builtin)?.name ?? 'Plan')
 const valid = computed(() => mode.value !== 'none' && !!p.value && !busy.value && branchOk.value)
 
 function onIssue(e: Event) {
@@ -123,7 +123,7 @@ async function fetchTitle() {
 }
 
 // Where the project's issues live: the common issues repository when it uses it.
-const issuesRepo = computed(() => (p.value?.commonIssues && derby.settings?.config.issuesRepo) || p.value?.repo || '')
+const issuesRepo = computed(() => (p.value?.commonIssues && jockey.settings?.config.issuesRepo) || p.value?.repo || '')
 // Open issues assigned to you; the # field takes any other issue.
 const mine = ref<Issue[] | null>(null)
 const mineError = ref('')
@@ -146,7 +146,7 @@ watch(
 )
 // The issue's Priority field, coloured with the status colours of the theme.
 const priorityClass: Record<string, string> = { urgent: 's-failed', high: 's-waiting', medium: 's-running', low: 's-idle' }
-const hasTask = (n: number) => derby.tasks.some((t) => t.project === project.value && t.issue === String(n))
+const hasTask = (n: number) => jockey.tasks.some((t) => t.project === project.value && t.issue === String(n))
 const shortRepo = (r: string) => r.split('/').pop() ?? r
 // Issues of another repository than the issues repository are labelled with it.
 const otherRepo = (is: Issue) => (is.repo && is.repo !== issuesRepo.value ? is.repo : '')
@@ -173,23 +173,23 @@ function pickMine(v: string) {
   void loadPreview()
 }
 
-// Files attached to the task: derby copies them to the run folder and TASK.md lists them.
+// Files attached to the task: jockey copies them to the run folder and TASK.md lists them.
 const baseName = (f: string) => f.split(/[\\/]/).pop() ?? f
 async function addFiles() {
-  const picked = await derby.attempt('Could not open the file picker', () => api.ChooseFiles('Attach files to the task'))
+  const picked = await jockey.attempt('Could not open the file picker', () => api.ChooseFiles('Attach files to the task'))
   for (const f of picked ?? []) if (!files.value.includes(f)) files.value.push(f)
 }
 
 // The project, picked in the header; its last item adds one.
 const ADD = '\u0000add'
-const projectItems = computed(() => [...derby.projects.map((pr) => ({ value: pr.id, label: pr.name, title: pr.path })), { value: ADD, label: 'Add project…', title: 'Add a git repository' }])
+const projectItems = computed(() => [...jockey.projects.map((pr) => ({ value: pr.id, label: pr.name, title: pr.path })), { value: ADD, label: 'Add project…', title: 'Add a git repository' }])
 const onProject = (v: string) => (v === ADD ? void addProject() : pickProject(v))
 
 // Adds a project without leaving the pop-up, then selects it.
 async function addProject() {
-  const pr = await derby.attempt('Could not add the project', () => api.AddProject())
+  const pr = await jockey.attempt('Could not add the project', () => api.AddProject())
   if (!pr) return
-  derby.toast('Added ' + pr.name, pr.path)
+  jockey.toast('Added ' + pr.name, pr.path)
   pickProject(pr.id)
 }
 
@@ -208,10 +208,10 @@ async function create() {
   error.value = ''
   try {
     const t = await api.CreateTask(project.value, issueRef.value, nDesc.value, branch.value, true, files.value)
-    derby.overlay = 'none'
+    jockey.overlay = 'none'
     // The task:changed event may arrive after the call returns.
-    if (!derby.task(t.id)) derby.tasks.push(t)
-    derby.pickTask(t.id)
+    if (!jockey.task(t.id)) jockey.tasks.push(t)
+    jockey.pickTask(t.id)
   } catch (e) {
     error.value = errorText(e)
   } finally {
@@ -229,12 +229,12 @@ function key(e: KeyboardEvent) {
 </script>
 
 <template>
-  <button class="scrim dim" aria-label="Cancel new task" @click="derby.overlay = 'none'"></button>
+  <button class="scrim dim" aria-label="Cancel new task" @click="jockey.overlay = 'none'"></button>
   <div class="box popup pop pop-small" role="dialog" aria-label="New task" tabindex="-1" @keydown="key">
     <div class="head">
       <Dropdown class="proj" :items="projectItems" :value="project" placeholder="Pick a project" title="The project to work in" @pick="onProject" />
       <span class="grow"></span>
-      <button class="pop-x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
+      <button class="pop-x" aria-label="Close" @click="jockey.overlay = 'none'"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <div class="issue-line">
@@ -278,7 +278,7 @@ function key(e: KeyboardEvent) {
     <div class="foot">
       <span class="hint" :class="{ local: mode === 'local' }">{{ hint }}</span>
       <span class="grow"></span>
-      <button class="btn ghost" @click="derby.overlay = 'none'">Cancel</button>
+      <button class="btn ghost" @click="jockey.overlay = 'none'">Cancel</button>
       <button class="btn primary" :disabled="!valid" :title="keys" @click="create()">Create and run {{ first }}<span class="keys">{{ keys }}</span></button>
     </div>
   </div>

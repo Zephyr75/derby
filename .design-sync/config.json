@@ -1,11 +1,11 @@
 {
   "projectId": "664cfca0-6d56-4fda-8249-91316a663663",
-  "pkg": "derby-theme",
-  "globalName": "DerbyTheme",
+  "pkg": "jockey-theme",
+  "globalName": "JockeyTheme",
   "shape": "package",
   "entry": ".design-sync/theme/index.js",
   "buildCmd": "node .design-sync/theme/build.mjs",
-  "cssEntry": "derby.css",
+  "cssEntry": "jockey.css",
   "extraFonts": [
     "../../frontend/node_modules/@fontsource/geist/latin-400.css",
     "../../frontend/node_modules/@fontsource/geist/latin-500.css",

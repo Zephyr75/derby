@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"derby/internal/gitops"
-	"derby/internal/settings"
-	"derby/internal/zed"
+	"jockey/internal/gitops"
+	"jockey/internal/settings"
+	"jockey/internal/zed"
 )
 
 // Branch is a project's local branch and the checkout it is in, if any.

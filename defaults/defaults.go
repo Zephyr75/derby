@@ -1,5 +1,5 @@
-// Package defaults holds Derby's default agents and prompts: the files
-// ~/.derby/agents.toml and ~/.derby/prompts.toml start from, in the same
+// Package defaults holds Jockey's default agents and prompts: the files
+// ~/.jockey/agents.toml and ~/.jockey/prompts.toml start from, in the same
 // format (a diff between the two folders shows what you changed).
 package defaults
 
@@ -10,7 +10,7 @@ import _ "embed"
 //go:embed agents.toml
 var Agents []byte
 
-// Prompts is prompts.toml: every text Derby adds to what agents get.
+// Prompts is prompts.toml: every text Jockey adds to what agents get.
 //
 //go:embed prompts.toml
 var Prompts []byte

@@ -3,32 +3,32 @@
 // Others, for the todos of no task; the Archived tab has the todos of archived
 // tasks. A task's name opens it.
 import { computed, ref } from 'vue'
-import { derby, taskName } from '../../lib/state'
+import { jockey, taskName } from '../../lib/state'
 import type { Task, Todo } from '../../lib/types'
 import Icon from '../ui/Icon.vue'
 import TaskRef from '../ui/TaskRef.vue'
 import TodoList from '../TodoList.vue'
 
 const open = (ts: Todo[]) => ts.filter((x) => !x.done).length
-const tab = ref<'active' | 'archived'>(derby.selTask?.archived ? 'archived' : 'active')
+const tab = ref<'active' | 'archived'>(jockey.selTask?.archived ? 'archived' : 'active')
 const byName = (a: Task, b: Task) => a.projectName.localeCompare(b.projectName) || a.id.localeCompare(b.id)
 const tasks = computed(() =>
   tab.value === 'archived'
-    ? derby.tasks.filter((t) => t.archived && t.todos.length).sort(byName)
-    : derby.tasks.filter((t) => !t.archived && (t.id === derby.sel || t.todos.length)).sort(byName),
+    ? jockey.tasks.filter((t) => t.archived && t.todos.length).sort(byName)
+    : jockey.tasks.filter((t) => !t.archived && (t.id === jockey.sel || t.todos.length)).sort(byName),
 )
-const openActive = computed(() => open(derby.todos) + derby.tasks.reduce((n, t) => n + (t.archived ? 0 : open(t.todos)), 0))
-const openArchived = computed(() => derby.tasks.reduce((n, t) => n + (t.archived ? open(t.todos) : 0), 0))
+const openActive = computed(() => open(jockey.todos) + jockey.tasks.reduce((n, t) => n + (t.archived ? 0 : open(t.todos)), 0))
+const openArchived = computed(() => jockey.tasks.reduce((n, t) => n + (t.archived ? open(t.todos) : 0), 0))
 
 function go(t: Task) {
-  derby.overlay = 'none'
-  derby.left = t.archived ? 'archive' : 'tasks'
-  derby.pickTask(t.id)
+  jockey.overlay = 'none'
+  jockey.left = t.archived ? 'archive' : 'tasks'
+  jockey.pickTask(t.id)
 }
 </script>
 
 <template>
-  <button class="scrim dim" aria-label="Close the todo lists" @click="derby.overlay = 'none'"></button>
+  <button class="scrim dim" aria-label="Close the todo lists" @click="jockey.overlay = 'none'"></button>
   <div class="box popup pop pop-half" role="dialog" aria-label="Todo lists">
     <div class="head pop-head">
       <Icon name="todo" :size="15" />
@@ -38,8 +38,8 @@ function go(t: Task) {
         <button role="tab" :aria-selected="tab === 'archived'" :class="{ on: tab === 'archived' }" @click="tab = 'archived'">Archived <span class="count">{{ openArchived }}</span></button>
       </div>
       <span class="grow"></span>
-      <label class="hide small"><input v-model="derby.hideDone" type="checkbox" />Hide done</label>
-      <button class="pop-x" aria-label="Close" @click="derby.overlay = 'none'"><Icon name="close" :size="14" /></button>
+      <label class="hide small"><input v-model="jockey.hideDone" type="checkbox" />Hide done</label>
+      <button class="pop-x" aria-label="Close" @click="jockey.overlay = 'none'"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
       <section v-for="t in tasks" :key="t.id">
@@ -48,12 +48,12 @@ function go(t: Task) {
           <span class="name">{{ taskName(t) }}</span>
           <span class="muted small">{{ t.projectName }}</span>
         </button>
-        <TodoList :todos="t.todos" :hide-done="derby.hideDone" @change="derby.setTodos(t, $event)" :run="derby.todoAgent(t)?.name ?? 'Implement'" :blocked="derby.todoBlocked(t)" @run="derby.runTodo(t, $event)" />
+        <TodoList :todos="t.todos" :hide-done="jockey.hideDone" @change="jockey.setTodos(t, $event)" :run="jockey.todoAgent(t)?.name ?? 'Implement'" :blocked="jockey.todoBlocked(t)" @run="jockey.runTodo(t, $event)" />
       </section>
       <p v-if="tab === 'archived' && !tasks.length" class="muted small none">No archived task has todos.</p>
       <section v-if="tab === 'active'">
         <span class="task static"><span class="name">Others</span><span class="muted small">not related to a task</span></span>
-        <TodoList :todos="derby.todos" :hide-done="derby.hideDone" @change="derby.setTodos(null, $event)" />
+        <TodoList :todos="jockey.todos" :hide-done="jockey.hideDone" @change="jockey.setTodos(null, $event)" />
       </section>
     </div>
   </div>

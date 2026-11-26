@@ -3,7 +3,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
-import { derby } from '../../lib/state'
+import { jockey } from '../../lib/state'
 import Icon from '../ui/Icon.vue'
 import type { Check, Project } from '../../lib/types'
 
@@ -14,46 +14,46 @@ const manualPath = ref('')
 
 async function runChecks() {
   checking.value = true
-  checks.value = (await derby.attempt('Checks failed', () => api.CheckPrerequisites())) ?? []
+  checks.value = (await jockey.attempt('Checks failed', () => api.CheckPrerequisites())) ?? []
   checking.value = false
 }
 onMounted(runChecks)
 
 const global = computed(() => checks.value.filter((c) => !c.project))
 const failing = (id: string) => checks.value.filter((c) => c.project === id && !c.ok)
-const open = (id: string) => derby.tasks.filter((t) => t.project === id && !t.archived).length
+const open = (id: string) => jockey.tasks.filter((t) => t.project === id && !t.archived).length
 
 const save = debounce((p: Project) => {
-  void derby.attempt('Could not save the project', () => api.SaveProject(JSON.parse(JSON.stringify(p))))
+  void jockey.attempt('Could not save the project', () => api.SaveProject(JSON.parse(JSON.stringify(p))))
 }, 600)
 function set(p: Project, k: 'name' | 'path' | 'repo' | 'baseBranch' | 'worktreesDir', e: Event) {
   let v = (e.target as HTMLInputElement).value
   if (k === 'worktreesDir') v = v.replace(/\/+$/, '')
   p[k] = v
-  derby.edited()
+  jockey.edited()
   save(p)
 }
 function setCommon(p: Project, e: Event) {
   p.commonIssues = (e.target as HTMLInputElement).checked
-  derby.edited()
+  jockey.edited()
   save(p)
 }
-const issuesRepo = computed(() => derby.settings?.config.issuesRepo ?? '')
+const issuesRepo = computed(() => jockey.settings?.config.issuesRepo ?? '')
 
 async function add() {
-  const p = await derby.attempt('Could not add the project', () => api.AddProject())
+  const p = await jockey.attempt('Could not add the project', () => api.AddProject())
   if (p) {
-    derby.toast('Added ' + p.name, p.path)
+    jockey.toast('Added ' + p.name, p.path)
     void runChecks()
   }
 }
 async function addPath() {
   const dir = manualPath.value.trim()
   if (!dir) return
-  const p = await derby.attempt('Could not add the project', () => api.AddProjectPath(dir))
+  const p = await jockey.attempt('Could not add the project', () => api.AddProjectPath(dir))
   if (p) {
     manualPath.value = ''
-    derby.toast('Added ' + p.name, p.path)
+    jockey.toast('Added ' + p.name, p.path)
     void runChecks()
   }
 }
@@ -63,16 +63,16 @@ async function remove(p: Project) {
     return
   }
   confirmRemove.value = ''
-  await derby.attempt('Could not remove the project', () => api.RemoveProject(p.id))
+  await jockey.attempt('Could not remove the project', () => api.RemoveProject(p.id))
 }
-const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.OpenProjectInZed(id))
+const openInZed = (id: string) => jockey.attempt('Could not open Zed', () => api.OpenProjectInZed(id))
 </script>
 
 <template>
   <div class="top">
     <div class="intro grow">
       <h1>Projects</h1>
-      <p>Repositories Derby can run tasks in. Tasks from every project run in parallel, each in its own worktree.</p>
+      <p>Repositories Jockey can run tasks in. Tasks from every project run in parallel, each in its own worktree.</p>
     </div>
     <button class="btn primary" @click="add">+ Add project</button>
   </div>
@@ -89,7 +89,7 @@ const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.
     </div>
   </div>
 
-  <div v-for="p in derby.projects" :key="p.id" class="proj card">
+  <div v-for="p in jockey.projects" :key="p.id" class="proj card">
     <div class="row">
       <Icon name="folder" :size="15" />
       <span class="name">{{ p.name }}</span>
@@ -97,7 +97,7 @@ const openInZed = (id: string) => derby.attempt('Could not open Zed', () => api.
       <span class="grow"></span>
       <span class="muted small">{{ open(p.id) }} open task{{ open(p.id) === 1 ? '' : 's' }}</span>
       <button class="btn ghost" @click="openInZed(p.id)">Open in Zed</button>
-      <button class="btn" :class="confirmRemove === p.id ? 'danger' : 'ghost'" @click="remove(p)">{{ confirmRemove === p.id ? 'Remove from Derby?' : 'Remove' }}</button>
+      <button class="btn" :class="confirmRemove === p.id ? 'danger' : 'ghost'" @click="remove(p)">{{ confirmRemove === p.id ? 'Remove from Jockey?' : 'Remove' }}</button>
     </div>
     <div class="grid4">
       <label class="field">GitHub repo<input class="input mono" :value="p.repo" placeholder="owner/name" @input="set(p, 'repo', $event)" /></label>
