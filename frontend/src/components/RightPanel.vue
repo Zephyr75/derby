@@ -110,8 +110,8 @@ async function archive() {
           <span class="title">{{ taskName(t) }}</span>
         </div>
         <div ref="bar" class="bar" :class="{ compact }">
-          <button class="hb" :title="hasIssue ? 'Show the issue, its comments and your instructions' : 'Show the task'" :aria-label="hasIssue ? 'Issue' : 'Task'" @click="openTask"><Icon :name="hasIssue ? 'issue' : 'description'" /><span class="label">{{ hasIssue ? 'Issue' : 'Task' }}</span></button>
-          <button class="hb" :class="{ off: !t.pr }" :aria-disabled="!t.pr" :title="t.pr ? 'Show the PR: its description, review and checks' : 'No PR yet'" aria-label="PR" @click="t.pr && openPR()"><Icon :name="prIcon" /><span class="label">PR</span></button>
+          <button class="hb" :title="hasIssue ? 'Show the issue, its comments and your instructions' : 'Show the task'" :aria-label="hasIssue ? 'Issue' : 'Task'" @click="openTask"><Icon :name="hasIssue ? 'issue' : 'description'" /><span class="label">{{ hasIssue ? '#' + t.issue : 'Task' }}</span></button>
+          <button class="hb" :class="{ off: !t.pr }" :aria-disabled="!t.pr" :title="t.pr ? 'Show the PR: its description, review and checks' : 'No PR yet'" aria-label="PR" @click="t.pr && openPR()"><Icon :name="prIcon" /><span class="label">{{ t.pr ? '#' + t.pr : 'PR' }}</span></button>
           <button v-if="!t.archived && !t.worktreeRemoved" class="hb" title="Open in Zed" aria-label="Zed" @click="jockey.openWorktree()"><Icon name="code" /><span class="label">Zed</span></button>
           <button class="hb" title="Open reports folder" aria-label="Reports" @click="openRunDir"><Icon name="folder" /><span class="label">Reports</span></button>
           <button class="hb" :class="{ warn: t.behind && !t.archived, off: !canRebase }" :aria-disabled="!canRebase" :title="rebaseTitle" aria-label="Rebase" @click="canRebase && rebase()"><Icon name="rebase" /><span class="label">Rebase</span></button>

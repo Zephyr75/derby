@@ -31,13 +31,23 @@ func (a *App) ListTasks() ([]TaskView, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([]TaskView, 0, len(tasks))
-	for _, t := range tasks {
-		v, err := a.view(t)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, v)
+	// A view runs git in the task's worktree: several at once, not one
+	// repository after the other.
+	out := make([]TaskView, len(tasks))
+	errs := make([]error, len(tasks))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 8)
+	for i, t := range tasks {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer func() { <-sem; wg.Done() }()
+			out[i], errs[i] = a.view(t)
+		}()
+	}
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

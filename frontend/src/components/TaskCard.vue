@@ -5,7 +5,6 @@
 // has a flag. The Archive of every project names each task's project too.
 import { jockey, taskName } from '../lib/state'
 import Icon from './ui/Icon.vue'
-import TaskRef from './ui/TaskRef.vue'
 import StatusBadge from './ui/StatusBadge.vue'
 import type { Task } from '../lib/types'
 
@@ -32,7 +31,6 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
   <button class="card" :class="{ on: task.id === jockey.sel }" :title="family ? task.part : undefined" @click="jockey.pickTask(task.id)">
     <span class="row">
       <span v-if="big" class="big" title="Started the sister tasks"><Icon name="flag" :size="11" /></span>
-      <TaskRef :issue="task.issue" :task="task.id" />
       <span class="title">{{ taskName(task) }}</span>
       <span v-if="family || project" class="proj">{{ task.projectName }}</span>
     </span>
