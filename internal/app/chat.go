@@ -15,6 +15,7 @@ import (
 	"html"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -439,6 +440,37 @@ func cutInput(in map[string]any) map[string]any {
 		}
 	}
 	return in
+}
+
+// SideQuestion answers a /btw question: a fork of the step's session, so it
+// knows the conversation so far, with no tools and nothing saved. The step's
+// own session is left as it is.
+func (a *App) SideQuestion(stepID, question string) (string, error) {
+	s, err := a.db.Step(stepID)
+	if err != nil {
+		return "", err
+	}
+	t, err := a.db.Task(s.TaskID)
+	if err != nil {
+		return "", err
+	}
+	if s.SessionID == "" {
+		return "", errors.New("the session has not started yet")
+	}
+	args := []string{"--resume", s.SessionID, "--fork-session", "--no-session-persistence", "--tools", ""}
+	if s.Model != "" {
+		args = append(args, "--model", s.Model)
+	}
+	prompt := "A side question, asked while you work: answer it briefly from the conversation so far, with no tools.\n\n" + strings.TrimSpace(question)
+	out, err := a.claudePrint(worktreePath(a.projectOf(t), t), 5*time.Minute, append(args, "--", prompt)...)
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && len(ee.Stderr) > 0 {
+			return "", errors.New(strings.TrimSpace(string(ee.Stderr)))
+		}
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // SendToStep types a message into a step's session, as if in its terminal.

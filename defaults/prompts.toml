@@ -123,9 +123,9 @@ Do this todo of the task:
 
 [[prompt]]
 id = "regressionTests"
-name = "regression-tests"
+name = "regtests"
 where = "Run pony-core's regression tests (lib/regtests_v2) on the local stack, an offline copy of QA in Docker, and report each suite's result. Use it to check a pony-core change; never against QA or prod."
-skill = "regression-tests"
+skill = "regtests"
 text = '''
 # Regression tests
 Run pony-core's regression tests (lib/regtests_v2) on the local stack: an offline copy of QA in Docker, with no internet access. Never against QA.

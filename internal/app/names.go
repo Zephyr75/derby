@@ -95,18 +95,24 @@ func cleanName(answer string) string {
 // haiku runs a prompt through Claude Code's Haiku, without a session
 // (claude -p), and returns its answer.
 func (a *App) haiku(prompt string) []byte {
+	out, _ := a.claudePrint(a.Home, 2*time.Minute, "--model", "haiku", "--", prompt)
+	return out
+}
+
+// claudePrint runs claude -p with args in dir, as a session of its own: the
+// variables Claude Code sets for its children and jockey's are left out.
+func (a *App) claudePrint(dir string, timeout time.Duration, args ...string) ([]byte, error) {
 	bin := strings.Fields(a.settings.Config().ClaudeCommand)
 	if len(bin) == 0 {
 		bin = []string{"claude"}
 	}
-	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
+	ctx, cancel := context.WithTimeout(a.ctx, timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, bin[0], append(bin[1:], "-p", "--model", "haiku", "--", prompt)...)
-	cmd.Dir = a.Home
+	cmd := exec.CommandContext(ctx, bin[0], append(append(bin[1:], "-p"), args...)...)
+	cmd.Dir = dir
 	cmd.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
 		name, _, _ := strings.Cut(kv, "=")
 		return slices.Contains(inheritedSessionVars, name) || strings.HasPrefix(name, "JOCKEY_")
 	})
-	out, _ := cmd.Output()
-	return out
+	return cmd.Output()
 }

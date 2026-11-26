@@ -20,7 +20,7 @@ const prTitle = (t: Task) => {
   if (t.prState === 'merged') return mergedTitle(t)
   const b = jockey.prBadge(t)!
   const what = { Failed: 'CI failed', Running: 'CI running', Passed: 'CI passed', 'No CI': 'No CI yet', Conflict: 'Conflicts' }[b.label] ?? b.label
-  return `PR #${t.pr} · ${what}` + (b.ready === 'draft' ? ' · Draft' : b.ready === 'ready' ? ' · Ready' : '')
+  return `PR #${t.pr} · ${what} · ${b.state}`
 }
 
 // GitHub's PR icons: draft, open (ready for review), merged, closed.
@@ -37,7 +37,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
     <span class="row">
       <StatusBadge :kind="task.status.kind" :label="task.status.label" />
       <span v-if="jockey.prBadge(task)" :class="['badge', 'pr', `s-${jockey.prBadge(task)!.kind}`]" :title="prTitle(task)">
-        <Icon :name="prIcon(task)" :size="12" />{{ jockey.prBadge(task)!.label }}
+        <Icon :name="prIcon(task)" :size="12" />{{ jockey.prBadge(task)!.label }} · {{ jockey.prBadge(task)!.state }}
       </span>
     </span>
   </button>

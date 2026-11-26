@@ -4,7 +4,7 @@
 // and controls follow Zed's source): the conversation read from Claude Code's
 // transcript, and a message editor that types into the same session as the
 // terminal.
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { api, errorText } from '../lib/api'
 import { jockey, resumeCommand } from '../lib/state'
 import { render, renderInline } from '../lib/markdown'
@@ -131,6 +131,27 @@ const blocked = computed(() => !!others.value || paused.value || (!!task.value?.
 const draft = ref('')
 const box = ref<HTMLTextAreaElement>()
 const sending = ref(false)
+// /btw questions and their answers: shown here only, kept out of the session.
+interface Btw { id: number; q: string; a: string; error: boolean; loading: boolean }
+const btws = ref<Btw[]>([])
+let btwId = 0
+watch(() => props.step.id, () => (btws.value = []))
+async function btw(q: string) {
+  const b = reactive<Btw>({ id: ++btwId, q, a: '', error: false, loading: true })
+  btws.value.push(b)
+  draft.value = ''
+  pastes.value = {}
+  scrollDown()
+  try {
+    b.a = await api.SideQuestion(props.step.id, q)
+  } catch (e) {
+    b.a = errorText(e)
+    b.error = true
+  } finally {
+    b.loading = false
+    scrollDown()
+  }
+}
 function grow() {
   const el = box.value
   if (!el) return
@@ -184,6 +205,8 @@ function selectPaste(back: boolean) {
 async function send() {
   const text = expand(draft.value).trim()
   if (!text || sending.value || blocked.value) return
+  const side = /^\/btw(?:\s+([\s\S]*))?$/.exec(text)
+  if (side) return side[1]?.trim() ? void btw(side[1].trim()) : jockey.toast('Add your question', 'Type it after /btw, e.g. /btw which file holds the retry budget?')
   // Typed into the trust dialog, it would answer it (Enter on "No" exits).
   if (trust.value) return jockey.toast('Trust the folder first', 'Claude Code starts once the folder is trusted; then send your message.')
   sending.value = true
@@ -548,6 +571,18 @@ async function checkAgain() {
           </div>
           <div v-else-if="approval" class="generating"><span class="sand"></span><span class="lbl">Awaiting Confirmation</span></div>
           <div v-else-if="running" class="generating"><Working /></div>
+          <!-- /btw: a side question and its answer, not part of the session -->
+          <div v-for="b in btws" :key="b.id" class="card btw">
+            <div class="chead static">
+              <Icon name="chat" :size="14" class="ico" /><span class="ttl">/btw {{ b.q }}</span>
+              <button class="ib" title="Dismiss" aria-label="Dismiss" @click="btws = btws.filter((x) => x !== b)"><Icon name="close" :size="13" /></button>
+            </div>
+            <div class="btw-body">
+              <Working v-if="b.loading" />
+              <div v-else-if="b.error" class="btw-err">{{ b.a }}</div>
+              <div v-else class="amsg md" v-html="html(b.a)"></div>
+            </div>
+          </div>
         </div>
       </div>
       <MessagePicker :thread="thread" :marks="marks" @go="toUser" />
@@ -1113,6 +1148,19 @@ button:hover > .disc,
   overflow-wrap: anywhere;
 }
 /* permission buttons: p-1 under a rule, small labels with Zed's check and cross */
+.btw-body {
+  padding: 6px 12px 8px;
+}
+.btw-body .amsg {
+  margin: 0;
+}
+.btw-err {
+  color: var(--approval);
+  font-size: var(--tool-size);
+}
+.btw .ib {
+  margin-left: auto;
+}
 .perm {
   display: flex;
   flex-wrap: wrap;

@@ -79,6 +79,7 @@ function addProject() {
             <Icon :name="jockey.isCollapsed(g.p.id) ? 'folder' : 'folder-open'" />
             <span class="name">{{ g.p.name }}</span>
             <span v-if="g.p.gone" class="gone" title="Project removed">removed</span>
+            <span class="n" :title="`${g.tasks.length} open ${g.tasks.length === 1 ? 'task' : 'tasks'}`">{{ g.tasks.length }}</span>
           </button>
           <span v-if="!jockey.isCollapsed(g.p.id) && !g.tasks.length" class="empty">No open tasks</span>
           <div v-else-if="!jockey.isCollapsed(g.p.id)" class="nest">
@@ -207,8 +208,7 @@ aside {
   font-weight: 500;
   font-size: var(--fs-13);
 }
-.fam .n {
-  margin-left: auto;
+.group .n {
   flex: none;
   color: var(--faint);
 }

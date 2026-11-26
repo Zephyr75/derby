@@ -74,6 +74,7 @@ export interface Api {
   SetSessionView(view: string): Promise<void>
   StepChat(step: string, offset: number): Promise<Chat>
   SendToStep(step: string, text: string): Promise<void>
+  SideQuestion(step: string, question: string): Promise<string>
   InterruptStep(step: string): Promise<void>
   SetStepModel(step: string, model: string, effort: string): Promise<void>
   AttachToStep(step: string, files: string[]): Promise<string[]>

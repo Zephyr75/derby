@@ -720,18 +720,25 @@ class Jockey {
     return t.draft ? 'draft' : 'ready'
   }
 
-  /** prBadge: the task's PR at a glance, for the left panel: its CI (or
-   *  merged, closed) and, while open, whether it is a draft. */
-  prBadge(t: Task): { kind: StatusKind; label: string; ready: '' | 'draft' | 'ready' } | null {
+  /** prBadge: the task's PR at a glance, for the left panel: its CI (label)
+   *  and where the PR stands (state: Draft, Ready, Closed, Merged, then In QA
+   *  and In Prod as the merge reaches those branches). */
+  prBadge(t: Task): { kind: StatusKind; label: string; state: string } | null {
     if (!t.pr) return null
-    if (t.prState === 'merged') return { kind: 'done', label: t.release ? 'In ' + t.release : 'Merged', ready: '' }
-    if (t.prState && t.prState !== 'open') return { kind: 'idle', label: 'Closed', ready: '' }
-    const ready = t.draft ? 'draft' : 'ready'
     const b = new Set(t.checks.map((c) => c.bucket))
-    if (t.conflicting) return { kind: 'failed', label: 'Conflict', ready }
-    if (b.has('fail') || b.has('cancel')) return { kind: 'failed', label: 'Failed', ready }
-    if (b.has('pending')) return { kind: 'running', label: 'Running', ready }
-    return { kind: b.size ? 'done' : 'idle', label: b.size ? 'Passed' : 'No CI', ready }
+    const ci: { kind: StatusKind; label: string } = t.conflicting
+      ? { kind: 'failed', label: 'Conflict' }
+      : b.has('fail') || b.has('cancel')
+        ? { kind: 'failed', label: 'Failed' }
+        : b.has('pending')
+          ? { kind: 'running', label: 'Running' }
+          : { kind: b.size ? 'done' : 'idle', label: b.size ? 'Passed' : 'No CI' }
+    if (t.prState === 'merged') {
+      const at = t.release && t.release !== t.baseBranch ? t.release : ''
+      return { ...ci, kind: 'done', state: !at ? 'Merged' : /^(master|main)$/.test(at) ? 'In Prod' : at === 'qa' ? 'In QA' : 'In ' + at }
+    }
+    if (t.prState && t.prState !== 'open') return { ...ci, kind: 'idle', state: 'Closed' }
+    return { ...ci, state: t.draft ? 'Draft' : 'Ready' }
   }
 
   /** fixers: the agents Copilot offers when there is something to fix (Implement, Discuss by default); the first does the fixes. */

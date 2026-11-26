@@ -175,7 +175,7 @@ const builtins: Command[] = [
   ['context', 'Show what fills the context', true],
   ['usage', 'Show session cost, plan usage, and activity stats', true],
   ['status', 'Show version, account, model, MCP servers, and setup warnings', true],
-  ['btw', 'Ask a side question without interrupting Claude', true],
+  ['btw', 'Ask a side question without interrupting Claude', false],
   ['plan', 'Turn on plan mode or view the plan', true],
   ['goal', 'Set a goal Claude checks before stopping', true],
   ['tasks', 'View and manage everything running in the background', true],

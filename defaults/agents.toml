@@ -104,9 +104,9 @@ Write tests for the uncommitted changes (git status, git diff HEAD), following t
 First check the tests this branch already added or changed (git diff origin/{base} on the test files): update or remove the ones that no longer match the code. Never change tests that exist on {base}.
 Run them. Change only tests: if one shows a bug, keep it failing and explain it.
 Report only checks that ran, with the exact command and pass/fail counts. If a run cannot start (no credentials or network), say so; never point tests at real resources to make them run.
-In pony-core, once the tests pass, run the regression-tests skill (jockey:regression-tests) too, on the changes under test.
-TEST-{n}.md sections, after the TLDR: Tests added, How to run, Results, and Regression (the skill's results) in pony-core.
-Done when the tests (and the regression run) pass, failed when one shows a bug.'''
+Do not run the regtests skill: the user runs it when they want to.
+TEST-{n}.md sections, after the TLDR: Tests added, How to run, Results.
+Done when the tests pass, failed when one shows a bug.'''
 
 [[agent]]
 id = "push"

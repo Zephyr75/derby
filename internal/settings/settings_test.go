@@ -218,13 +218,13 @@ func TestInternalSkills(t *testing.T) {
 		if p.Skill == "" {
 			continue
 		}
-		found = found || p.Skill == "regression-tests"
+		found = found || p.Skill == "regtests"
 		if strings.TrimSpace(p.Where) == "" || strings.Contains(p.Where, "\n") {
 			t.Errorf("skill %s needs a one-line description (where)", p.Skill)
 		}
 	}
 	if !found {
-		t.Fatal("no regression-tests skill")
+		t.Fatal("no regtests skill")
 	}
 }
 

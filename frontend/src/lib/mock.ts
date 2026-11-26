@@ -62,7 +62,7 @@ const settings: Settings = {
   keymap: { toggleLeft: ['Alt+E'], toggleRight: ['Alt+A'], messages: ['Alt+S'], close: ['Escape'] },
   prompts: [
     { id: 'step', name: 'How a step works', where: "Every agent's system prompt, after the Jockey step block", vars: '', skill: '', default: '# How a step works\n- Work from the guidance, then the step this one follows.', text: '# How a step works\n- Work from the guidance, then the step this one follows.' },
-    { id: 'regressionTests', name: 'regression-tests', where: "Run pony-core's regression tests on the local stack, an offline copy of QA in Docker, and report each suite's result. Never against QA or prod.", vars: '', skill: 'regression-tests', default: '# Regression tests\nRun make regtest-local.', text: '# Regression tests\nRun make regtest-local.' },
+    { id: 'regressionTests', name: 'regtests', where: "Run pony-core's regression tests on the local stack, an offline copy of QA in Docker, and report each suite's result. Never against QA or prod.", vars: '', skill: 'regtests', default: '# Regression tests\nRun make regtest-local.', text: '# Regression tests\nRun make regtest-local.' },
   ],
   dir: '~/.jockey',
 }
@@ -596,6 +596,7 @@ export const api: Api = {
   StepFiles: (_s, q) => ok(['internal/', 'internal/unlock/', 'internal/unlock/ble.go', 'internal/unlock/budget.go', 'internal/config/config.go', 'README.md'].filter((f) => f.toLowerCase().includes(q.toLowerCase()))),
   AttachToStep: (_s, files) => ok(files.map((f) => '/home/me/.jockey/runs/core/4356/attachments/' + f.split('/').pop())),
   SendToStep: (step, text) => { (chatSent[step] ??= []).push({ kind: 'user', id: '', text, tool: '', input: null, diff: '', isError: false, at: new Date().toISOString() }); return ok(undefined) },
+  SideQuestion: (_step, q) => new Promise((r) => setTimeout(() => r(`(mock) A short answer to “${q}”, from the conversation so far.`), 900)),
   InterruptStep: () => ok(undefined),
   SetTheme: (theme, mode) => { Object.assign(settings.config.appearance, { theme, mode }); emit('settings:changed', settings); return ok(undefined) },
   SaveAppearance: (a, z) => { settings.config.appearance = a; settings.config.zedCommand = z; emit('settings:changed', settings); return ok(undefined) },
