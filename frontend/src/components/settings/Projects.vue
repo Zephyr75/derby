@@ -101,7 +101,7 @@ const openInZed = (id: string) => jockey.attempt('Could not open Zed', () => api
     </div>
     <div class="grid4">
       <label class="field">GitHub repo<input class="input mono" :value="p.repo" placeholder="owner/name" @input="set(p, 'repo', $event)" /></label>
-      <label class="field" title="Worktrees start from it; PRs target it">Base branch<input class="input mono" :value="p.baseBranch" @input="set(p, 'baseBranch', $event)" /></label>
+      <label class="field" title="Worktrees start from it and PRs target it">Base branch<input class="input mono" :value="p.baseBranch" @input="set(p, 'baseBranch', $event)" /></label>
       <label class="field">Worktrees folder<input class="input mono" :value="p.worktreesDir + '/'" @input="set(p, 'worktreesDir', $event)" /></label>
     </div>
     <label class="issues" :title="issuesRepo ? '' : 'Set the issues repository first (Settings > General)'">

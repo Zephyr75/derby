@@ -203,11 +203,23 @@ function key(e: KeyboardEvent) {
 <template>
   <div ref="box" class="box popup" role="dialog" aria-label="Changes" tabindex="-1" @keydown="key">
     <div class="head pop-head">
+      <button v-if="!jockey.artifactOf" class="other" title="Show the report, on the left" @click="jockey.showArtifactToo(stepId)"><Icon name="file" :size="13" />Report</button>
       <button class="toggle" :aria-label="sb.hidden.value ? 'Show the side bar' : 'Hide the side bar'" :title="sb.hidden.value ? 'Show sidebar' : 'Hide sidebar'" @click="sb.hidden.value = !sb.hidden.value"><Icon :name="sb.hidden.value ? 'panel-left-off' : 'panel-left'" :size="16" /></button>
       <Dropdown class="picker" :items="stepItems" :value="stepId" :placeholder="step ? label(step) : 'Step'" strong title="Other steps" @pick="chooseStep" />
       <span class="title">changes</span>
       <span class="grow"></span>
-      <button v-if="!jockey.artifactOf" class="other" title="Show report" @click="jockey.showArtifactToo(stepId)"><Icon name="file" :size="13" />Preview</button>
+      <span class="tools">
+        <button v-if="files.length > 1" class="ibtn" :title="allFolded ? 'Unfold all files' : 'Fold all files'" :aria-label="allFolded ? 'Unfold all files' : 'Fold all files'" @click="foldAll"><Icon :name="allFolded ? 'unfold' : 'fold'" :size="15" /></button>
+        <span class="views" role="radiogroup" aria-label="Diff view">
+          <button role="radio" :aria-checked="!splitView" :class="{ on: !splitView }" title="Unified" aria-label="Unified" @click="splitView = false">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="2.6" width="10" height="4.4" rx="1" /><rect x="3" y="9" width="10" height="4.4" rx="1" fill="currentColor" fill-opacity="0.5" /></svg>
+          </button>
+          <button role="radio" :aria-checked="splitView" :class="{ on: splitView }" title="Split" aria-label="Split" @click="splitView = true">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.6" y="3" width="4.4" height="10" rx="1" fill="currentColor" fill-opacity="0.5" /><rect x="9" y="3" width="4.4" height="10" rx="1" /></svg>
+          </button>
+        </span>
+        <button class="ibtn" title="Open the diff in Zed" aria-label="Open the diff in Zed" @click="openInZed"><Icon name="diff" :size="15" /></button>
+      </span>
       <button class="pop-x" aria-label="Close" title="Close (Esc)" @click="close"><Icon name="close" :size="14" /></button>
     </div>
     <div class="body">
@@ -221,19 +233,6 @@ function key(e: KeyboardEvent) {
       </div>
       <div class="main">
         <NotesBar v-if="task?.notes.length" class="notes" :task="task" />
-        <div class="fhead">
-          <span class="grow"></span>
-          <button v-if="files.length > 1" class="ibtn" :title="allFolded ? 'Unfold all files' : 'Fold all files'" :aria-label="allFolded ? 'Unfold all files' : 'Fold all files'" @click="foldAll"><Icon :name="allFolded ? 'unfold' : 'fold'" :size="15" /></button>
-          <span class="views" role="radiogroup" aria-label="Diff view">
-            <button role="radio" :aria-checked="!splitView" :class="{ on: !splitView }" title="Unified" aria-label="Unified" @click="splitView = false">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="2.6" width="10" height="4.4" rx="1" /><rect x="3" y="9" width="10" height="4.4" rx="1" fill="currentColor" fill-opacity="0.5" /></svg>
-            </button>
-            <button role="radio" :aria-checked="splitView" :class="{ on: splitView }" title="Split" aria-label="Split" @click="splitView = true">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.6" y="3" width="4.4" height="10" rx="1" fill="currentColor" fill-opacity="0.5" /><rect x="9" y="3" width="4.4" height="10" rx="1" /></svg>
-            </button>
-          </span>
-          <button class="ibtn" title="Open the diff in Zed" aria-label="Open the diff in Zed" @click="openInZed"><Icon name="diff" :size="15" /></button>
-        </div>
         <div ref="scroller" class="scroll" @scroll.passive="spy">
           <p v-if="!changes" class="empty">Loading…</p>
           <p v-else-if="!files.length" class="empty">No changed files.</p>
@@ -255,7 +254,7 @@ function key(e: KeyboardEvent) {
               <p v-else-if="!diffs[keyOf(f)].diff!.diff" class="empty">No text changes (mode or whitespace only).</p>
               <template v-else>
                 <DiffView :diff="diffs[keyOf(f)].diff!.diff" :path="f.path" :sources="diffs[keyOf(f)].diff!.sources ? diffs[keyOf(f)].diff : undefined" :notes="notesOf(f)" :split="splitView" commentable @add="(n) => addNote(f, n)" @update="updateNote" @remove="removeNote" />
-                <p v-if="diffs[keyOf(f)].diff!.truncated" class="empty">The diff is too long to show in full; open the file in Zed for the rest.</p>
+                <p v-if="diffs[keyOf(f)].diff!.truncated" class="empty">The diff is too long to show in full, open the file in Zed for the rest.</p>
               </template>
             </template>
           </section>
@@ -343,15 +342,12 @@ function key(e: KeyboardEvent) {
     display: flex;
     flex-direction: column;
   }
-  .fhead {
+  .tools {
     flex: none;
     display: flex;
     align-items: center;
-    gap: 8px;
-    height: 36px;
-    padding: 0 10px 0 14px;
-    border-bottom: 1px solid var(--border);
-    font-size: var(--fs-12-5);
+    gap: 2px;
+    margin-right: 6px;
   }
   .st {
     flex: none;

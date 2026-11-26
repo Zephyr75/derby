@@ -149,7 +149,7 @@ function pick(id: string) {
 <template>
   <div class="intro">
     <h1>Agents</h1>
-    <p>Each step of a task runs one agent: a Claude Code session started with the agent's command, model and instructions, in Claude Code's auto mode. The first agent starts every task; the order below is the pipeline. Nothing about an agent is built into Jockey: commit, push and the PR are in the Push agent's instructions.</p>
+    <p>Each step of a task runs one agent: a Claude Code session started with the agent's command, model and instructions, in Claude Code's auto mode. The first agent starts every task, and the order below is the pipeline. Nothing about an agent is built into Jockey: commit, push and the PR are in the Push agent's instructions.</p>
     <p v-if="locked" class="locked">Jockey's default agents are in use (Settings &gt; General): they are shown here but cannot be edited.</p>
   </div>
 
@@ -176,7 +176,7 @@ function pick(id: string) {
       <template v-if="A.builtin">
         <p class="special">
           Built in: Jockey runs it, because it works with GitHub. It asks Copilot to review the PR, then waits for the review and the CI checks (checked every
-          minute), and fails when there is something to fix; the PR tab shows both. When it passes, the task is done (green). It writes no report:
+          minute), and fails when there is something to fix. The PR tab shows both. When it passes, the task is done (green). It writes no report:
           the review and checks it keeps in {{ A.writes.replace('{n}', 'n') }} are for the steps that fix them.
         </p>
       </template>

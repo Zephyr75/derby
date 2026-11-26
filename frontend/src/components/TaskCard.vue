@@ -37,7 +37,7 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
     <span class="row">
       <StatusBadge :kind="task.status.kind" :label="task.status.label" />
       <span v-if="jockey.prBadge(task)" :class="['badge', 'pr', `s-${jockey.prBadge(task)!.kind}`]" :title="prTitle(task)">
-        <Icon :name="prIcon(task)" :size="12" />{{ jockey.prBadge(task)!.label }} · {{ jockey.prBadge(task)!.state }}
+        <Icon :name="prIcon(task)" :size="12" />{{ jockey.prBadge(task)!.label }} · <span :class="{ up: ['Ready', 'In QA', 'In Prod'].includes(jockey.prBadge(task)!.state) }">{{ jockey.prBadge(task)!.state }}</span>
       </span>
     </span>
   </button>
@@ -80,6 +80,10 @@ const prIcon = (t: Task) => (t.prState === 'merged' ? 'rebase' : t.prState && t.
   flex: none;
   gap: 5px;
   margin-left: auto;
+}
+/* Ready, In QA and In Prod stand out from a Draft, which stays muted */
+.pr .up {
+  color: var(--done);
 }
 .title {
   flex: 1;

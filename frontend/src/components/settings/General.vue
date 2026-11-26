@@ -61,12 +61,12 @@ function setDefaults(e: Event) {
 <template>
   <div class="intro">
     <h1>General</h1>
-    <p>Settings that apply to the whole of Jockey. Themes, fonts and the session view are in Appearance; the repositories in Projects.</p>
+    <p>Settings that apply to the whole of Jockey. Themes, fonts and the session view are in Appearance and the repositories in Projects.</p>
   </div>
 
   <div v-if="cfg" class="rows card">
     <label class="r">
-      <span class="grow">Use Jockey's default agents and prompts <span class="muted small">agents, prompts and skills come from the repository's defaults/, not from agents.toml and prompts.toml in {{ jockey.settings?.dir ?? '~/.jockey' }} (which are left as they are); Settings &gt; Agents and Context then only show them. For working on Jockey itself</span></span>
+      <span class="grow">Use Jockey's default agents and prompts <span class="muted small">agents, prompts and skills come from the repository's defaults/, not from agents.toml and prompts.toml in {{ jockey.settings?.dir ?? '~/.jockey' }} (which are left as they are). Settings &gt; Agents and Context then only show them. For working on Jockey itself</span></span>
       <input type="checkbox" :checked="cfg.useDefaults" @change="setDefaults" />
     </label>
     <label class="r">
@@ -82,11 +82,11 @@ function setDefaults(e: Event) {
       <input class="val" :value="issuesRepo" placeholder="owner/name" spellcheck="false" @change="setIssuesRepo" />
     </label>
     <label class="r">
-      <span class="grow">Open tabs <span class="muted small">at most, one per task; opening one more closes the oldest</span></span>
+      <span class="grow">Open tabs <span class="muted small">at most, one per task. Opening one more closes the oldest</span></span>
       <input class="val num" type="number" min="1" max="30" :value="cfg.maxTabs" @change="setMaxTabs" />
     </label>
     <label class="r">
-      <span class="grow">Fold words <span class="muted small">comma separated; a changed file whose path has one starts folded</span></span>
+      <span class="grow">Fold words <span class="muted small">comma separated. A changed file whose path has one starts folded</span></span>
       <input class="val wide" :value="cfg.foldWords.join(', ')" @change="setFoldWords" />
     </label>
     <label class="r">

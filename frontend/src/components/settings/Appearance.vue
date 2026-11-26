@@ -67,7 +67,7 @@ function setFont(kind: 'ui' | 'term', e: Event) {
 <template>
   <div class="intro">
     <h1>Appearance</h1>
-    <p>Each theme has a dark and a light variant; System follows your OS setting. Fleet is Fleet Dark and Flatwhite, the themes you use in Zed, Catppuccin is Mocha and Latte, and GitHub Copilot has the GitHub Copilot app's colours.</p>
+    <p>Each theme has a dark and a light variant, and System follows your OS setting. Fleet is Fleet Dark and Flatwhite, the themes you use in Zed, Catppuccin is Mocha and Latte, and GitHub Copilot has the GitHub Copilot app's colours.</p>
   </div>
 
   <div class="themes card" role="radiogroup" aria-label="Theme">
@@ -111,7 +111,7 @@ function setFont(kind: 'ui' | 'term', e: Event) {
       <input class="val" :value="`${ap.termFont} ${ap.termFontSize}`" @change="setFont('term', $event)" />
     </label>
     <div class="r">
-      <span class="grow">Session view <span class="muted small">how the center shows a step's Claude Code session; the toolbar switches it too</span></span>
+      <span class="grow">Session view <span class="muted small">how the center shows a step's Claude Code session, and the toolbar switches it too</span></span>
       <span class="pill views" role="radiogroup" aria-label="Session view">
         <button v-for="v in views" :key="v.id" role="radio" :aria-checked="jockey.sessionView === v.id" :class="{ on: jockey.sessionView === v.id }" @click="jockey.setSessionView(v.id)"><Icon :name="v.id === 'chat' ? 'chat' : 'terminal'" :size="13" />{{ v.name }}</button>
       </span>

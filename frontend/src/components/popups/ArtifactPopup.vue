@@ -192,7 +192,7 @@ function key(e: KeyboardEvent) {
     flex-direction: column;
     gap: 12px;
   }
-  /* Bigger type than the Preview tab. */
+  /* Bigger type than the Report tab. */
   .page :deep(.md) {
     font-size: var(--fs-15-5);
     line-height: 1.65;

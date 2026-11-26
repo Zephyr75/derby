@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // An artifact rendered: its markdown with mermaid diagrams and embedded
 // diagram pages (the front matter is left out: the step list already shows
-// it). Used by the Preview tab and the artifact pop-up.
+// it). Used by the Report tab and the artifact pop-up.
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { jockey } from '../lib/state'
 import { render, renderMermaid } from '../lib/markdown'

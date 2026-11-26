@@ -140,7 +140,7 @@ const clearKnowledge = () => update((c) => (c.knowledge = ''))
         <span class="grow">
           <span class="mono">{{ sys.path }}</span>
           <span :class="['state', sys.synced ? 'c-done' : 'c-waiting']">{{ sys.synced ? 'in sync' : sys.exists ? 'differs' : 'missing' }}</span>
-          <span class="muted small">Jockey's sessions skip it; Override writes General context, Rules and the knowledge base folders into it for your other Claude sessions</span>
+          <span class="muted small">Jockey's sessions skip it, and Override writes General context, Rules and the knowledge base folders into it for your other Claude sessions</span>
         </span>
         <button class="btn" :class="confirmOverride ? 'danger' : ''" :disabled="sys.synced" @click="override" @blur="confirmOverride = false">
           {{ confirmOverride ? 'Replace it? (a backup is kept)' : 'Override' }}

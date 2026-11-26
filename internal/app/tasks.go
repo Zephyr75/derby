@@ -848,10 +848,14 @@ func (a *App) conflictOf(taskID string) bool {
 	return a.conflict[taskID]
 }
 
+// draftOf says whether the task's PR is a draft. Until the first poll has
+// told, it is one: most are, and a PR then turning ready is better news than
+// the other way round.
 func (a *App) draftOf(taskID string) bool {
 	a.checksMu.Lock()
 	defer a.checksMu.Unlock()
-	return a.drafts[taskID]
+	draft, known := a.drafts[taskID]
+	return draft || !known
 }
 
 func (a *App) labelsOf(taskID string) []string {

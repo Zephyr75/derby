@@ -71,3 +71,15 @@ func TestBootstrapIsLightThenWarmed(t *testing.T) {
 		t.Fatal("the full view should show the step's uncommitted change")
 	}
 }
+
+// A PR is a draft until the first poll says otherwise.
+func TestDraftUntilKnown(t *testing.T) {
+	a, _ := newTestApp(t)
+	if !a.draftOf("core:1") {
+		t.Fatal("an unknown PR should show as a draft")
+	}
+	a.setPR("core:1", nil, false)
+	if a.draftOf("core:1") {
+		t.Fatal("a PR the poll found ready is not a draft")
+	}
+}
