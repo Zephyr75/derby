@@ -3,7 +3,7 @@ import { api } from '../../lib/api'
 import { jockey } from '../../lib/state'
 import Logo from '../ui/Logo.vue'
 
-const repo = 'https://github.com/Zephyr75/derby'
+const repo = 'https://github.com/Zephyr75/jockey'
 const open = () => jockey.attempt('Could not open the link', () => api.OpenURL(repo))
 </script>
 
@@ -19,7 +19,7 @@ const open = () => jockey.attempt('Could not open the link', () => api.OpenURL(r
   <div class="table card">
     <div class="r">
       <span class="grow">Source code</span>
-      <button class="link" @click="open">github.com/Zephyr75/derby</button>
+      <button class="link" @click="open">github.com/Zephyr75/jockey</button>
     </div>
     <div class="r">
       <span class="grow">Settings, tasks and runs</span>
