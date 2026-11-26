@@ -575,7 +575,7 @@ const CopilotID = "copilot"
 // Copilot is the built-in agent with its fixed parts; the user sets its
 // trigger and its next steps.
 func Copilot() Agent {
-	return Agent{ID: CopilotID, Name: "Copilot", Trigger: "manual", Writes: "COPILOT-{n}.md", Builtin: true}
+	return Agent{ID: CopilotID, Name: "Copilot", Trigger: "manual", Writes: "FEEDBACK-{n}.md", Builtin: true}
 }
 
 // gitSteps is what an agent with the former git boxes told Jockey to do after
@@ -631,7 +631,7 @@ func normalize(agents []Agent) []Agent {
 		if out[i].OnFail == nil {
 			out[i].OnFail = []string{}
 		}
-		if out[i].Effort == "" {
+		if out[i].Effort == "" && !out[i].Builtin { // Copilot runs no Claude
 			out[i].Effort = DefaultEffort
 		}
 		allow := []string{}

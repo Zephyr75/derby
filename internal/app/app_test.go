@@ -918,7 +918,7 @@ func TestNextAfterOutcome(t *testing.T) {
 		return strings.Join(l, ", ")
 	}
 	copilotStep := func(n int, state, verdict string) StepView {
-		return StepView{Step: store.Step{Agent: copilotAgent, N: n, State: state, Verdict: verdict}, Name: "Copilot 1", Artifact: "COPILOT-1.md", External: true}
+		return StepView{Step: store.Step{Agent: copilotAgent, N: n, State: state, Verdict: verdict}, Name: "Copilot 1", Artifact: "FEEDBACK-1.md", External: true}
 	}
 	base := []StepView{step("plan", 1, ""), step("impl", 1, ""), step("review", 1, "")}
 	for name, c := range map[string]struct {
@@ -1036,11 +1036,6 @@ func TestCopilotStep(t *testing.T) {
 	if !s.Unsuccessful() {
 		t.Fatalf("a review with comments should fail the step: %+v", s)
 	}
-	// COPILOT-1.md holds the PR's title and description.
-	waitFor(t, "the description", func() bool {
-		b, _ := os.ReadFile(filepath.Join(tv.RunDir, "COPILOT-1.md"))
-		return strings.HasPrefix(string(b), "# feat(x): the title\n\nBecause it was slow.")
-	})
 	b, _ := os.ReadFile(filepath.Join(tv.RunDir, "FEEDBACK-1.md"))
 	for _, want := range []string{"status: failed", "comments: 1", "#### 1. Check the error · Medium", "`a.go:3`", "```diff\n@@ -1,2 +1,3 @@\n x := f()\n+y := x.v\n```", "nil check", "> **ant** replied: on it"} {
 		if !strings.Contains(string(b), want) {
@@ -1674,7 +1669,7 @@ func TestStepBlockListsEarlierSteps(t *testing.T) {
 func TestStepFilesOfCopilot(t *testing.T) {
 	a, _ := newTestApp(t)
 	files := a.stepFiles(store.Step{Agent: copilotAgent, N: 2})
-	if len(files) != 2 || !strings.HasPrefix(files[0], "FEEDBACK-2.md") || !strings.HasPrefix(files[1], "COPILOT-2.md") {
+	if len(files) != 1 || !strings.HasPrefix(files[0], "FEEDBACK-2.md") {
 		t.Fatalf("Copilot's files: %q", files)
 	}
 }

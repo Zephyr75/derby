@@ -80,7 +80,7 @@ func outcome(s store.Step) string {
 func (a *App) stepFiles(s store.Step) []string {
 	art := agentFor(a.settings.Agents(), s.Agent).ArtifactName(s.N)
 	if s.Agent == copilotAgent {
-		return []string{fmt.Sprintf("FEEDBACK-%d.md (the PR review and CI checks)", s.N), art + " (an explanation of the PR)"}
+		return []string{art + " (the PR review and CI checks)"}
 	}
 	return []string{art}
 }
@@ -908,8 +908,7 @@ func (a *App) runCopilot(taskID string, say func(string)) {
 }
 
 // copilotAgent is the built-in step jockey runs itself: it waits for Copilot's
-// review and the CI checks (FEEDBACK-<n>.md) and keeps the PR's title and
-// description in COPILOT-<n>.md (see copilotfiles.go).
+// review and the CI checks (FEEDBACK-<n>.md, see copilotfiles.go).
 const copilotAgent = settings.CopilotID
 
 // skipped is the Verdict of a Copilot step jockey stopped waiting on.
@@ -923,7 +922,7 @@ func (a *App) takeCopilotReview(t store.Task, r github.Review) {
 	if a.waitingCopilot(t.ID) == nil {
 		if s := a.lateCopilot(t); s != nil {
 			a.writeReview(t, *s, r)
-			a.emit(EvArtifact, map[string]string{"taskId": t.ID, "file": filepath.Base(a.copilotPath(t, *s))})
+			a.emit(EvArtifact, map[string]string{"taskId": t.ID, "file": filepath.Base(a.reviewPath(t, *s))})
 			a.emitTask(t.ID)
 			return
 		}
@@ -977,11 +976,6 @@ func (a *App) startCopilotStep(taskID string) {
 	if a.db.SaveStep(s) == nil {
 		if t, err := a.db.Task(taskID); err == nil {
 			_ = os.Remove(a.reviewPath(t, s)) // left by a step of that number a revert removed
-			a.explaining.Add(1)
-			go func() {
-				defer a.explaining.Done()
-				a.writePRDescription(t, s)
-			}()
 		}
 	}
 	a.emitTask(taskID)
@@ -1123,10 +1117,6 @@ func (a *App) waitingCopilot(taskID string) *store.Step {
 		}
 	}
 	return nil
-}
-
-func (a *App) copilotPath(t store.Task, s store.Step) string {
-	return filepath.Join(a.runDir(a.projectOf(t), t), agentFor(a.settings.Agents(), copilotAgent).ArtifactName(s.N))
 }
 
 // splitTitle returns the first non-empty line (without #) and the rest.

@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,12 +12,9 @@ import (
 	"jockey/internal/store"
 )
 
-// A Copilot step's files, in the run directory:
-//   - COPILOT-n.md: the PR's title (its first line) and description, as
-//     GitHub has them;
-//   - FEEDBACK-n.md: the step's state (front matter: status, pr, comments,
-//     ci), Copilot's review and the CI checks, for the steps that fix them
-//     (the PR tab shows them too).
+// A Copilot step writes one file in the run directory, FEEDBACK-n.md: the
+// step's state (front matter: status, pr, comments, ci), Copilot's review and
+// the CI checks, for the steps that fix them (the PR tab shows them too).
 
 func (a *App) reviewPath(t store.Task, s store.Step) string {
 	return filepath.Join(a.runDir(a.projectOf(t), t), fmt.Sprintf("FEEDBACK-%d.md", s.N))
@@ -53,27 +49,6 @@ func frontMatter(art artifacts.Artifact, set map[string]string) string {
 	}
 	b.WriteString("---\n")
 	return b.String()
-}
-
-// writePRDescription writes the PR's title and description to the Copilot
-// step's COPILOT-n.md.
-func (a *App) writePRDescription(t store.Task, s store.Step) {
-	title, body, err := a.gh.PRDoc(a.ctx, a.projectOf(t).Repo, t.PRNumber)
-	if err != nil {
-		if a.ctx.Err() == nil {
-			log.Printf("description of PR #%d: %v", t.PRNumber, err)
-		}
-		return
-	}
-	file := a.copilotPath(t, s)
-	text := "# " + title + "\n"
-	if body = strings.TrimSpace(body); body != "" {
-		text += "\n" + body + "\n"
-	}
-	if b, _ := os.ReadFile(file); string(b) != text {
-		_ = os.WriteFile(file, []byte(text), 0o644)
-		a.emit(EvArtifact, map[string]string{"taskId": t.ID, "file": filepath.Base(file)})
-	}
 }
 
 // renameArtifacts gives a run directory's artifacts their current names:

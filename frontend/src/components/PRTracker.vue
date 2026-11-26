@@ -1,35 +1,14 @@
 <script setup lang="ts">
-// The Copilot step's page: the PR's title and description, then, as flat lists
-// like the TODOs and Changes tabs, Copilot's review comments to tick and send
-// to a fixing step, and the CI checks. Its toolbar (in the centre view) has the
-// PR's own buttons.
-import { computed, reactive, ref, watch } from 'vue'
-import { api } from '../lib/api'
-import { jockey } from '../lib/state'
+// The Copilot step's page: as flat lists like the TODOs and Changes tabs,
+// Copilot's review comments to tick and send to a fixing step, and the CI
+// checks. Its toolbar (in the centre view) has the PR's own buttons.
+import { reactive } from 'vue'
 import { usePR, word } from '../lib/pr'
-import type { Artifact, Feedback, Step, Task } from '../lib/types'
+import type { Feedback, Step, Task } from '../lib/types'
 import Icon from './ui/Icon.vue'
-import ArtifactView from './ArtifactView.vue'
 
 const props = defineProps<{ task: Task; step?: Step }>()
 const pr = reactive(usePR(props))
-
-// COPILOT-n.md: the PR's title (its first line) and description.
-const doc = ref<Artifact | null>(null)
-let seq = 0
-watch(
-  () => [props.step?.id, jockey.artifactRev] as const,
-  ([id]) => {
-    const mine = ++seq
-    if (!id) return void (doc.value = null)
-    api.ReadArtifact(id).then(
-      (a) => mine === seq && (doc.value = a),
-      () => mine === seq && (doc.value = null),
-    )
-  },
-  { immediate: true },
-)
-const text = computed(() => /^#\s+(.*)\n*([\s\S]*)$/.exec(doc.value?.exists ? doc.value.body.trim() : '') ?? [])
 
 const dot = (b: string) => (b === 'fail' || b === 'cancel' ? 'd-fail' : b === 'pending' ? 'd-run' : b === 'skipping' ? 'd-skip' : 'd-pass')
 const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') + 1)}:${f.line}` : 'on the PR')
@@ -38,10 +17,6 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
 <template>
   <div :class="['prv', { page: step }]">
     <div class="inner">
-      <section v-if="text[1]">
-        <h2 class="ptitle">{{ text[1] }}</h2>
-      </section>
-
       <section v-if="task.feedback.length || pr.live">
         <div class="sh">
           <span class="st">Review</span>
@@ -110,10 +85,6 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
         </template>
       </section>
 
-      <section v-if="text[1]" class="about">
-        <ArtifactView v-if="text[2]" :art="{ ...doc!, body: text[2] }" :task="task.id" />
-        <p v-else class="empty">No description.</p>
-      </section>
     </div>
   </div>
 </template>
@@ -161,17 +132,6 @@ const file = (f: Feedback) => (f.path ? `${f.path.slice(f.path.lastIndexOf('/') 
     color: var(--waiting);
   }
 
-  .ptitle {
-    margin: 0;
-    font-size: var(--fs-14);
-    font-weight: 600;
-  }
-  .about {
-    padding-top: 6px;
-  }
-  .about :deep(.md > :last-child) {
-    margin-bottom: 0;
-  }
 
   section {
     display: flex;

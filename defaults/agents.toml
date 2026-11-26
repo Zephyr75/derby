@@ -65,7 +65,7 @@ sisters = true
 next = ["review", "impl"]
 on_fail = ["discuss", "impl"]
 instructions = '''
-Read the newest PLAN, the newest file of each later step (REVIEW, TEST, FEEDBACK, COPILOT…), and the branch's changes (git diff origin/{base}...HEAD, git status).
+Read the newest PLAN, the newest file of each later step (REVIEW, TEST, FEEDBACK…), and the branch's changes (git diff origin/{base}...HEAD, git status).
 This step is a conversation led by the user: they may want to understand something, explore an idea or change code. Do not start working on your own: say in two or three lines where the task stands (the step this one follows and what it found, or the guidance when there is some), then wait for their questions.
 Change code only when asked, one change at a time, explaining each briefly.
 Write DISCUSS-{n}.md only when the user says the discussion is over: what you discussed and concluded, or what they asked for. If you changed code, add What changed (with the plan's option taken, if any) and Files, for Review.
@@ -132,7 +132,7 @@ Once PUSH.md is written: commit all the changes with its title line and body as 
 id = "copilot"
 name = "Copilot"
 trigger = "after:push"
-writes = "COPILOT-{n}.md"
+writes = "FEEDBACK-{n}.md"
 builtin = true
 next = ["explain", "discuss", "impl"]
 on_fail = ["impl", "discuss"]

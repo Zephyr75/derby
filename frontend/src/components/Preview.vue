@@ -10,7 +10,7 @@ import ArtifactView from './ArtifactView.vue'
 import TodoList from './TodoList.vue'
 import TaskPage from './TaskPage.vue'
 import { useCompact } from '../lib/compact'
-import { prSummary, summary } from '../lib/markdown'
+import { summary } from '../lib/markdown'
 import type { Artifact, Changes } from '../lib/types'
 
 const step = computed(() => jockey.selStep)
@@ -71,9 +71,8 @@ watch(
 
 const file = computed(() => art.value?.file || step.value?.artifact || '')
 // The report's TLDR and ELI5 only (its first paragraph without them; for a plan
-// its Options, for the Copilot step the PR's title and the start of its
-// description): the expand button opens the whole of it.
-const parts = computed(() => (art.value?.exists ? (step.value?.external ? prSummary : summary)(art.value.body).map((p) => ({ ...p, art: { ...art.value!, body: p.md } })) : []))
+// its Options): the expand button opens the whole of it.
+const parts = computed(() => (art.value?.exists ? summary(art.value.body).map((p) => ({ ...p, art: { ...art.value!, body: p.md } })) : []))
 // The four tabs always show, in equal parts; Changes is off while the step
 // changed no files, PR while the task has none, and Report stands in for them.
 const task = computed(() => jockey.selTask)
@@ -117,7 +116,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
         </PaneHead>
         <TodoList :todos="task.todos" :hide-done="jockey.hideDone" @change="jockey.setTodos(task, $event)" :run="jockey.todoAgent(task)?.name ?? 'Implement'" :blocked="jockey.todoBlocked(task)" @run="jockey.runTodo(task, $event)" />
       </template>
-      <PRSummary v-else-if="tab === 'pr' && task" :task="task" />
+      <PRSummary v-else-if="(tab === 'pr' || (tab === 'preview' && step?.external)) && task" :task="task" />
       <ChangesView v-else-if="tab === 'changes'" :changes="changes" />
       <template v-else-if="jockey.onTaskStep && task">
         <PaneHead title="Task" :tip="task.source" />
@@ -128,7 +127,7 @@ const compact = useCompact(bar, (el) => [...el.children] as HTMLElement[])
         <PaneHead :title="file || 'Report'" :tip="art?.path">
           <button v-if="art?.exists" title="Expand" aria-label="Open the whole report" @click="jockey.openArtifactPopup(step.id)"><Icon name="maximize" :size="13" /></button>
         </PaneHead>
-        <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as {{ step.external ? "the PR's title and description are in" : 'Claude writes it' }}.</p>
+        <p v-if="!art || !art.exists" class="empty">{{ file || 'The artifact' }} has not been written yet. It appears here as soon as Claude writes it.</p>
         <p v-else-if="!parts.length" class="empty">The report is empty.</p>
         <section v-for="p in parts" :key="p.label" class="part">
           <div v-if="p.label" class="plabel">{{ p.label }}</div>

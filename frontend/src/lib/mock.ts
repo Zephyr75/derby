@@ -31,7 +31,7 @@ const agents: Agent[] = [
   { id: 'plan', name: 'Plan', command: '/jockey:plan {task} -- {guidance}', model: 'sonnet', trigger: 'manual', writes: 'PLAN.md', revert: false, rerun: false, choose: true, builtin: false, ignoreRules: false, showDiff: false, sisters: true, allow: [], next: ['impl', 'discuss'], effort: 'xhigh', onFail: ['plan'],
     instructions: 'Read the task source: the GitHub issue, the description, or both.\nExplore the repo and decide an approach.\nWrite PLAN.md with Goal, Approach (a mermaid flowchart), Files and Out of scope.\nDo not edit code. End with front matter status: done.' },
   { id: 'impl', name: 'Implement', command: '/jockey:implement {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'IMPLEMENT-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: [], effort: 'xhigh', onFail: ['impl', 'discuss', 'plan'],
-    instructions: 'Read PLAN.md, and the newest REVIEW-n.md, TEST-n.md and COPILOT-n.md when they exist.\nImplement the plan in this worktree and run the relevant tests.\nDo not commit: Jockey commits your changes when the Review step ends.\nWrite IMPLEMENT-{n}.md with Changes, Tests and Notes for the reviewer. End with status: done.' },
+    instructions: 'Read PLAN.md, and the newest REVIEW-n.md, TEST-n.md and FEEDBACK-n.md when they exist.\nImplement the plan in this worktree and run the relevant tests.\nDo not commit: Jockey commits your changes when the Review step ends.\nWrite IMPLEMENT-{n}.md with Changes, Tests and Notes for the reviewer. End with status: done.' },
   { id: 'discuss', name: 'Discuss', command: '/jockey:discuss {task} -- {guidance}', model: 'opus', trigger: 'manual', writes: 'DISCUSS-{n}.md', revert: true, rerun: false, choose: false, builtin: false, ignoreRules: false, showDiff: true, sisters: true, allow: [], next: ['review', 'impl'], effort: 'xhigh', onFail: ['discuss', 'impl'],
     instructions: 'This step is a conversation: implement the plan together with the user.\nOnly when the user says the work is done, write DISCUSS-{n}.md: What changed, Files, Notes for the reviewer.\nEnd with status: done.' },
   { id: 'review', name: 'Review', command: '/jockey:review {task}', model: 'opus', trigger: 'after:impl', writes: 'REVIEW-{n}.md', revert: false, rerun: true, choose: false, builtin: false, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: ['test', 'impl', 'discuss'], effort: 'xhigh', onFail: ['impl', 'discuss'],
@@ -203,7 +203,7 @@ const T: MockTask[] = [
 
 const proj = (id: string) => projects.find((p) => p.id === id) ?? projects[0]
 // jockey's own step after a push: it waits for Copilot's review.
-const copilotA: Agent = { id: 'copilot', name: 'Copilot', command: '', model: 'opus', trigger: 'manual', writes: 'COPILOT-{n}.md', revert: false, rerun: false, choose: false, builtin: true, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], effort: 'xhigh', onFail: [], instructions: '' }
+const copilotA: Agent = { id: 'copilot', name: 'Copilot', command: '', model: '', trigger: 'manual', writes: 'FEEDBACK-{n}.md', revert: false, rerun: false, choose: false, builtin: true, ignoreRules: false, showDiff: false, sisters: false, allow: [], next: [], effort: '', onFail: [], instructions: '' }
 const agent = (id: string) => (id === 'copilot' ? copilotA : agents.find((a) => a.id === id) ?? agents[0])
 const displayName = (a: Agent, n: number) => (a.writes.includes('{n}') ? `${a.name} ${n}` : a.name)
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -390,7 +390,7 @@ export function mockTerminal(stepId: string): string {
     else { (fx.findings ?? []).forEach((f) => L('  · ' + f, C.grey)); L(`⏺ Write(${run}/REVIEW-${s.n}.md)`); L('  ⎿ status: ' + (s.verdict === 'failed' ? 'failed' : 'done'), s.verdict === 'failed' ? C.yellow : C.cyan) }
   } else {
     L(`⏺ Write(${run}/PUSH.md)`); L(`● jockey: git push -u origin agent/${t.slug}`, C.cyan); L(`● jockey: gh pr create --body-file PUSH.md  →  #${t.pr}`, C.cyan)
-    L(`● jockey: Copilot review, ${(fx.copilot ?? []).length} comments in COPILOT-${s.n}.md`, C.cyan)
+    L(`● jockey: Copilot review, ${(fx.copilot ?? []).length} comments in FEEDBACK-${s.n}.md`, C.cyan)
   }
   return out.join('\r\n') + '\r\n'
 }

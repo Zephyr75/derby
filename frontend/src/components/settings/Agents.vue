@@ -176,8 +176,8 @@ function pick(id: string) {
       <template v-if="A.builtin">
         <p class="special">
           Built in: Jockey runs it, because it works with GitHub. It asks Copilot to review the PR, then waits for the review and the CI checks (checked every
-          minute), and fails when there is something to fix; the PR tab shows both. When it passes, the task is done (green). Its report,
-          {{ A.writes.replace('{n}', 'n') }}, holds the PR's title and description.
+          minute), and fails when there is something to fix; the PR tab shows both. When it passes, the task is done (green). It writes no report:
+          the review and checks it keeps in {{ A.writes.replace('{n}', 'n') }} are for the steps that fix them.
         </p>
       </template>
       <template v-else>

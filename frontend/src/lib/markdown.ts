@@ -136,24 +136,6 @@ export function summary(src: string): { label: string; md: string }[] {
 }
 
 /**
- * prSummary is the Copilot step's short report: the PR's title (the first line
- * of its file) and the first part of its description, up to the first heading.
- */
-export function prSummary(src: string): { label: string; md: string }[] {
-  const bs = blocks(src)
-  const titled = bs.length > 0 && /^#\s/.test(bs[0])
-  const intro: string[] = []
-  for (const b of bs.slice(titled ? 1 : 0)) {
-    if (heading(b)) break
-    intro.push(b)
-  }
-  const out = []
-  if (titled) out.push({ label: 'Title', md: bs[0].replace(/^#+\s+/, '') })
-  if (intro.length) out.push({ label: 'Description', md: intro.join('\n\n') })
-  return out
-}
-
-/**
  * compactTables turns each markdown table into one small block per row, to fit
  * a narrow panel: the first cell in bold (a size column beside it), then a
  * line for each other column ("Pros: …").

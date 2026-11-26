@@ -249,19 +249,6 @@ func (g GH) PRForBranch(ctx context.Context, repo, branch string) (n int, url, s
 	return prs[0].Number, prs[0].URL, strings.ToLower(prs[0].State), nil
 }
 
-// PRDoc is a pull request's title and description.
-func (g GH) PRDoc(ctx context.Context, repo string, n int) (title, body string, err error) {
-	out, err := g.run(ctx, "", "pr", "view", strconv.Itoa(n), "--repo", repo, "--json", "title,body")
-	if err != nil {
-		return "", "", err
-	}
-	var v struct{ Title, Body string }
-	if err := json.Unmarshal([]byte(out), &v); err != nil {
-		return "", "", err
-	}
-	return v.Title, v.Body, nil
-}
-
 // PR is what jockey polls of an open pull request.
 type PR struct {
 	State  string    // open, merged or closed

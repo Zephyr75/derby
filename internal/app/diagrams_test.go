@@ -108,14 +108,13 @@ func TestFormThenCommit(t *testing.T) {
 	}
 }
 
-// fakeGH stands in for gh: the branch has PR #7, titled and described.
+// fakeGH stands in for gh: the branch has PR #7.
 func fakeGH(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "gh")
 	script := `#!/bin/sh
 case "$*" in
   "pr list"*) printf '%s\n' '[{"number":7,"url":"https://github.com/o/pony-core/pull/7","state":"OPEN"}]' ;;
-  *title,body*) printf '%s\n' '{"title":"feat(x): the title","body":"Because it was slow.\n\n## Flow\nmore"}' ;;
   *) exit 1 ;;
 esac
 `
@@ -126,8 +125,7 @@ esac
 }
 
 // The Push agent opens the PR itself: after it succeeds jockey finds the PR of
-// the branch, Copilot's step starts with the PR's title and description in
-// COPILOT-n.md; Explain is manual and stays unstarted.
+// the branch and Copilot's step starts; Explain is manual and stays unstarted.
 func TestAfterPushFindsThePR(t *testing.T) {
 	a, _ := newTestApp(t)
 	a.gh.Bin = fakeGH(t)
@@ -143,10 +141,6 @@ func TestAfterPushFindsThePR(t *testing.T) {
 	if task.PRNumber != 7 || task.PRState != "open" || !strings.HasSuffix(task.PRURL, "/pull/7") {
 		t.Fatalf("task PR: %+v", task)
 	}
-	waitFor(t, "PR description", func() bool {
-		b, _ := os.ReadFile(filepath.Join(tv.RunDir, "COPILOT-1.md"))
-		return string(b) == "# feat(x): the title\n\nBecause it was slow.\n\n## Flow\nmore\n"
-	})
 }
 
 // Without a pull request there is nothing for Copilot to review.

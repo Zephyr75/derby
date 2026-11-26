@@ -1,7 +1,7 @@
 // Run with `npm test` (Node's own test runner: no extra dependency).
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { compactTables, prSummary, summary } from './markdown.ts'
+import { compactTables, summary } from './markdown.ts'
 
 test('a report summary names its first section TLDR', () => {
   assert.deepEqual(summary('## TL;DR\n\nIt retries.\n\n## Files\n\n- a.go'), [{ label: 'TLDR', md: 'It retries.' }])
@@ -33,13 +33,4 @@ test('a plan summary has its Options as small blocks, not a table', () => {
 test('compactTables leaves everything else as it is', () => {
   const md = 'Before\n\n- a | b\n- c\n\nAfter'
   assert.equal(compactTables(md), md)
-})
-
-test("the Copilot step's short report is the PR title and the start of its description", () => {
-  const body = '# feat(core): retry #12\n\nFirst part.\n\nSecond part.\n\nCloses #12\n\n## Choices\n\nLong.\n\n## Flow\n\nLong too.'
-  assert.deepEqual(prSummary(body), [
-    { label: 'Title', md: 'feat(core): retry #12' },
-    { label: 'Description', md: 'First part.\n\nSecond part.\n\nCloses #12' },
-  ])
-  assert.deepEqual(prSummary('# Only a title'), [{ label: 'Title', md: 'Only a title' }])
 })

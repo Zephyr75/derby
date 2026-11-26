@@ -82,7 +82,7 @@ type App struct {
 	// emitMu: tasks are read and sent one at a time, so the last view sent
 	// is never older than one sent before it (e.g. a step still busy).
 	copilotMu   sync.Mutex     // FEEDBACK-n.md is written by the review and the CI checks
-	explaining  sync.WaitGroup // background runs: task names, sister part lines (see summarised), PR descriptions
+	explaining  sync.WaitGroup // background runs: task names, sister part lines (see summarised)
 	summarising sync.Map       // sister groups whose overview lines are being written
 	emitMu      sync.Mutex
 
