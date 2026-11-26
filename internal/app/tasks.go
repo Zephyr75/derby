@@ -26,7 +26,10 @@ import (
 )
 
 // ListTasks returns every task with its steps, active and archived.
-func (a *App) ListTasks() ([]TaskView, error) {
+func (a *App) ListTasks() ([]TaskView, error) { return a.listViews(false) }
+
+// listViews builds every task's view, light or not (see viewOf).
+func (a *App) listViews(light bool) ([]TaskView, error) {
 	tasks, err := a.db.Tasks()
 	if err != nil {
 		return nil, err
@@ -42,7 +45,7 @@ func (a *App) ListTasks() ([]TaskView, error) {
 		sem <- struct{}{}
 		go func() {
 			defer func() { <-sem; wg.Done() }()
-			out[i], errs[i] = a.view(t)
+			out[i], errs[i] = a.viewOf(t, light)
 		}()
 	}
 	wg.Wait()
@@ -50,6 +53,42 @@ func (a *App) ListTasks() ([]TaskView, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// WarmTasks has the full view of each task Bootstrap sent light come as
+// task:changed events, the ones in open tabs first. The window calls it once
+// it listens to them.
+func (a *App) WarmTasks() { go a.warmTasks() }
+
+func (a *App) warmTasks() {
+	var tabs struct {
+		Tabs []struct{ Task string }
+	}
+	saved, _ := a.db.Get("tabs")
+	_ = json.Unmarshal([]byte(saved), &tabs)
+	ts, err := a.db.Tasks()
+	if err != nil {
+		return
+	}
+	rank := func(t store.Task) int {
+		return slices.IndexFunc(tabs.Tabs, func(x struct{ Task string }) bool { return x.Task == t.ID })
+	}
+	slices.SortStableFunc(ts, func(x, y store.Task) int {
+		rx, ry := rank(x), rank(y)
+		if rx < 0 {
+			rx = len(tabs.Tabs)
+		}
+		if ry < 0 {
+			ry = len(tabs.Tabs)
+		}
+		return rx - ry
+	})
+	for _, t := range ts {
+		if a.ctx.Err() != nil {
+			return
+		}
+		a.emitTask(t.ID)
+	}
 }
 
 // GetTask returns one task.

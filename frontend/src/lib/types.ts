@@ -358,7 +358,7 @@ export interface Issue {
 export interface Bootstrap {
   settings: Settings
   tasks: Task[]
-  tabs: { tabs: TabRef[]; active: number } | null
+  tabs: { tabs: TabRef[]; active: number; collapsed?: Record<string, boolean> } | null // the open tabs and the folded projects
   os: string
   todos: Todo[] // Others: the todos of no task
 }

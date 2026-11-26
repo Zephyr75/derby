@@ -81,13 +81,13 @@ export function toolView(call: ChatItem, worktree: string, runDir: string): Tool
       return v('search', 'Read ' + rel(str(input.file_path)))
     case 'Edit':
     case 'MultiEdit':
-      return v('file', 'Edit ' + rel(str(input.file_path)), 'diff')
+      return v('pencil', 'Edit ' + rel(str(input.file_path)), 'diff')
     case 'NotebookEdit':
-      return v('file', 'Edit ' + rel(str(input.notebook_path)), 'diff')
+      return v('pencil', 'Edit ' + rel(str(input.notebook_path)), 'diff')
     case 'Write':
-      return v('file', 'Write ' + rel(str(input.file_path)), 'diff')
+      return v('pencil', 'Write ' + rel(str(input.file_path)), 'diff')
     case 'Bash':
-      return v('terminal', str(input.command), 'command')
+      return v('run', str(input.command), 'command')
     case 'Grep':
       return v('search', `grep ${JSON.stringify(str(input.pattern))}${input.path ? ' ' + rel(str(input.path)) : ''}`)
     case 'Glob':
@@ -97,16 +97,16 @@ export function toolView(call: ChatItem, worktree: string, runDir: string): Tool
     case 'WebSearch':
       return v('globe', `Search ${JSON.stringify(str(input.query))}`)
     case 'Skill':
-      return v('hammer', 'Load skill: ' + (str(input.skill) || str(input.command)))
+      return v('extension', 'Load skill: ' + (str(input.skill) || str(input.command)))
     case 'Agent':
     case 'Task':
-      return v('agent', str(input.description) || 'Agent')
+      return v('delegate', str(input.description) || 'Agent')
     case 'TodoWrite':
-      return v('todos', 'Plan' + (planDone(call) ? ' · ' + planDone(call) : ''), 'todos')
+      return v('todo', 'Plan' + (planDone(call) ? ' · ' + planDone(call) : ''), 'todos')
     case 'AskUserQuestion':
-      return v('approval', 'Asking for your input', 'question')
+      return v('ask', 'Asking for your input', 'question')
   }
-  return v('hammer', call.tool)
+  return v('tool', call.tool)
 }
 
 /** diffStat counts a unified diff's added and removed lines. */
@@ -207,4 +207,37 @@ export function commands(skills: { name: string; description: string }[], query:
 export function terminalCommand(text: string): boolean {
   const m = /^\/([\w:-]+)/.exec(text.trim())
   return !!m && builtins.some((b) => b.terminal && b.name === m[1])
+}
+
+/** commandLabel: what a command line says it does: the agent's own
+ *  description, else the command without its "cd dir &&" and VAR=value
+ *  prefixes, cut at its first pipe or redirection. */
+export function commandLabel(input: Record<string, unknown> | null): string {
+  const description = str(input?.description).trim()
+  if (description) return description
+  let cmd = str(input?.command).trim().split('\n')[0]
+  cmd = cmd.replace(/^cd\s+\S+\s*&&\s*/, '').replace(/^(?:[A-Z_][A-Z0-9_]*=\S*\s+)+/, '')
+  const heredoc = /^(cat|tee)\b.*?(>>?\s*\S+)/.exec(cmd)
+  if (heredoc && cmd.includes('<<')) return `${heredoc[1]} ${heredoc[2]}`
+  return cmd.split(/\s+[|>]|\s+&&\s+|;/)[0].trim() || 'Run Command'
+}
+
+const clip = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
+
+/** commandResult: the one line shown under a command: the outcome of a test
+ *  run, a diff's size, the first error line of a failure, else the output's
+ *  first line. */
+export function commandResult(text: string, isError: boolean): string {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+  if (!lines.length) return isError ? 'Failed with no output' : 'Done, no output'
+  const find = (re: RegExp) => [...lines].reverse().find((l) => re.test(l))
+  const err = lines.find((l) => /\b(error|fail(ed|ure)?|fatal|panic|denied|not found|no such)\b/i.test(l)) ?? lines[0]
+  const pytest = find(/^=+ .*\b(passed|failed|error)/)
+  if (pytest) return clip(pytest.replace(/^=+\s*|\s*=+$/g, '') + (isError && err !== pytest ? ' · ' + err : ''))
+  const goOk = lines.filter((l) => l.startsWith('ok '))
+  if (goOk.length && !lines.some((l) => l.startsWith('FAIL'))) return `${goOk.length} ${goOk.length === 1 ? 'package' : 'packages'} ok`
+  const diffStat = find(/\d+ files? changed/)
+  if (diffStat) return diffStat.replace(/^\s*/, '')
+  if (isError) return clip(err)
+  return clip(lines[0]) + (lines.length > 1 ? ` · ${lines.length} lines` : '')
 }

@@ -81,7 +81,9 @@ type App struct {
 	pollMu sync.Mutex // one pollPRs at a time
 	// emitMu: tasks are read and sent one at a time, so the last view sent
 	// is never older than one sent before it (e.g. a step still busy).
-	copilotMu   sync.Mutex     // FEEDBACK-n.md is written by the review and the CI checks
+	copilotMu   sync.Mutex    // FEEDBACK-n.md is written by the review and the CI checks
+	booted      chan struct{} // closed once the window has its first data (Bootstrap)
+	bootOnce    sync.Once
 	explaining  sync.WaitGroup // background runs: task names, sister part lines (see summarised)
 	summarising sync.Map       // sister groups whose overview lines are being written
 	emitMu      sync.Mutex
@@ -108,7 +110,7 @@ type App struct {
 
 // New creates the service; call Start before use.
 func New(home string) *App {
-	return &App{Home: home, checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}, stages: map[string][]string{}, status: map[string]SessionStatus{}}
+	return &App{Home: home, booted: make(chan struct{}), checks: map[string][]github.Check{}, missing: map[string]time.Time{}, labels: map[string][]string{}, drafts: map[string]bool{}, conflict: map[string]bool{}, feedback: map[string][]github.Feedback{}, behind: map[string]int{}, stages: map[string][]string{}, status: map[string]SessionStatus{}}
 }
 
 // DefaultHome returns ~/.jockey, or $JOCKEY_HOME when set.
@@ -335,9 +337,19 @@ func (a *App) loop() {
 	defer reap.Stop()
 	defer prs.Stop()
 	defer drift.Stop()
-	go a.pollPRs()
-	go a.pollDrift()
-	go a.pollReleases()
+	// The first screen first: GitHub and git polls compete with the task list
+	// the window is waiting for.
+	go func() {
+		select {
+		case <-a.booted:
+		case <-time.After(5 * time.Second):
+		case <-a.ctx.Done():
+			return
+		}
+		go a.pollPRs()
+		go a.pollDrift()
+		go a.pollReleases()
+	}()
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -375,7 +387,8 @@ type Bootstrap struct {
 
 // Bootstrap returns settings, tasks and the open tabs.
 func (a *App) Bootstrap() (Bootstrap, error) {
-	tasks, err := a.ListTasks()
+	defer a.bootOnce.Do(func() { close(a.booted) })
+	tasks, err := a.listViews(true)
 	if err != nil {
 		return Bootstrap{}, err
 	}
@@ -386,7 +399,7 @@ func (a *App) Bootstrap() (Bootstrap, error) {
 	return Bootstrap{Settings: a.settings.Snapshot(), Tasks: tasks, Tabs: json.RawMessage(tabs), OS: runtime.GOOS, Todos: a.todosOf("")}, nil
 }
 
-// SaveTabs persists the open tabs (opaque JSON from the frontend).
+// SaveTabs persists the open tabs and the folded projects (opaque JSON from the frontend).
 func (a *App) SaveTabs(tabs string) error {
 	if !json.Valid([]byte(tabs)) {
 		return errors.New("tabs: invalid JSON")

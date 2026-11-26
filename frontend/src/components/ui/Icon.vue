@@ -4,8 +4,8 @@ import { computed, type Component } from 'vue'
 import {
   Archive, Check, ChevronDown, ChevronRight, Copy, Diff, ExternalLink, Eye, File, FoldVertical, Folder, FolderOpen, GitBranch, GitMerge, GitPullRequestArrow, GitPullRequestClosed, GitPullRequestDraft, GripVertical, ListTodo, Maximize2, Menu, UnfoldVertical,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Play, Plus, RotateCw, Search, Settings, Split, Square, SquareTerminal, TriangleAlert, Undo2, X,
-  ArrowDown, ArrowUp, Bot, Brain, Flag, UsersRound, ChevronUp, Hammer, Lightbulb, ListPlus, SendHorizontal, UserRound, CircleX, Globe, ListChecks, LoaderCircle, MessageSquare, ShieldAlert, Sparkles, Wrench,
-  Monitor, Moon, Sun, CircleDot, Code, TextAlignStart, CircleCheck, CircleDashed, CircleMinus, CornerDownRight,
+  ArrowDown, ArrowUp, Bot, Brain, Flag, UsersRound, ChevronUp, Lightbulb, ListPlus, SendHorizontal, UserRound, CircleX, Globe, LoaderCircle, MessageSquare, ShieldAlert, Wrench,
+  Monitor, Moon, Sun, CircleDot, Code, TextAlignStart, CircleCheck, CircleDashed, CircleMinus, CornerDownRight, MessageCircleMore, Puzzle, Terminal, Workflow,
 } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{ name: string; size?: number; stroke?: number }>(), { size: 14, stroke: 2 })
@@ -17,7 +17,6 @@ const icons: Record<string, Component> = {
   sisters: UsersRound,
   'send-msg': SendHorizontal,
   queue: ListPlus,
-  hammer: Hammer,
   think: Lightbulb,
   'chevron-up': ChevronUp,
   'user-up': UserRound,
@@ -27,12 +26,14 @@ const icons: Record<string, Component> = {
   thinking: Brain,
   error: CircleX,
   globe: Globe,
-  todos: ListChecks,
   spinner: LoaderCircle,
   chat: MessageSquare,
   approval: ShieldAlert,
-  skill: Sparkles,
   tool: Wrench,
+  run: Terminal,
+  extension: Puzzle,
+  delegate: Workflow,
+  ask: MessageCircleMore,
   play: Play,
   'play-outline': Play, // the play icon unfilled, beside outline icons
   stop: Square,

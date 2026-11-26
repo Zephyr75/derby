@@ -8,7 +8,7 @@ import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { api, errorText } from '../lib/api'
 import { jockey, resumeCommand } from '../lib/state'
 import { render, renderInline } from '../lib/markdown'
-import { entries, toolView, diffStat, questions, todos, response, rawInput, commands, terminalCommand, type ToolCall } from '../lib/chat'
+import { entries, toolView, diffStat, questions, todos, response, rawInput, commands, terminalCommand, commandLabel, commandResult, type ToolCall } from '../lib/chat'
 import type { ChatItem, SessionStatus, Skill, Step } from '../lib/types'
 import Icon from './ui/Icon.vue'
 import Diff from './Diff.vue'
@@ -433,19 +433,24 @@ async function checkAgain() {
           <p v-if="loaded && !found && !trust" class="empty">Claude Code has not saved this session's conversation yet. It shows here as soon as Claude starts.</p>
 
           <template v-for="e in list" :key="e.id">
-            <!-- a command: Zed's terminal card, its header the command -->
-            <div v-if="e.kind === 'tool' && view(e.tool).body === 'command'" class="tcard" :class="{ failed: e.tool.result?.isError }">
-              <div class="thead">
-                <button class="trow" :aria-expanded="isOpen(e.id)" @click="toggle(e.id)">
-                  <span class="cwd">{{ e.tool.call.input?.description || 'Run Command' }}</span>
-                  <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
-                  <Icon v-if="busy(e.tool) && !confirming(e.tool)" name="spinner" :size="13" class="spin" />
-                  <Icon v-else-if="e.tool.result?.isError" name="close" :size="13" class="bad" />
-                </button>
-                <pre class="command">{{ e.tool.call.input?.command }}</pre>
-                <button class="copyc" title="Copy Command" aria-label="Copy Command" @click="jockey.copy(String(e.tool.call.input?.command ?? ''), 'the command')"><Icon name="copy" :size="12" /></button>
+            <!-- a command: a quiet line, what it does and under it how it went; the command and its output unfold -->
+            <div v-if="e.kind === 'tool' && view(e.tool).body === 'command'" class="tool cmd">
+              <button class="lrow two" :aria-expanded="isOpen(e.id) || confirming(e.tool)" @click="toggle(e.id)">
+                <Icon name="run" :size="14" class="ico" />
+                <span class="stack">
+                  <span class="ttl" :title="String(e.tool.call.input?.command ?? '')">{{ commandLabel(e.tool.call.input) }}</span>
+                  <span class="res" :class="{ bad: e.tool.result?.isError }">{{ confirming(e.tool) ? 'Waiting for your approval' : e.tool.result ? commandResult(e.tool.result.text, e.tool.result.isError) : busy(e.tool) ? 'Running…' : 'No result' }}</span>
+                </span>
+                <Icon v-if="busy(e.tool) && !confirming(e.tool)" name="spinner" :size="13" class="spin" />
+                <Icon :name="isOpen(e.id) ? 'chevron-up' : 'chevron'" :size="12" class="disc" />
+              </button>
+              <div v-if="isOpen(e.id) || confirming(e.tool)" class="cbox">
+                <div class="chold">
+                  <pre class="command">{{ e.tool.call.input?.command }}</pre>
+                  <button class="copyc" title="Copy Command" aria-label="Copy Command" @click="jockey.copy(String(e.tool.call.input?.command ?? ''), 'the command')"><Icon name="copy" :size="12" /></button>
+                </div>
+                <pre v-if="e.tool.result" class="output">{{ e.tool.result.text || 'No output.' }}</pre>
               </div>
-              <pre v-if="isOpen(e.id) && e.tool.result" class="output">{{ e.tool.result.text || 'No output.' }}</pre>
               <div v-if="confirming(e.tool)" class="perm">
                 <button class="pb" @click="allow"><Icon name="check" :size="13" class="ok" />Allow</button>
                 <button class="pb" title="Decline (Esc)" @click="interrupt"><Icon name="close" :size="13" class="bad" />Reject</button>
@@ -454,7 +459,7 @@ async function checkAgain() {
             </div>
 
             <!-- an edit (or a tool waiting for approval): a card, its header the title -->
-            <div v-else-if="e.kind === 'tool' && (view(e.tool).card || confirming(e.tool))" class="card" :class="{ failed: e.tool.result?.isError }">
+            <div v-else-if="e.kind === 'tool' && (view(e.tool).card || confirming(e.tool))" class="card" :class="{ failed: e.tool.result?.isError, quiet: !confirming(e.tool) }">
               <button class="chead" :aria-expanded="isOpen(e.id) || confirming(e.tool)" @click="toggle(e.id)">
                 <Icon :name="view(e.tool).icon" :size="14" class="ico" />
                 <span class="ttl" v-html="title(e.tool)"></span>
@@ -842,7 +847,10 @@ button:hover > .disc,
 
 /* a tool line (and Thinking's): icon, muted title, disclosure on the right */
 .tool {
-  margin: 4px 20px;
+  margin: 5px 20px;
+}
+.tool.cmd {
+  margin: 8px 20px;
 }
 .lrow {
   position: relative;
@@ -927,16 +935,14 @@ button:hover > .disc,
 }
 
 /* cards: my-1.5 mx-5, rounded, bordered; the header on its own background */
-.card,
-.tcard {
+.card {
   margin: 6px 20px;
   border: 1px solid var(--card-border);
   border-radius: 6px;
   background: var(--elev);
   overflow: hidden;
 }
-.card.failed,
-.tcard.failed {
+.card.failed {
   border-color: var(--approval-dot);
 }
 .chead {
@@ -988,35 +994,49 @@ button:hover > .disc,
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* the terminal card's header: a row with what it does, then the command */
-.thead {
-  position: relative;
-  background: var(--card-head);
+/* a command: a quiet two-line row (what it does, how it went); unfolded, the
+   command and its output in a box */
+.lrow.two {
+  height: auto;
+  align-items: flex-start;
+  padding: 1px 0;
 }
-.trow {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 4px 4px 0 6px;
-  border: 0;
-  background: transparent;
-  text-align: left;
+.lrow.two > .ico {
+  margin-top: 3px;
 }
-.cwd {
+.stack {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.stack .ttl {
+  flex: none;
+  color: var(--text);
+}
+.res {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--mono);
-  font-size: var(--fs-11);
-  color: var(--muted);
+  font-size: var(--fs-12);
+  color: var(--faint);
+}
+.res.bad {
+  color: var(--del);
+}
+.cbox {
+  margin: 6px 0 2px 20px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--elev);
+  overflow: hidden;
+}
+.chold {
+  position: relative;
 }
 .command {
   margin: 0;
-  padding: 2px 30px 6px 6px;
+  padding: 6px 30px 6px 10px;
   font-family: var(--mono);
   font-size: var(--fs-12);
   line-height: 17px;
@@ -1027,7 +1047,7 @@ button:hover > .disc,
 .copyc {
   position: absolute;
   right: 4px;
-  bottom: 4px;
+  top: 4px;
   width: 22px;
   height: 22px;
   display: flex;
@@ -1039,11 +1059,34 @@ button:hover > .disc,
   color: var(--muted);
   opacity: 0;
 }
-.thead:hover .copyc {
+.chold:hover .copyc {
   opacity: 1;
 }
 .copyc:hover {
   background: var(--hover);
+}
+/* an edit, quiet like the other tool lines: no box until its diff unfolds */
+.card.quiet {
+  margin: 5px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.card.quiet .chead {
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.card.quiet .chead:hover .ttl {
+  color: var(--text);
+}
+.card.quiet .diffw,
+.card.quiet .output {
+  margin: 6px 0 2px 20px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
 }
 .qs {
   display: flex;

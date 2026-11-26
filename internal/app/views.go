@@ -146,7 +146,13 @@ func agentFor(agents []settings.Agent, id string) settings.Agent {
 	return settings.Agent{ID: id, Name: strings.ToUpper(id[:1]) + id[1:], Writes: strings.ToUpper(id) + "-{n}.md"}
 }
 
-func (a *App) view(t store.Task) (TaskView, error) {
+// view is a task as the window shows it.
+func (a *App) view(t store.Task) (TaskView, error) { return a.viewOf(t, false) }
+
+// viewOf builds the view; light leaves out what needs git or the plans'
+// files (what each step changed and can revert, the sister parts, the
+// options to pick from), for a first screen that must come fast.
+func (a *App) viewOf(t store.Task, light bool) (TaskView, error) {
 	steps, err := a.db.Steps(t.ID)
 	if err != nil {
 		return TaskView{}, err
@@ -177,12 +183,18 @@ func (a *App) view(t store.Task) (TaskView, error) {
 		v.Steps = []StepView{}
 	}
 	// Steps share their segment's commit, or the uncommitted work after the last commit.
-	commits := a.branchCommits(t)
-	for i := range v.Steps {
-		v.Steps[i].Revert = a.revertable(t, v.Steps, i, commits)
+	var commits []commit
+	if !light {
+		commits = a.branchCommits(t)
+		for i := range v.Steps {
+			v.Steps[i].Revert = a.revertable(t, v.Steps, i, commits)
+		}
 	}
 	dirty := -1 // unknown until a step needs it
 	for i := range v.Steps {
+		if light {
+			break
+		}
 		sv := &v.Steps[i]
 		sv.Diff = segmentCommit(commits, steps, i) != nil
 		if !sv.Diff && !t.WorktreeRemoved {
@@ -222,18 +234,23 @@ func (a *App) view(t store.Task) (TaskView, error) {
 	}
 	v.Status = statusOf(t, v.Steps)
 	v.Next = nextOf(t, v.Steps, agents)
-	v.Next.Warning = a.optionsWarning(t, v.Steps, v.Next)
+	if !light {
+		v.Next.Warning = a.optionsWarning(t, v.Steps, v.Next)
+	}
 	v.Next.Sisters = []SisterOffer{}
-	if len(agents) > 0 {
+	if len(agents) > 0 && !light {
 		v.Next.Sisters = a.sisterOffers(t, v.Steps, agents)
 	}
 	v.Sisters = []SisterRef{}
 	if sis := a.sisters(t.ID); len(sis) > 0 || len(v.Next.Sisters) > 0 {
-		parts, plans, sig := a.parts(t, sis)
+		parts, plans, sig := map[string]string{}, map[string]string(nil), ""
+		if !light {
+			parts, plans, sig = a.parts(t, sis)
+		}
 		group := append([]store.Task{t}, sis...)
 		missing := slices.ContainsFunc(v.Next.Sisters, func(o SisterOffer) bool { return parts[strings.ToLower(o.Repo)] == "" }) ||
 			slices.ContainsFunc(group, func(x store.Task) bool { return partOf(parts, a.projectOf(x), "") == "" })
-		if missing { // plans written before "Parts overview"
+		if missing && !light { // plans written before "Parts overview"
 			for repo, line := range a.summarised(group, v.Next.Sisters, plans, sig) {
 				if parts[repo] == "" {
 					parts[repo] = line
@@ -252,7 +269,7 @@ func (a *App) view(t store.Task) (TaskView, error) {
 		}
 	}
 	v.Next.Elsewhere = []string{}
-	if len(v.Next.Options) > 0 {
+	if len(v.Next.Options) > 0 && !light {
 		v.Next.Elsewhere = a.outsideRepos(t)
 	}
 	return v, nil

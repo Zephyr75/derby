@@ -188,6 +188,7 @@ class Jockey {
       this.settings = b.settings
       this.tasks = b.tasks ?? []
       this.todos = b.todos ?? []
+      this.collapsed = b.tabs?.collapsed ?? {}
       // One tab per task (older saves have one per step): the step the
       // active tab showed for its task, else the task's last one.
       const saved = b.tabs?.tabs ?? []
@@ -235,6 +236,7 @@ class Jockey {
     }
     window.addEventListener('keydown', (e) => this.onKey(e), true)
     this.ready = true
+    void api.WarmTasks() // the parts of each task that need git, now that task:changed is heard
   }
 
   /** In the browser mock, URL params pick a screen like the preview's
@@ -380,7 +382,7 @@ class Jockey {
   persistTabs() {
     clearTimeout(this.persistTimer)
     this.persistTimer = window.setTimeout(() => {
-      void api.SaveTabs(JSON.stringify({ tabs: this.tabs, active: this.active })).catch(() => {})
+      void api.SaveTabs(JSON.stringify({ tabs: this.tabs, active: this.active, collapsed: this.collapsed })).catch(() => {})
     }, 300)
   }
 
@@ -484,6 +486,7 @@ class Jockey {
 
   toggleCollapsed(projectId: string) {
     this.collapsed[this.left + ':' + projectId] = !this.isCollapsed(projectId)
+    this.persistTabs()
   }
 
   pickArchiveProject(id: string) {

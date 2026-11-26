@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { api } from '../lib/api'
 import { jockey, resumeCommand, taskName, taskStepId } from '../lib/state'
 import { usePR } from '../lib/pr'
 import { unsuccessful } from '../lib/types'
 import Icon from './ui/Icon.vue'
-import Terminal from './Terminal.vue'
 import ChatView from './ChatView.vue'
 import PRTracker from './PRTracker.vue'
 import TaskPage from './TaskPage.vue'
 import Toasts from './Toasts.vue'
+
+const Terminal = defineAsyncComponent(() => import('./Terminal.vue')) // xterm loads with the first terminal
 
 // One tab per task: its dot says whether one of its steps waits for approval
 // or runs, whichever step the tab shows.

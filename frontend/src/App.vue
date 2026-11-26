@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { watchEffect } from 'vue'
+import { defineAsyncComponent, watchEffect } from 'vue'
 import { jockey } from './lib/state'
 import TitleBar from './components/TitleBar.vue'
 import StatusBar from './components/StatusBar.vue'
 import LeftPanel from './components/LeftPanel.vue'
 import Center from './components/Center.vue'
 import RightPanel from './components/RightPanel.vue'
-import Settings from './components/settings/Settings.vue'
-import Palette from './components/popups/Palette.vue'
-import ScopePicker from './components/popups/ScopePicker.vue'
-import NewTask from './components/popups/NewTask.vue'
-import Activity from './components/popups/Activity.vue'
-import Todos from './components/popups/Todos.vue'
-import ViewPopups from './components/popups/ViewPopups.vue'
+
+// Settings and the popups load when first opened, not with the window.
+const Settings = defineAsyncComponent(() => import('./components/settings/Settings.vue'))
+const Palette = defineAsyncComponent(() => import('./components/popups/Palette.vue'))
+const ScopePicker = defineAsyncComponent(() => import('./components/popups/ScopePicker.vue'))
+const NewTask = defineAsyncComponent(() => import('./components/popups/NewTask.vue'))
+const Activity = defineAsyncComponent(() => import('./components/popups/Activity.vue'))
+const Todos = defineAsyncComponent(() => import('./components/popups/Todos.vue'))
+const ViewPopups = defineAsyncComponent(() => import('./components/popups/ViewPopups.vue'))
 
 watchEffect(() => {
   document.documentElement.dataset.theme = jockey.theme

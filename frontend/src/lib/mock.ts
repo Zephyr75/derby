@@ -426,6 +426,7 @@ export const api: Api = {
     tabs: { tabs: [{ task: 'core:4356', step: 'core:4356/impl-2' }, { task: 'infra:214', step: 'infra:214/review-1' }, { task: 'rider:1188', step: 'rider:1188/plan-1' }, { task: 'core:4370', step: 'core:4370/impl-1' }], active: 0 },
   }),
   SaveTabs: () => ok(undefined),
+  WarmTasks: () => ok(undefined),
   ListTasks: () => ok(T.map(derive)),
   MyIssues: (p) => (projects.find((x) => x.id === p)?.repo ? ok([
     { number: 1190, title: ISSUE_TITLES['1190'], repo: 'pony-org/pony-core', priority: 'Urgent' }, { number: 4356, title: ISSUE_TITLES['4356'], repo: 'pony-org/pony-core', priority: 'High' }, { number: 4388, title: 'Export ride receipts as PDF', repo: 'pony-org/rider-app', priority: '' },

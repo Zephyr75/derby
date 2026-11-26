@@ -7,6 +7,7 @@ import type { Diagram, FileDiff, Issue, SystemMemory, Agent, Artifact, Bootstrap
 export interface Api {
   Bootstrap(): Promise<Bootstrap>
   SaveTabs(json: string): Promise<void>
+  WarmTasks(): Promise<void>
   ListTasks(): Promise<Task[]>
   IssueTitle(project: string, issue: string): Promise<string>
   MyIssues(project: string): Promise<Issue[]>

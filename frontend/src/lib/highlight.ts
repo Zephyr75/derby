@@ -2,7 +2,7 @@
 // and their highlight queries ship in src/grammars and load on first use, a
 // language at a time. A token gets the class of the theme key Zed would pick
 // for its capture (themes/syntax.css colours them per theme).
-import { Language, Parser, Query, type Node, type Range } from 'web-tree-sitter'
+import type { Language, Node, Query, Range } from 'web-tree-sitter'
 import core from 'web-tree-sitter/web-tree-sitter.wasm?url'
 
 const wasms = import.meta.glob('../grammars/*.wasm', { query: '?url', import: 'default', eager: true }) as Record<string, string>
@@ -89,15 +89,18 @@ function classOf(capture: string): string {
   return c
 }
 
+// web-tree-sitter itself loads with the first file to highlight, not with the window.
+const treeSitter = () => import('web-tree-sitter')
 let ready: Promise<void> | null = null
 const loaded = new Map<string, Promise<{ lang: Language; query: Query } | null>>()
 function load(id: string) {
   let p = loaded.get(id)
   if (!p) {
     const [grammar, query] = langs[id]
-    ready ??= Parser.init({ locateFile: () => core })
+    ready ??= treeSitter().then(({ Parser }) => Parser.init({ locateFile: () => core }))
     p = ready
       .then(async () => {
+        const { Language, Query } = await treeSitter()
         const lang = await Language.load(wasms[`../grammars/tree-sitter-${grammar}.wasm`])
         return { lang, query: new Query(lang, await queries[`../grammars/${query}.scm`]()) }
       })
@@ -125,6 +128,7 @@ export async function highlight(path: string, text: string): Promise<Seg[][] | n
   if (!id || text.length > maxChars) return null
   const l = await load(id)
   if (!l) return null
+  const { Parser } = await treeSitter()
   const paint = new Int16Array(text.length).fill(-1)
   const names: string[] = []
   const parser = new Parser()
